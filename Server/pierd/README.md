@@ -189,10 +189,12 @@ tool in `X-Pier-Origin`.
 
 Push a tag `pierd-vX.Y.Z` on `main`. `.github/workflows/pierd-release.yml` runs the tests, builds the Linux and macOS
 binaries (amd64, arm64) into a GitHub Release with `checksums.txt` (what `site/install.sh` downloads), and publishes
-the npm packages from `npm/` (`pierd` and `pierd-<os>-<cpu>`) when the repository has an `NPM_TOKEN` secret
-(by hand: `npm/build.sh X.Y.Z <dir with the tarballs> out && npm/publish.sh out`). Then the Homebrew formula, in
-github.com/wagnerfnds/homebrew-tap: `homebrew/formula.sh X.Y.Z > Formula/pierd.rb` there, committed and pushed (its CI
-installs and tests it).
+the npm packages from `npm/` (`pierd` and `pierd-<os>-<cpu>`) with npm's trusted publishing, so there is no npm token
+to keep: each package trusts that workflow, set once by a maintainer (`npm trust github <package> --file
+pierd-release.yml --repo wagnerfnds/pier --allow-publish`; a new package is published by hand before it can trust it).
+By hand: `npm/build.sh X.Y.Z <dir with the tarballs> out && npm/publish.sh out` (versions already on the registry are
+skipped). Then the Homebrew formula, in github.com/wagnerfnds/homebrew-tap: `homebrew/formula.sh X.Y.Z >
+Formula/pierd.rb` there, committed and pushed (its CI installs and tests it).
 
 ## Tests
 
