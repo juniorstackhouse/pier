@@ -51,8 +51,8 @@ func TestTheBoxUsesThePierTunnelUnlessToldOtherwise(t *testing.T) {
 
 func TestTunnelNameReadsWithoutSchemeOrPort(t *testing.T) {
 	for in, want := range map[string]string{
-		"wss://t.example.com/ue4nkpjupj6v": "t.example.com/ue4nkpjupj6v",
-		"ue4nkpjupj6v.t.example.com:443":   "ue4nkpjupj6v.t.example.com",
+		"wss://t.example.com/abcdefgh2345": "t.example.com/abcdefgh2345",
+		"abcdefgh2345.t.example.com:443":   "abcdefgh2345.t.example.com",
 		"relay.example.org:7443":           "relay.example.org:7443",
 	} {
 		if got := tunnelName(in); got != want {
