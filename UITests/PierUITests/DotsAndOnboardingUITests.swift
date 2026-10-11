@@ -176,6 +176,11 @@ final class DotsAndOnboardingUITests: XCTestCase {
         app.launch()
         let demo = element("onboarding-demo")
         XCTAssertTrue(demo.waitForExistence(timeout: 15), "the onboarding offers no demo")
+        // The launch animation is still scaling the window up when the button exists: a tap then lands on Começar.
+        // Tap once the button stays where it is.
+        var last = CGRect.null
+        let settle = Date().addingTimeInterval(5)
+        while Date() < settle { let f = demo.frame; if f == last { break }; last = f; usleep(300_000) }
         shot("demo-offer")
         demo.tap()
         XCTAssertTrue(element("home-demo-banner").waitForExistence(timeout: 15), "the demo's Home has no banner")
