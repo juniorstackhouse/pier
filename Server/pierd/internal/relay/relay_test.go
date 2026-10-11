@@ -10,6 +10,7 @@ import (
 	"net"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -25,8 +26,8 @@ func newIdentity(t *testing.T) *identity.Identity {
 	return id
 }
 
-// startRelay runs a relay on a free local port.
-func startRelay(t *testing.T, token string) (addr string, s *Server) {
+// startRelay runs a relay on a free local port, configured before it serves.
+func startRelay(t *testing.T, token string, configure ...func(*Server)) (addr string, s *Server) {
 	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -34,6 +35,9 @@ func startRelay(t *testing.T, token string) (addr string, s *Server) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	s = &Server{Token: token}
+	for _, f := range configure {
+		f(s)
+	}
 	done := make(chan struct{})
 	go func() { s.Serve(ctx, ln); close(done) }()
 	t.Cleanup(func() { cancel(); <-done })
@@ -244,5 +248,197 @@ func TestNormalizeAddr(t *testing.T) {
 	}
 	if _, err := NormalizeAddr(""); err == nil {
 		t.Error("an empty address must not pass")
+	}
+}
+
+func TestTunnelAddressNamesTheBox(t *testing.T) {
+	id := newIdentity(t)
+	got := TunnelAddress("t.example.com:443", id.Fingerprint())
+	if want := id.Fingerprint().Short() + ".t.example.com:443"; got != want {
+		t.Fatalf("TunnelAddress = %q, want %q", got, want)
+	}
+	// A relay known by its IP has no names to give.
+	if got := TunnelAddress("203.0.113.7:7443", id.Fingerprint()); got != "203.0.113.7:7443" {
+		t.Fatalf("TunnelAddress by IP = %q", got)
+	}
+}
+
+// dialAndEcho opens one app connection and checks the box answers on it.
+func dialAndEcho(t *testing.T, relay string, fp identity.Fingerprint) (net.Conn, error) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	c, err := Dial(ctx, relay, fp)
+	if err != nil {
+		return nil, err
+	}
+	r := bufio.NewReader(c)
+	if _, err := r.ReadString('\n'); err != nil {
+		c.Close()
+		return nil, err
+	}
+	return c, nil
+}
+
+func TestAPublicRelayLimitsConnectionsPerBox(t *testing.T) {
+	addr, _ := startRelay(t, "", func(s *Server) { s.MaxConnsPerBox = 2 })
+	id := newIdentity(t)
+	waitConnected(t, startBox(t, addr, "", id))
+	var open []net.Conn
+	for i := 0; i < 2; i++ {
+		c, err := dialAndEcho(t, addr, id.Fingerprint())
+		if err != nil {
+			t.Fatalf("connection %d: %v", i, err)
+		}
+		open = append(open, c)
+	}
+	var re *Error
+	if _, err := dialAndEcho(t, addr, id.Fingerprint()); !errors.As(err, &re) || re.Code != "busy" {
+		t.Fatalf("a third connection: %v, want busy", err)
+	}
+	// One closes: room for another.
+	open[0].Close()
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		c, err := dialAndEcho(t, addr, id.Fingerprint())
+		if err == nil {
+			c.Close()
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("after one closed: %v", err)
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	open[1].Close()
+}
+
+func TestAPublicRelayLimitsBoxesPerAddress(t *testing.T) {
+	addr, _ := startRelay(t, "", func(s *Server) { s.MaxBoxesPerSource = 1 })
+	waitConnected(t, startBox(t, addr, "", newIdentity(t)))
+	second := startBox(t, addr, "", newIdentity(t))
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) && !strings.Contains(second.Status().Err, "relay is busy") {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if st := second.Status(); st.Connected || !strings.Contains(st.Err, "relay is busy") {
+		t.Fatalf("a second box from the same address: %+v", st)
+	}
+}
+
+func TestAPublicRelayEndsABoxsDayAtItsQuota(t *testing.T) {
+	var later atomic.Bool
+	addr, _ := startRelay(t, "", func(s *Server) {
+		s.MaxBytesPerDay = 64 << 10
+		s.Now = func() time.Time {
+			if later.Load() {
+				return time.Now().Add(24 * time.Hour)
+			}
+			return time.Now()
+		}
+	})
+	id := newIdentity(t)
+	waitConnected(t, startBox(t, addr, "", id))
+	c, err := dialAndEcho(t, addr, id.Fingerprint())
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Past 64 KB the relay ends the connection.
+	line := strings.Repeat("x", 1023) + "\n"
+	done := make(chan error, 1)
+	go func() {
+		for i := 0; i < 1000; i++ {
+			if _, err := io.WriteString(c, line); err != nil {
+				done <- err
+				return
+			}
+		}
+		done <- nil
+	}()
+	go io.Copy(io.Discard, c)
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("1 MB went through a 64 KB quota")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the connection outlived its quota")
+	}
+	c.Close()
+	// And the box is refused for the rest of the day.
+	var re *Error
+	if _, err := dialAndEcho(t, addr, id.Fingerprint()); !errors.As(err, &re) || re.Code != "busy" {
+		t.Fatalf("after the quota: %v, want busy", err)
+	}
+	// A new day starts afresh.
+	later.Store(true)
+	if c, err := dialAndEcho(t, addr, id.Fingerprint()); err != nil {
+		t.Fatalf("the next day: %v", err)
+	} else {
+		c.Close()
+	}
+}
+
+func TestTheProtocolRunsInsideAWebSocket(t *testing.T) {
+	relay, _ := startRelay(t, "")
+	ws := "ws://" + relay
+	id := newIdentity(t)
+	waitConnected(t, startBox(t, ws, "", id))
+	// An app through the WebSocket, its box through it too.
+	c, err := dialAndEcho(t, ws+"/"+id.Fingerprint().Short(), id.Fingerprint())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	r := bufio.NewReader(c)
+	big := strings.Repeat("ab", 20<<10) // 40 KB: more than one 32 KB frame, under the echo's 64 KB lines
+	fmt.Fprintln(c, big)
+	if got, _ := r.ReadString('\n'); got != strings.ToUpper(big)+"\n" {
+		t.Fatalf("echo through the WebSocket: %d bytes", len(got))
+	}
+	// And a TCP app reaches the same box: one relay, both ways in.
+	tcp, err := dialAndEcho(t, relay, id.Fingerprint())
+	if err != nil {
+		t.Fatalf("TCP beside WebSocket: %v", err)
+	}
+	tcp.Close()
+}
+
+func TestBehindAProxyTheClientAddressIsTheProxys(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ln.Close()
+	got := make(chan string, 1)
+	go func() {
+		c, err := ln.Accept()
+		if err != nil {
+			return
+		}
+		ws, err := upgradeWebSocket(c, bufio.NewReader(c), true)
+		if err != nil {
+			got <- "error: " + err.Error()
+			return
+		}
+		got <- ws.RemoteAddr().String()
+		ws.Close()
+	}()
+	c, err := net.Dial("tcp", ln.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	fmt.Fprintf(c, "GET /x HTTP/1.1\r\nHost: t.example.com\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"+
+		"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\nCF-Connecting-IP: 203.0.113.9\r\n\r\n")
+	if addr := <-got; !strings.HasPrefix(addr, "203.0.113.9:") {
+		t.Fatalf("client address = %q, want the one Cloudflare named", addr)
+	}
+}
+
+func TestTunnelAddressOnAWebSocketRelayIsAPath(t *testing.T) {
+	id := newIdentity(t)
+	if got, want := TunnelAddress("wss://t.example.com", id.Fingerprint()), "wss://t.example.com/"+id.Fingerprint().Short(); got != want {
+		t.Fatalf("TunnelAddress = %q, want %q", got, want)
 	}
 }

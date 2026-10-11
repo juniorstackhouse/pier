@@ -91,7 +91,7 @@ public enum PairingLink: Sendable, Hashable {
             throw PierError.invalidLink("bad code")
         }
         // A relay that does not parse is left out: the link still pairs directly.
-        let relay = params["relay"].flatMap { (try? splitHostPort($0)) != nil ? $0 : nil }
+        let relay = params["relay"].flatMap { RelayEndpoint.parse($0) != nil ? $0 : nil }
         return .box(BoxPairingLink(host: host, port: port, fingerprint: fp, code: code, relay: relay))
     }
 

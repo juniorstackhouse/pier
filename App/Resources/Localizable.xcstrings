@@ -4847,16 +4847,6 @@
         }
       }
     },
-    "Fora de casa: aponte a box para um relay seu (pierd relay install num servidor)" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Away from home: point the box at a relay of your own (pierd relay install on a server)"
-          }
-        }
-      }
-    },
     "Foto" : {
       "localizations" : {
         "en" : {
@@ -7839,6 +7829,16 @@
         }
       }
     },
+    "Opcional: um relay seu no lugar do túnel do Pier (pierd relay install num servidor)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Optional: a relay of your own instead of the Pier tunnel (pierd relay install on a server)"
+          }
+        }
+      }
+    },
     "Opções" : {
       "localizations" : {
         "en" : {
@@ -9271,16 +9271,6 @@
         }
       }
     },
-    "Relay %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Relay %@"
-          }
-        }
-      }
-    },
     "Remove a pasta e a branch local; os serviços dela param juntos. Desmarcadas: têm trabalho não enviado." : {
       "localizations" : {
         "en" : {
@@ -10683,6 +10673,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Title"
+          }
+        }
+      }
+    },
+    "Túnel %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tunnel %@"
           }
         }
       }

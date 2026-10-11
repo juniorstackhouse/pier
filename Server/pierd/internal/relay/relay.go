@@ -36,6 +36,8 @@ import (
 	"net"
 	"strings"
 	"time"
+
+	"pier/pierd/internal/identity"
 )
 
 const (
@@ -54,6 +56,30 @@ const (
 	// setupWithin bounds every step before bytes flow.
 	setupWithin = 15 * time.Second
 )
+
+// Official is the Pier tunnel: the relay the project runs, which every pierd
+// uses unless told otherwise (`pierd relay off`, `pierd relay use HOST`), so a
+// box behind NAT is reachable from anywhere with nothing to set up. A
+// WebSocket URL (it sits behind an HTTPS front) or host:port; empty, a build
+// connects to no relay by itself. A build of your own can name another with
+// -ldflags "-X pier/pierd/internal/relay.Official=wss://relay.example.com".
+var Official = "wss://t.docktopier.com"
+
+// TunnelAddress is the address apps dial for the box with fingerprint fp on
+// relay, which names the box: a path of its own on a WebSocket relay
+// (`wss://t.example.com/<short fingerprint>`), a name of its own under a TCP
+// relay's (`<short fingerprint>.t.example.com:443`, for a wildcard DNS). The
+// name only labels the box; the relay finds it by the fingerprint DIAL carries.
+func TunnelAddress(relay string, fp identity.Fingerprint) string {
+	if IsWebSocket(relay) {
+		return strings.TrimSuffix(relay, "/") + "/" + fp.Short()
+	}
+	host, port, err := net.SplitHostPort(relay)
+	if err != nil || net.ParseIP(host) != nil {
+		return relay
+	}
+	return net.JoinHostPort(fp.Short()+"."+host, port)
+}
 
 // ProofMessage is what a box signs to show the relay it holds its key.
 func ProofMessage(fingerprint string, challenge []byte) []byte {

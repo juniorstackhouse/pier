@@ -273,9 +273,10 @@ func serve(b boxHome, args []string) error {
 	// through it, on the same TLS server.
 	var rl *relay.Listener
 	relayAddr := func() string { return "" }
-	if addr := b.setting("relay"); addr != "" {
-		rl = relay.NewListener(addr, b.setting("relay-token"), id, log.New(os.Stderr, "", log.LstdFlags))
-		relayAddr = func() string { return addr }
+	if cfg := relayConfig(b); cfg.Connect != "" {
+		rl = relay.NewListener(cfg.Connect, cfg.Token, id, log.New(os.Stderr, "", log.LstdFlags))
+		advertised := cfg.advertise(id.Fingerprint())
+		relayAddr = func() string { return advertised }
 	}
 	// pair reads this to advertise the address that actually answers.
 	if err := statefile.Write(filepath.Join(b.dir, "listen"), []byte(ln.Addr().String())); err != nil {
@@ -526,7 +527,7 @@ func issuePairing(b boxHome, address string, ttl time.Duration) (link, target st
 	if err != nil {
 		return "", "", err
 	}
-	return pairing.Token{Address: target, Fingerprint: id.Fingerprint(), Code: code, Relay: b.setting("relay")}.String(), target, nil
+	return pairing.Token{Address: target, Fingerprint: id.Fingerprint(), Code: code, Relay: relayConfig(b).advertise(id.Fingerprint())}.String(), target, nil
 }
 
 // printPairing shows a pairing link, and its QR code on a terminal.

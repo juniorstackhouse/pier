@@ -19,20 +19,26 @@ import (
 
 	"pier/pierd/internal/box"
 	"pier/pierd/internal/doctor"
+	"pier/pierd/internal/identity"
 	"pier/pierd/internal/relay"
 	"pier/pierd/internal/service"
 	"pier/pierd/internal/statefile"
+	"pier/pierd/internal/version"
 )
 
 const relayUsage = `usage:
-  pierd relay                              This box's relay, and whether it is connected
-  pierd relay use HOST[:PORT] [--token T]  Reach this box through the relay at HOST (port 7443 by default)
-  pierd relay off                          Stop using a relay
+  pierd relay                              This box's tunnel, and whether it is connected
+  pierd relay use HOST[:PORT] [--token T]  Reach this box through a relay of your own at HOST (port 7443 by default)
+  pierd relay default                      Back to the Pier tunnel (the default)
+  pierd relay off                          No tunnel: apps reach this box at its own address only
   pierd relay install [--listen ADDR] [--open]
                                            On a server with a public address: run a relay as a user
                                            service (port 7443; --open lets any box use it)
-  pierd relay serve [--listen ADDR] [--token T | --open]
-                                           Run a relay in the foreground`
+  pierd relay serve [--listen ADDR] [--token T | --open | --public] [--behind-proxy]
+                                           Run a relay in the foreground (--public: the Pier tunnel's
+                                           mode, open to any box with per-box limits and no addresses
+                                           in the log; it also speaks WebSocket, for an HTTPS front such
+                                           as a Cloudflare Tunnel: --behind-proxy then)`
 
 // relayCmd is `pierd relay`: a box's relay (use, off, status) and the relay
 // itself (serve, install).
@@ -47,6 +53,8 @@ func relayCmd(b boxHome, args []string) error {
 		return relayUse(b, args[1:])
 	case "off":
 		return relayOff(b)
+	case "default":
+		return relayDefault(b)
 	case "serve":
 		return relayServe(b, args[1:])
 	case "install":
@@ -87,10 +95,15 @@ func relayServe(b boxHome, args []string) error {
 	listen := fs.String("listen", ":"+relay.DefaultPort, "address to listen on")
 	token := fs.String("token", "", "the token boxes must present (default: the one in $PIER_HOME/relay/token, made once)")
 	open := fs.Bool("open", false, "let any box register, with no token")
+	public := fs.Bool("public", false, "a relay anyone uses (the Pier tunnel): open, with per-box limits and no addresses in the log")
+	connsPerBox := fs.Int("conns-per-box", 16, "with --public: app connections at once per box")
+	boxesPerSource := fs.Int("boxes-per-address", 20, "with --public: boxes registered from one address")
+	gbPerDay := fs.Float64("gb-per-day", 5, "with --public: GB a box's apps may move per day")
+	behindProxy := fs.Bool("behind-proxy", false, "every connection comes through a proxy in front (a Cloudflare Tunnel): take the client's address from its CF-Connecting-IP / X-Forwarded-For")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	if *open {
+	if *open || *public {
 		*token = ""
 	} else if *token == "" {
 		t, err := relayToken(b)
@@ -106,12 +119,18 @@ func relayServe(b boxHome, args []string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	logger := log.New(os.Stderr, "", log.LstdFlags)
+	srv := &relay.Server{Token: *token, Log: logger, LogAddresses: !*public, BehindProxy: *behindProxy}
 	access := "boxes need its token"
-	if *token == "" {
+	switch {
+	case *public:
+		srv.MaxConnsPerBox, srv.MaxBoxesPerSource = *connsPerBox, *boxesPerSource
+		srv.MaxBytesPerDay = int64(*gbPerDay * (1 << 30))
+		access = fmt.Sprintf("public: %d connections per box, %d boxes per address, %.1f GB per box a day", *connsPerBox, *boxesPerSource, *gbPerDay)
+	case *token == "":
 		access = "open to any box"
 	}
-	logger.Printf("pierd relay serving on %s (%s)", ln.Addr(), access)
-	return (&relay.Server{Token: *token, Log: logger}).Serve(ctx, ln)
+	logger.Printf("pierd relay %s serving on %s (%s)", version.Version, ln.Addr(), access)
+	return srv.Serve(ctx, ln)
 }
 
 // relayService is the relay's user service; args are serve's (nil when only
@@ -219,6 +238,43 @@ func relayUse(b boxHome, args []string) error {
 	return restartForRelay(b)
 }
 
+// relaySettings is how this box reaches apps beyond its network, from its
+// "relay" setting: absent, the Pier tunnel (relay.Official, when the build
+// names one); "off", none; else a relay of the person's own.
+type relaySettings struct {
+	// Connect is the relay the box keeps a connection to; "" for none.
+	Connect string
+	Token   string
+	// Official says Connect is the Pier tunnel.
+	Official bool
+}
+
+func relayConfig(b boxHome) relaySettings {
+	switch v := b.setting("relay"); v {
+	case "off":
+		return relaySettings{}
+	case "":
+		if relay.Official == "" {
+			return relaySettings{}
+		}
+		return relaySettings{Connect: relay.Official, Official: true}
+	default:
+		return relaySettings{Connect: v, Token: b.setting("relay-token")}
+	}
+}
+
+// advertise is the address apps dial for this box through its relay: on the
+// Pier tunnel, a name of its own; "" without a relay.
+func (r relaySettings) advertise(fp identity.Fingerprint) string {
+	switch {
+	case r.Connect == "":
+		return ""
+	case r.Official:
+		return relay.TunnelAddress(r.Connect, fp)
+	}
+	return r.Connect
+}
+
 // saveRelay keeps the relay settings pierd serve reads at start.
 func saveRelay(b boxHome, addr, token string) error {
 	addr, err := relay.NormalizeAddr(addr)
@@ -237,17 +293,33 @@ func saveRelay(b boxHome, addr, token string) error {
 }
 
 func relayOff(b boxHome) error {
-	if b.setting("relay") == "" {
-		fmt.Println("This box uses no relay.")
+	if b.setting("relay") == "off" || relayConfig(b).Connect == "" {
+		if err := statefile.Write(filepath.Join(b.dir, "relay"), []byte("off\n")); err != nil {
+			return err
+		}
+		fmt.Println("This box uses no tunnel.")
 		return nil
 	}
-	os.Remove(filepath.Join(b.dir, "relay"))
+	if err := statefile.Write(filepath.Join(b.dir, "relay"), []byte("off\n")); err != nil {
+		return err
+	}
 	os.Remove(filepath.Join(b.dir, "relay-token"))
 	if err := restartForRelay(b); err != nil {
 		return err
 	}
 	fmt.Println("Apps now reach this box at its own address only.")
 	return nil
+}
+
+// relayDefault goes back to the Pier tunnel.
+func relayDefault(b boxHome) error {
+	os.Remove(filepath.Join(b.dir, "relay"))
+	os.Remove(filepath.Join(b.dir, "relay-token"))
+	if relay.Official == "" {
+		fmt.Println("This build names no Pier tunnel: apps reach this box at its own address only.")
+		return nil
+	}
+	return restartForRelay(b)
 }
 
 // restartForRelay restarts the box's service (when it is one) so it reads the
@@ -265,7 +337,7 @@ func restartForRelay(b boxHome) error {
 	if err := waitServing(b, started, 20*time.Second); err != nil {
 		return fmt.Errorf("pierd did not come back: %w", err)
 	}
-	if b.setting("relay") == "" {
+	if relayConfig(b).Connect == "" {
 		return nil
 	}
 	// The relay answers in a moment, or says why not.
@@ -300,23 +372,46 @@ func relayDoctorCheck(b boxHome) (doctor.Check, bool) {
 	return doctor.Check{}, false
 }
 
+// tunnelName is how the box's tunnel address reads: no scheme, no port when
+// it is 443.
+func tunnelName(addr string) string {
+	for _, scheme := range []string{"wss://", "ws://"} {
+		if rest, ok := strings.CutPrefix(addr, scheme); ok {
+			return rest
+		}
+	}
+	if host, port, err := net.SplitHostPort(addr); err == nil && port == "443" {
+		return host
+	}
+	return addr
+}
+
 func printRelayCheck(b boxHome, c doctor.Check) {
+	cfg := relayConfig(b)
+	name := "Relay " + tunnelName(cfg.Connect)
+	if id, err := b.identity(); err == nil && cfg.Official {
+		name = "Tunnel " + tunnelName(cfg.advertise(id.Fingerprint()))
+	}
 	if c.Status == doctor.OK {
-		fmt.Printf("Relay %s: %s. Apps reach this box from anywhere; paired apps learn it by themselves.\n", b.setting("relay"), c.Detail)
+		fmt.Printf("%s: %s. Apps reach this box from anywhere; paired apps learn it by themselves.\n", name, c.Detail)
 		return
 	}
-	fmt.Printf("Relay %s: %s\n", b.setting("relay"), c.Detail)
+	fmt.Printf("%s: %s\n", name, c.Detail)
 	if c.Fix != "" {
 		fmt.Println("  → " + c.Fix)
 	}
 }
 
 func relayStatus(b boxHome) error {
-	addr := b.setting("relay")
-	if addr == "" {
-		fmt.Println("This box uses no relay: apps reach it at " + pairAddress(b) + " only.")
-		fmt.Println("To reach it from anywhere (a Mac or a server at home, behind NAT), run a relay on a server with a")
-		fmt.Println("public address (pierd relay install there), then here: pierd relay use HOST --token TOKEN")
+	cfg := relayConfig(b)
+	if cfg.Connect == "" {
+		fmt.Println("This box uses no tunnel: apps reach it at " + pairAddress(b) + " only.")
+		if b.setting("relay") == "off" && relay.Official != "" {
+			fmt.Println("pierd relay default turns the Pier tunnel back on.")
+		} else {
+			fmt.Println("To reach it from anywhere (a Mac or a server at home, behind NAT), run a relay on a server with a")
+			fmt.Println("public address (pierd relay install there), then here: pierd relay use HOST --token TOKEN")
+		}
 		fmt.Println()
 		fmt.Println(relayUsage)
 		return nil
@@ -325,7 +420,7 @@ func relayStatus(b boxHome) error {
 		printRelayCheck(b, c)
 		return nil
 	}
-	fmt.Println("Relay: " + addr + " (pierd is not running, so not connected)")
+	fmt.Println("Tunnel: " + cfg.Connect + " (pierd is not running, so not connected)")
 	return nil
 }
 

@@ -300,13 +300,15 @@ struct BoxSettingsRow: View {
             }
             MonoText(conn.record.address, size: 12)
             if let relay = conn.record.relay {
-                // Away from the box's network the app goes through its relay (pierd relay), same keys.
+                // Away from the box's network the app goes through its tunnel (pierd relay), same keys.
+                let bare = relay.replacingOccurrences(of: "wss://", with: "").replacingOccurrences(of: "ws://", with: "")
+                let name = bare.hasSuffix(":443") ? String(bare.dropLast(4)) : bare
                 HStack(spacing: 5) {
                     Image(systemName: "point.3.connected.trianglepath.dotted").font(.caption2).foregroundStyle(Theme.textDim)
-                    MonoText(relay, size: 12)
+                    MonoText(name, size: 12)
                 }
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel(Text("Relay \(relay)"))
+                .accessibilityLabel(Text("Túnel \(name)"))
             }
             MonoText("SHA \(conn.record.fingerprint.short)", size: 11, color: Theme.textFaint)
         }
