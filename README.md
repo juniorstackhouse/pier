@@ -109,9 +109,10 @@ after you log out.
 - **On a server**: scan the QR code with Pier on your iPhone or iPad, or paste the link in Pier on your Mac.
 - **On your Mac**: the link opens Pier, which pairs with your Mac by itself. Then *Take it to iPhone* (at the end of
   the setup, or in Settings) shows a code for your phone.
-- **From anywhere**: a Mac or a server at home is reached away from its network through a relay you run on any
-  server with a public address (`pierd relay install` there, `pierd relay use HOST --token …` on the box). It only
-  carries the end-to-end TLS; no VPN needed.
+- **From anywhere**: a Mac or a server at home is reached away from its network through the Pier tunnel, with
+  nothing to set up: pierd connects out to it and pairing links carry the box's tunnel name. It only carries the
+  end-to-end TLS, so it reads nothing; no VPN, no public address. `pierd relay off` turns it off, and `pierd relay use`
+  points the box at a relay of your own instead.
 
 `pierd pair` prints a new link any time and `pierd doctor` says what to fix. More in
 [`Server/pierd/README.md`](Server/pierd/README.md) (flags, configuration, services, hooks, building it yourself).

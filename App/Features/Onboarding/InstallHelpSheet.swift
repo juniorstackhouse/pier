@@ -34,7 +34,7 @@ struct InstallHelpSheet: View {
         Command(id: "brew", title: "Ou pelo Homebrew", command: PierLinks.brewCommand),
         Command(id: "linger", title: "No Linux, deixe o pierd rodando depois do logout", command: "sudo loginctl enable-linger $USER"),
         Command(id: "pair", title: "Um link de pareamento novo, quando precisar", command: "pierd pair"),
-        Command(id: "relay", title: "Fora de casa: aponte a box para um relay seu (pierd relay install num servidor)",
+        Command(id: "relay", title: "Opcional: um relay seu no lugar do túnel do Pier (pierd relay install num servidor)",
                 command: "pierd relay use HOST --token TOKEN"),
     ]
 

@@ -64,10 +64,16 @@ logs in `~/.config/pier/box/pierd.log`.
 To build it yourself instead: `GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -o pierd ./cmd/pierd`, copy
 the binary to `~/.local/bin` on the box, then `pierd setup`.
 
-### From anywhere: a relay
+### From anywhere: the Pier tunnel
 
-A box the apps cannot dial from outside (a Mac or a server at home, behind NAT) is reached through a relay you run on
-any server with a public address. It is the same binary:
+A box the apps cannot dial from outside (a Mac or a server at home, behind NAT) is reached through the Pier tunnel,
+with nothing to set up: pierd keeps a connection out to `t.TUNNEL_DOMAIN`, the box gets a name there
+(`<id>.t.TUNNEL_DOMAIN`, which `pierd relay` and `pierd setup` print) and pairing links carry it. The app dials the
+box's own address first and the tunnel when that does not answer; inside runs the same mutual TLS, pinned to the keys
+from pairing, so the tunnel only carries bytes it cannot read. `pierd relay off` turns it off; `pierd relay default`
+back on.
+
+Or run a relay of your own on any server with a public address. It is the same binary:
 
 ```sh
 # on the server (a small VPS): pierd without setting up a box, then the relay as a user service on port 7443,
@@ -78,6 +84,9 @@ curl -fsSL https://wagnerfnds.github.io/pier/install.sh | PIERD_NO_SETUP=1 sh
 pierd relay use 203.0.113.7 --token …
 pierd relay                             # connected?
 ```
+
+`pierd relay serve --public` is the Pier tunnel's own mode (open to any box, per-box limits, no addresses in the log);
+`deploy/tunnel/deploy.sh root@HOST` installs it as a service on port 443 of a fresh Ubuntu server.
 
 The box keeps a connection out to the relay and opens one more for each app connection; the relay joins the two.
 Inside runs the same mutual TLS as on a direct connection, pinned to the keys exchanged at pairing, so the relay only

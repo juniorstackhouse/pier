@@ -36,6 +36,8 @@ import (
 	"net"
 	"strings"
 	"time"
+
+	"pier/pierd/internal/identity"
 )
 
 const (
@@ -54,6 +56,25 @@ const (
 	// setupWithin bounds every step before bytes flow.
 	setupWithin = 15 * time.Second
 )
+
+// Official is the Pier tunnel: the relay the project runs, which every pierd
+// uses unless told otherwise (`pierd relay off`, `pierd relay use HOST`), so a
+// box behind NAT is reachable from anywhere with nothing to set up. host:port;
+// empty, a build connects to no relay by itself. A build of your own can name
+// another with -ldflags "-X pier/pierd/internal/relay.Official=host:443".
+var Official = ""
+
+// TunnelAddress is the address apps dial for the box with fingerprint fp on
+// relay: its own name under the relay's (`<short fingerprint>.t.example.com`),
+// which the relay's wildcard DNS answers like the relay itself. The name only
+// labels the box; the relay finds it by the fingerprint DIAL carries.
+func TunnelAddress(relay string, fp identity.Fingerprint) string {
+	host, port, err := net.SplitHostPort(relay)
+	if err != nil || net.ParseIP(host) != nil {
+		return relay
+	}
+	return net.JoinHostPort(fp.Short()+"."+host, port)
+}
 
 // ProofMessage is what a box signs to show the relay it holds its key.
 func ProofMessage(fingerprint string, challenge []byte) []byte {

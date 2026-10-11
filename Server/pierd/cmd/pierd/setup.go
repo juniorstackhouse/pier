@@ -16,6 +16,7 @@ import (
 
 	"pier/pierd/internal/box"
 	"pier/pierd/internal/doctor"
+	"pier/pierd/internal/statefile"
 )
 
 // setup is the one command a person runs on a new box (the install script and
@@ -35,20 +36,26 @@ func setup(b boxHome, args []string) error {
 	noProjects := fs.Bool("no-projects", false, "don't add the git repositories found in the usual folders")
 	noOpen := fs.Bool("no-open", false, "on a Mac, don't hand the pairing link to the Pier app")
 	noService := fs.Bool("no-service", false, "pierd already runs (a container, a supervisor of your own): only add projects and pair")
-	relayAddr := fs.String("relay", "", "HOST[:PORT]: also reach this box through this relay (pierd relay)")
+	relayAddr := fs.String("relay", "", "HOST[:PORT]: reach this box through a relay of your own instead of the Pier tunnel")
 	relayToken := fs.String("relay-token", "", "the relay's token")
+	noTunnel := fs.Bool("no-tunnel", false, "no tunnel: apps reach this box at its own address only")
 	var dirs folderList
 	fs.Var(&dirs, "repos", "a folder whose git repositories become projects; repeatable (default: ~/code, ~/Projects, ~/src, …)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if fs.NArg() > 0 {
-		return errors.New("usage: pierd setup [--repos DIR]… [--address HOST[:PORT]] [--listen ADDR] [--relay HOST[:PORT] [--relay-token T]] [--name NAME] [--ports FIRST-LAST] [--no-projects] [--no-integrations] [--no-open] [--no-service]")
+		return errors.New("usage: pierd setup [--repos DIR]… [--address HOST[:PORT]] [--listen ADDR] [--relay HOST[:PORT] [--relay-token T] | --no-tunnel] [--name NAME] [--ports FIRST-LAST] [--no-projects] [--no-integrations] [--no-open] [--no-service]")
 	}
 	fmt.Println("Pier · setting up this box")
 	fmt.Println()
-	if *relayAddr != "" {
-		// Before the service starts: pierd serve reads it at start.
+	// Before the service starts: pierd serve reads it at start.
+	switch {
+	case *noTunnel:
+		if err := statefile.Write(filepath.Join(b.dir, "relay"), []byte("off\n")); err != nil {
+			return err
+		}
+	case *relayAddr != "":
 		if err := saveRelay(b, *relayAddr, *relayToken); err != nil {
 			return err
 		}
@@ -79,10 +86,20 @@ func setup(b boxHome, args []string) error {
 		doctor.Print(os.Stdout, missing)
 		fmt.Println()
 	}
-	if r := b.setting("relay"); r != "" {
-		if c, ok := relayDoctorCheck(b); ok {
-			printRelayCheck(b, c)
-			fmt.Println()
+	if relayConfig(b).Connect != "" {
+		// The tunnel connects in a moment; say how it went.
+		deadline := time.Now().Add(8 * time.Second)
+		for {
+			c, ok := relayDoctorCheck(b)
+			if ok && (c.Status == doctor.OK || time.Now().After(deadline)) {
+				printRelayCheck(b, c)
+				fmt.Println()
+				break
+			}
+			if time.Now().After(deadline) {
+				break
+			}
+			time.Sleep(300 * time.Millisecond)
 		}
 	}
 	link, target, err := issuePairing(b, *address, defaultTTL)
@@ -91,8 +108,8 @@ func setup(b boxHome, args []string) error {
 	}
 	if runtime.GOOS == "darwin" && !*noOpen && !remoteSession() && exec.Command("open", link).Run() == nil {
 		fmt.Println("Pier is pairing with this Mac. Nothing to do there: the app opens and pairs by itself.")
-		if b.setting("relay") == "" {
-			fmt.Println("Away from home, the phone reaches this Mac through a relay of your own: pierd relay")
+		if relayConfig(b).Connect == "" {
+			fmt.Println("Away from home, the phone reaches this Mac through a tunnel: pierd relay")
 		}
 		fmt.Println("For your iPhone or iPad: \"Take it to iPhone\" in Pier on this Mac (its last setup step, or")
 		fmt.Println("Settings), then scan the code with the phone.")
@@ -102,8 +119,8 @@ func setup(b boxHome, args []string) error {
 	}
 	printPairing(link, target, defaultTTL)
 	fmt.Println("A new link any time: pierd pair")
-	if b.setting("relay") == "" && !publicAddress(target) {
-		fmt.Println("Away from this network, reach the box through a relay of your own: pierd relay")
+	if relayConfig(b).Connect == "" && !publicAddress(target) {
+		fmt.Println("Away from this network, reach the box through a tunnel: pierd relay")
 	}
 	return nil
 }

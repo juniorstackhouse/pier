@@ -29,11 +29,24 @@ type Server struct {
 	Log   *log.Logger
 	// MaxBoxes and MaxPending bound what the relay holds (0: 1000 and 256).
 	MaxBoxes, MaxPending int
+	// Limits for a relay anyone uses (the Pier tunnel, `--public`), so it
+	// carries apps to their boxes and not much else: app connections at once
+	// per box, boxes registered from one address, and bytes per box per day
+	// (0: no limit).
+	MaxConnsPerBox, MaxBoxesPerSource int
+	MaxBytesPerDay                    int64
+	// LogAddresses logs where boxes connect from; off, the log holds no
+	// address at all.
+	LogAddresses bool
+	// Now is the clock (tests).
+	Now func() time.Time
 
 	mu      sync.Mutex
 	boxes   map[identity.Fingerprint]*control
 	pending map[string]*pendingDial
 	conns   map[net.Conn]struct{}
+	sources map[string]int
+	usage   map[identity.Fingerprint]*usage
 }
 
 // control is a registered box's control connection.
@@ -41,6 +54,13 @@ type control struct {
 	conn    net.Conn
 	wmu     sync.Mutex
 	pending int
+	active  int
+}
+
+// usage is what a box's apps moved today, both ways.
+type usage struct {
+	day   string
+	bytes int64
 }
 
 func (c *control) send(line string) error {
@@ -68,7 +88,50 @@ func (s *Server) init() {
 		s.boxes = map[identity.Fingerprint]*control{}
 		s.pending = map[string]*pendingDial{}
 		s.conns = map[net.Conn]struct{}{}
+		s.sources = map[string]int{}
+		s.usage = map[identity.Fingerprint]*usage{}
 	}
+}
+
+func (s *Server) now() time.Time {
+	if s.Now != nil {
+		return s.Now()
+	}
+	return time.Now()
+}
+
+// overQuota says whether fp's apps used up today's bytes. Callers hold s.mu.
+func (s *Server) overQuota(fp identity.Fingerprint) bool {
+	if s.MaxBytesPerDay <= 0 {
+		return false
+	}
+	u := s.usage[fp]
+	return u != nil && u.day == s.now().UTC().Format("2006-01-02") && u.bytes >= s.MaxBytesPerDay
+}
+
+// count adds n bytes to fp's day, and says whether it is still within quota.
+func (s *Server) count(fp identity.Fingerprint, n int) bool {
+	if s.MaxBytesPerDay <= 0 {
+		return true
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	day := s.now().UTC().Format("2006-01-02")
+	u := s.usage[fp]
+	if u == nil || u.day != day {
+		u = &usage{day: day}
+		s.usage[fp] = u
+	}
+	u.bytes += int64(n)
+	return u.bytes < s.MaxBytesPerDay
+}
+
+func sourceOf(c net.Conn) string {
+	host, _, err := net.SplitHostPort(c.RemoteAddr().String())
+	if err != nil {
+		return c.RemoteAddr().String()
+	}
+	return host
 }
 
 // Serve accepts connections on ln until ctx ends.
@@ -172,9 +235,14 @@ func (s *Server) dial(c net.Conn, r *bufio.Reader, args []string) {
 		s.mu.Unlock()
 		writeLine(c, "ERR offline")
 		return
-	case box.pending >= 32 || len(s.pending) >= s.maxPending():
+	case box.pending >= 32 || len(s.pending) >= s.maxPending(),
+		s.MaxConnsPerBox > 0 && box.active+box.pending >= s.MaxConnsPerBox:
 		s.mu.Unlock()
 		writeLine(c, "ERR busy")
+		return
+	case s.overQuota(fp):
+		s.mu.Unlock()
+		writeLine(c, "ERR busy today's traffic for this box is used up")
 		return
 	}
 	d.box = box
@@ -205,7 +273,37 @@ func (s *Server) dial(c net.Conn, r *bufio.Reader, args []string) {
 	if writeLine(c, "OK") != nil {
 		return
 	}
+	s.mu.Lock()
+	box.active++
+	s.mu.Unlock()
+	defer func() {
+		s.mu.Lock()
+		box.active--
+		s.mu.Unlock()
+	}()
+	if s.MaxBytesPerDay > 0 {
+		// Every byte counts against the box's day; past it, the connection ends.
+		a, b := &bufferedConn{Conn: c, r: r}, other
+		splice(&bufferedConn{Conn: a.Conn, r: bufio.NewReaderSize(&metered{r: a.r, ok: func(n int) bool { return s.count(fp, n) }}, 32<<10)},
+			&bufferedConn{Conn: b.Conn, r: bufio.NewReaderSize(&metered{r: b.r, ok: func(n int) bool { return s.count(fp, n) }}, 32<<10)})
+		return
+	}
 	splice(&bufferedConn{Conn: c, r: r}, other)
+}
+
+// metered reads through r, reporting each read to ok; when ok says no, it ends
+// the stream.
+type metered struct {
+	r  io.Reader
+	ok func(n int) bool
+}
+
+func (m *metered) Read(p []byte) (int, error) {
+	n, err := m.r.Read(p)
+	if n > 0 && !m.ok(n) {
+		return n, io.EOF
+	}
+	return n, err
 }
 
 // take removes a pending dial (nil when it was taken already).
@@ -250,6 +348,14 @@ func (s *Server) listen(c net.Conn, r *bufio.Reader, args []string) {
 		writeLine(c, "ERR request bad fingerprint")
 		return
 	}
+	src := sourceOf(c)
+	s.mu.Lock()
+	crowded := s.MaxBoxesPerSource > 0 && s.sources[src] >= s.MaxBoxesPerSource
+	s.mu.Unlock()
+	if crowded {
+		writeLine(c, "ERR busy too many boxes from this address")
+		return
+	}
 	spki, err := base64.StdEncoding.DecodeString(args[1])
 	if err != nil || identity.Fingerprint(sha256.Sum256(spki)) != fp {
 		writeLine(c, "ERR request the key does not match the fingerprint")
@@ -284,6 +390,7 @@ func (s *Server) listen(c net.Conn, r *bufio.Reader, args []string) {
 	}
 	old := s.boxes[fp]
 	s.boxes[fp] = box
+	s.sources[src]++
 	s.mu.Unlock()
 	if old != nil {
 		// The same box again (a restart, a new network): the new one wins.
@@ -294,12 +401,19 @@ func (s *Server) listen(c net.Conn, r *bufio.Reader, args []string) {
 		if s.boxes[fp] == box {
 			delete(s.boxes, fp)
 		}
+		if s.sources[src]--; s.sources[src] <= 0 {
+			delete(s.sources, src)
+		}
 		s.mu.Unlock()
 	}()
 	if box.send("OK") != nil {
 		return
 	}
-	s.logf("relay: box %s connected from %s", fp.Short(), c.RemoteAddr())
+	if s.LogAddresses {
+		s.logf("relay: box %s connected from %s", fp.Short(), c.RemoteAddr())
+	} else {
+		s.logf("relay: box %s connected", fp.Short())
+	}
 	defer s.logf("relay: box %s disconnected", fp.Short())
 
 	done := make(chan struct{})
