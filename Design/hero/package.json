@@ -1,0 +1,14 @@
+{
+  "name": "pier-site-hero",
+  "private": true,
+  "description": "The site's 3D hero (three.js): the app icon's mascot on the water, built into site/assets/hero.js.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "esbuild hero.js --bundle --minify --format=esm --target=es2020 --legal-comments=eof --outfile=../../site/assets/hero.js"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "three": "0.186.1"
+  }
+}
