@@ -44,6 +44,16 @@
         }
       }
     },
+    "Escolha e ordene o que aparece no início" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose and order what Home shows"
+          }
+        }
+      }
+    },
     "agora" : {
       "extractionState" : "stale",
       "localizations" : {

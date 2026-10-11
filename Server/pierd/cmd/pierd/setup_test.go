@@ -49,3 +49,19 @@ func TestUniqueName(t *testing.T) {
 		t.Fatalf("uniqueName = %q", got)
 	}
 }
+
+func TestPublicAddress(t *testing.T) {
+	for addr, want := range map[string]bool{
+		"203.0.113.7:7444":     true,
+		"box.example.com:7444": true,
+		"192.168.1.20:7444":    false,
+		"10.0.0.5:7444":        false,
+		"100.101.102.103:7444": false,
+		"ana-mac.local:7444":   false,
+		"127.0.0.1:7444":       false,
+	} {
+		if got := publicAddress(addr); got != want {
+			t.Errorf("publicAddress(%q) = %v, want %v", addr, got, want)
+		}
+	}
+}

@@ -38,7 +38,80 @@ final class HandshakeWaiter: ChannelInboundHandler, @unchecked Sendable {
     }
 }
 
-/// Dials `host:port`, TLS 1.3, presents our Ed25519 client cert, and pins the server key by SPKI hash.
+/// The relay's side of a relayed connection, before TLS (pierd's package relay; docs/PROTOCOL.md §5): asks the relay
+/// for the box by its key's fingerprint and waits for "OK", then passes every byte through untouched. The TLS that
+/// follows is the box's own, pinned as on a direct connection: the relay only carries it.
+final class RelayDialHandler: ChannelInboundHandler, @unchecked Sendable {
+    typealias InboundIn = ByteBuffer
+    typealias InboundOut = ByteBuffer
+    static let version = "PIER-RELAY/1"
+
+    private let fingerprint: String
+    private let promise: EventLoopPromise<Void>
+    private var pending: ByteBuffer?
+    private var settled = false
+
+    init(fingerprint: Fingerprint, promise: EventLoopPromise<Void>) {
+        self.fingerprint = fingerprint.description
+        self.promise = promise
+    }
+
+    func channelActive(context: ChannelHandlerContext) {
+        var b = context.channel.allocator.buffer(capacity: 120)
+        b.writeString("\(Self.version) DIAL \(fingerprint)\n")
+        context.writeAndFlush(NIOAny(b), promise: nil)
+        context.fireChannelActive()
+    }
+
+    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+        guard !settled else { context.fireChannelRead(data); return }
+        var incoming = unwrapInboundIn(data)
+        if pending == nil { pending = incoming } else { pending!.writeBuffer(&incoming) }
+        guard let view = pending?.readableBytesView, let nl = view.firstIndex(of: UInt8(ascii: "\n")) else {
+            if (pending?.readableBytes ?? 0) > 1024 { settle(.failure(PierError.protocolViolation("relay: answer too long"))) }
+            return
+        }
+        let line = (pending!.readString(length: nl - view.startIndex) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        pending!.moveReaderIndex(forwardBy: 1)
+        // Nothing may follow "OK" before TLS starts: the box waits for our hello.
+        guard line == "OK", pending!.readableBytes == 0 else {
+            settle(.failure(line == "OK" ? PierError.protocolViolation("relay: bytes before TLS") : Self.error(line)))
+            return
+        }
+        pending = nil
+        settle(.success(()))
+    }
+
+    func channelInactive(context: ChannelHandlerContext) {
+        settle(.failure(PierError.transport("the relay closed the connection")))
+        context.fireChannelInactive()
+    }
+
+    func errorCaught(context: ChannelHandlerContext, error: Error) {
+        settle(.failure(error))
+        context.fireErrorCaught(error)
+    }
+
+    private func settle(_ result: Result<Void, Error>) {
+        guard !settled else { return }
+        settled = true
+        promise.completeWith(result)
+    }
+
+    /// `ERR <code> [text]` as the person reads it.
+    static func error(_ line: String) -> PierError {
+        let code = line.hasPrefix("ERR ") ? String(line.dropFirst(4).split(separator: " ").first ?? "") : ""
+        switch code {
+        case "offline": return .transport("the box is not connected to its relay")
+        case "timeout": return .transport("the box did not answer through its relay")
+        case "busy": return .transport("the relay is busy; try again in a moment")
+        default: return .protocolViolation("relay: \(line.prefix(80))")
+        }
+    }
+}
+
+/// Dials `host:port`, TLS 1.3, presents our Ed25519 client cert, and pins the server key by SPKI hash. With `viaRelay`,
+/// `host:port` is the box's relay: it is asked for the box (`RelayDialHandler`) before the same TLS starts.
 enum TLSDial {
     struct Result {
         let channel: Channel
@@ -48,6 +121,7 @@ enum TLSDial {
     static func connect(
         host: String,
         port: Int,
+        viaRelay: Bool = false,
         identity: PierIdentity,
         pin: Fingerprint,
         alpn: [String],
@@ -56,7 +130,8 @@ enum TLSDial {
         configure: @escaping @Sendable (ChannelPipeline.SynchronousOperations) throws -> Void
     ) async throws -> Result {
         let context = try sslContext(identity: identity, alpn: alpn)
-        return try await dial(host: host, port: port, context: context, pin: pin, group: group, timeout: timeout, configure: configure)
+        return try await dial(host: host, port: port, viaRelay: viaRelay, context: context, pin: pin, group: group, timeout: timeout,
+                              configure: configure)
     }
 
     /// The TLS context depends only on our identity and ALPN: built once (key parsing, BoringSSL setup), not per dial.
@@ -84,12 +159,35 @@ enum TLSDial {
     }
 
     private static func dial(
-        host: String, port: Int, context: NIOSSLContext, pin: Fingerprint, group: EventLoopGroup, timeout: TimeAmount,
-        configure: @escaping @Sendable (ChannelPipeline.SynchronousOperations) throws -> Void
+        host: String, port: Int, viaRelay: Bool, context: NIOSSLContext, pin: Fingerprint, group: EventLoopGroup,
+        timeout: TimeAmount, configure: @escaping @Sendable (ChannelPipeline.SynchronousOperations) throws -> Void
     ) async throws -> Result {
 
         let actualFP = NIOLockedValueBox<Fingerprint?>(nil)
         let handshake = group.next().makePromise(of: String?.self)
+        let relayed = viaRelay ? group.next().makePromise(of: Void.self) : nil
+
+        // TLS, pinned, then the caller's handlers: at once on a direct connection, after the relay's OK on a relayed one.
+        @Sendable func addTLS(_ ops: ChannelPipeline.SynchronousOperations) throws {
+            let ssl = try NIOSSLClientHandler(
+                context: context,
+                serverHostname: nil,
+                customVerificationCallback: { certs, promise in
+                    guard let leaf = certs.first,
+                        let spki = try? leaf.extractPublicKey().toSPKIBytes()
+                    else { return promise.succeed(.failed) }
+                    let fp = Fingerprint(spki: spki)
+                    if fp == pin {
+                        promise.succeed(.certificateVerified)
+                    } else {
+                        actualFP.withLockedValue { $0 = fp }
+                        promise.succeed(.failed)
+                    }
+                })
+            try ops.addHandler(ssl)
+            try ops.addHandler(HandshakeWaiter(promise: handshake))
+            try configure(ops)
+        }
 
         let bootstrap = ClientBootstrap(group: group)
             .connectTimeout(timeout)
@@ -97,25 +195,12 @@ enum TLSDial {
             .channelOption(ChannelOptions.socketOption(.tcp_nodelay), value: 1)
             .channelInitializer { channel in
                 channel.eventLoop.makeCompletedFuture {
-                    let ssl = try NIOSSLClientHandler(
-                        context: context,
-                        serverHostname: nil,
-                        customVerificationCallback: { certs, promise in
-                            guard let leaf = certs.first,
-                                let spki = try? leaf.extractPublicKey().toSPKIBytes()
-                            else { return promise.succeed(.failed) }
-                            let fp = Fingerprint(spki: spki)
-                            if fp == pin {
-                                promise.succeed(.certificateVerified)
-                            } else {
-                                actualFP.withLockedValue { $0 = fp }
-                                promise.succeed(.failed)
-                            }
-                        })
                     let ops = channel.pipeline.syncOperations
-                    try ops.addHandler(ssl)
-                    try ops.addHandler(HandshakeWaiter(promise: handshake))
-                    try configure(ops)
+                    if let relayed {
+                        try ops.addHandler(RelayDialHandler(fingerprint: pin, promise: relayed))
+                    } else {
+                        try addTLS(ops)
+                    }
                 }
             }
 
@@ -123,9 +208,24 @@ enum TLSDial {
         do {
             channel = try await bootstrap.connect(host: host, port: port).get()
         } catch {
+            relayed?.fail(error)
             handshake.fail(error)
             _ = try? await handshake.futureResult.get()
             throw map(error, pin: actualFP.withLockedValue { $0 }, expected: pin)
+        }
+
+        if let relayed {
+            let wait = channel.eventLoop.scheduleTask(in: timeout) { relayed.fail(PierError.timeout) }
+            do {
+                try await relayed.futureResult.get()
+                wait.cancel()
+                try await channel.eventLoop.submit { try addTLS(channel.pipeline.syncOperations) }.get()
+            } catch {
+                wait.cancel()
+                handshake.fail(error)
+                try? await channel.close().get()
+                throw map(error, pin: nil, expected: pin)
+            }
         }
 
         let timer = channel.eventLoop.scheduleTask(in: timeout) { handshake.fail(PierError.timeout) }

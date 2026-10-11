@@ -76,7 +76,8 @@ with the subscription that is already there. The app holds no API keys.
 ```
 
 - The app pairs with each box once, by scanning a QR code or pasting a `pier://` link. After that it talks to the box
-  directly: no account, no relay, no cloud. The box's key is pinned; each device has its own key and can be revoked.
+  directly, or through a relay you run when the box is behind NAT: no account, no cloud. The box's key is pinned;
+  each device has its own key and can be revoked.
 - pierd runs agents in tmux, knows each agent's state from the agents' own hooks, reads their conversations, manages
   git worktrees and their dev servers, and sends push notifications through your own APNs key when it has one.
   Without one, Pier on your Mac tells your iPhone and iPad what needs you through your own iCloud.
@@ -108,6 +109,9 @@ after you log out.
 - **On a server**: scan the QR code with Pier on your iPhone or iPad, or paste the link in Pier on your Mac.
 - **On your Mac**: the link opens Pier, which pairs with your Mac by itself. Then *Take it to iPhone* (at the end of
   the setup, or in Settings) shows a code for your phone.
+- **From anywhere**: a Mac or a server at home is reached away from its network through a relay you run on any
+  server with a public address (`pierd relay install` there, `pierd relay use HOST --token …` on the box). It only
+  carries the end-to-end TLS; no VPN needed.
 
 `pierd pair` prints a new link any time and `pierd doctor` says what to fix. More in
 [`Server/pierd/README.md`](Server/pierd/README.md) (flags, configuration, services, hooks, building it yourself).
@@ -156,7 +160,8 @@ Restart pierd (`systemctl --user restart pierd`). The app registers by itself. D
 - Pairing links are single use and expire in 10 minutes; `pierd clients` / `pierd revoke` manage devices.
 - pierd listens on every interface by default (port 7444) and answers only paired devices; pairing needs the
   single-use link. `pierd setup --listen ADDR:PORT` limits it to one address (a VPN's, for instance). Behind NAT, a
-  forwarded port or a VPN such as Tailscale reaches a box from anywhere.
+  relay of your own (`pierd relay`) reaches a box from anywhere: it joins the app's connection to one the box opens,
+  and the mutual TLS runs end to end inside, so it sees neither keys nor content.
 - Commands that the app builds for the box (`exec`) pass user text base64-encoded, never interpolated into the shell.
 
 Found a problem? Please open an issue (or a private advisory for anything sensitive).

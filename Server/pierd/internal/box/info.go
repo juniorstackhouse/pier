@@ -32,6 +32,9 @@ type Info struct {
 	Capabilities []string `json:"capabilities"`
 	// Adapters say what each agent can report, for the app.
 	Adapters map[string]adapters.Caps `json:"adapters,omitempty"`
+	// Relay is where apps reach the box when its address does not answer
+	// (host:port; absent without one).
+	Relay string `json:"relay,omitempty"`
 }
 
 // buildID is a digest of the running binary, computed once: two pierd with
@@ -56,6 +59,9 @@ func (b *Box) handleInfo(w http.ResponseWriter, r *http.Request) error {
 	}
 	if u, err := user.Current(); err == nil {
 		i.User = u.Username
+	}
+	if b.Relay != nil {
+		i.Relay = b.Relay()
 	}
 	i.Home, _ = os.UserHomeDir()
 	if i.Tools == nil {

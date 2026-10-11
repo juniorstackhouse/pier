@@ -18,7 +18,10 @@ struct ComposeScreenPlaceholder: View {
     @State private var customChoice: CustomChoice?
     @State private var customText = ""
     @State private var optionsOpen = false
+    /// The prompt as it was when dictation started: what is heard is added after it.
+    @State private var dictationBase = ""
     @FocusState private var promptFocused: Bool
+    private var dictation: Dictation { TalkCenter.shared.dictation }
 
     enum Sheet: String, Identifiable { case project, worktree, base; var id: String { rawValue } }
     enum CustomChoice: String, Identifiable { case model, effort; var id: String { rawValue } }
@@ -46,6 +49,11 @@ struct ComposeScreenPlaceholder: View {
         .navigationTitle(vm.chat ? "Nova conversa" : "Nova tarefa")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) { submitBar }
+        .onChange(of: dictation.transcript) { _, t in
+            guard dictation.isListening, !t.isEmpty else { return }
+            vm.prompt = Self.joined(dictationBase, t)
+        }
+        .onDisappear { if dictation.isListening { dictation.cancel() } }
         .sheet(item: $sheet) { s in
             switch s {
             case .project: ProjectPickerSheet(vm: vm).environment(app).environment(prefs)
@@ -148,6 +156,7 @@ struct ComposeScreenPlaceholder: View {
                         .padding(.horizontal, 15).padding(.top, 16).allowsHitTesting(false)
                 }
             }
+            dictationStatus
             Divider().overlay(Theme.stroke)
             HStack(spacing: 16) {
                 if !vm.chat {
@@ -165,13 +174,80 @@ struct ComposeScreenPlaceholder: View {
                     Button { promptFocused = false } label: { Image(systemName: "keyboard.chevron.compact.down") }
                         .accessibilityLabel("Fechar teclado")
                 }
+                micButton
             }
             .foregroundStyle(Theme.accent)
             .padding(.horizontal, 14).padding(.vertical, 10)
         }
         .background(Theme.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(promptFocused ? Theme.accent.opacity(0.5) : Theme.stroke, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
+            .strokeBorder(dictation.isListening ? Theme.red.opacity(0.5) : promptFocused ? Theme.accent.opacity(0.5) : Theme.stroke, lineWidth: 1))
     }
+
+    // MARK: dictation
+
+    /// Say the task instead of typing it: the same on-device dictation as Falar, written into the prompt as it is heard.
+    private var micButton: some View {
+        Button(action: toggleDictation) {
+            Image(systemName: dictation.isListening ? "stop.fill" : "mic.fill")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(dictation.isListening ? .white : Theme.accent)
+                .frame(width: 34, height: 34)
+                .background(dictation.isListening ? Theme.red : Theme.accent.opacity(0.14), in: Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(dictation.isListening ? "Parar de ditar" : "Ditar")
+        .accessibilityIdentifier("compose-mic")
+    }
+
+    @ViewBuilder private var dictationStatus: some View {
+        if dictation.isListening {
+            HStack(spacing: 8) {
+                TalkWaveform(level: dictation.level, color: Theme.red).frame(width: 34, height: 18)
+                Text("Ouvindo… toque no microfone para parar").font(.caption).foregroundStyle(Theme.textDim)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 14).padding(.bottom, 8)
+            .transition(.opacity)
+            .accessibilityIdentifier("compose-listening")
+        } else if dictation.state == .denied {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Para ditar, permita o microfone e o reconhecimento de fala nos Ajustes. Você também pode escrever o pedido.")
+                    .font(.caption).foregroundStyle(Theme.orange)
+                Button("Abrir Ajustes") {
+                    if let u = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(u) }
+                }
+                .font(.caption.weight(.semibold))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 14).padding(.bottom, 8)
+        } else if dictation.state == .unavailable {
+            Text("O ditado não está disponível agora. Escreva o pedido.").font(.caption).foregroundStyle(Theme.orange)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 14).padding(.bottom, 8)
+        }
+    }
+
+    private func toggleDictation() {
+        if dictation.isListening {
+            finishDictation()
+            Haptic.impact(.light)
+        } else {
+            promptFocused = false
+            dictationBase = vm.prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+            Haptic.impact(.medium)
+            Task { await dictation.start() }
+        }
+    }
+
+    /// Stops listening and keeps what was heard.
+    private func finishDictation() {
+        guard dictation.isListening else { return }
+        let heard = dictation.stop()
+        if !heard.isEmpty { vm.prompt = Self.joined(dictationBase, heard) }
+    }
+
+    static func joined(_ base: String, _ heard: String) -> String { base.isEmpty ? heard : base + " " + heard }
 
     private var templatesMenu: some View {
         Menu {
@@ -470,6 +546,7 @@ struct ComposeScreenPlaceholder: View {
         Button {
             Task {
                 promptFocused = false
+                finishDictation()
                 if let s = await vm.submit() {
                     router.replaceTop(with: SessionRoute(box: vm.box, session: s))
                 }

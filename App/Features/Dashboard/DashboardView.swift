@@ -67,7 +67,12 @@ struct DashboardView: View {
         .pierBackground()
         .navigationTitle("Início")
         .toolbar {
+            // Personalizar, Falar, then Nova tarefa at the edge: the main action where the thumb and the eye expect it.
             ToolbarItemGroup(placement: .topBarTrailing) {
+                Button { customizing = true } label: { Image(systemName: "slider.horizontal.3") }
+                    .accessibilityLabel(Text("Personalizar", tableName: "Home"))
+                    .accessibilityHint(Text("Escolha e ordene o que aparece no início", tableName: "Home"))
+                    .accessibilityIdentifier("home-customize")
                 Button { TalkCenter.shared.open() } label: { Image(systemName: "waveform") }
                     .accessibilityLabel("Falar")
                     .accessibilityHint("Diga ou escreva um pedido; o Pier escolhe o agente")
@@ -76,7 +81,6 @@ struct DashboardView: View {
                     .accessibilityLabel("Nova tarefa")
                     .accessibilityHint("Abre o formulário de nova tarefa")
                     .accessibilityIdentifier("new-task-button")
-                Button { customizing = true } label: { HText("Personalizar") }
             }
         }
         .safeAreaInset(edge: .bottom) { if showsHoldMic { holdMic } }

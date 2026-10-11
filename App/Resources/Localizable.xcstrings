@@ -4847,6 +4847,16 @@
         }
       }
     },
+    "Fora de casa: aponte a box para um relay seu (pierd relay install num servidor)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Away from home: point the box at a relay of your own (pierd relay install on a server)"
+          }
+        }
+      }
+    },
     "Foto" : {
       "localizations" : {
         "en" : {
@@ -9257,6 +9267,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Recommended"
+          }
+        }
+      }
+    },
+    "Relay %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relay %@"
           }
         }
       }

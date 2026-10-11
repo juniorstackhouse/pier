@@ -101,8 +101,10 @@ public struct BoxInfo: Codable, Sendable, Hashable {
     public let agents: [AgentPreset]
     public let capabilities: [String]
     public let adapters: [String: AdapterCaps]?
+    /// The relay apps reach the box through when its address does not answer ("HOST:PORT"; nil without one).
+    public let relay: String?
 
-    public init(name: String, os: String = "", arch: String = "", build: String = "", user: String? = nil, home: String? = nil, tools: [String] = [], agents: [AgentPreset] = [], capabilities: [String] = [], adapters: [String: AdapterCaps]? = nil) {
+    public init(name: String, os: String = "", arch: String = "", build: String = "", user: String? = nil, home: String? = nil, tools: [String] = [], agents: [AgentPreset] = [], capabilities: [String] = [], adapters: [String: AdapterCaps]? = nil, relay: String? = nil) {
         self.name = name
         self.os = os
         self.arch = arch
@@ -113,6 +115,7 @@ public struct BoxInfo: Codable, Sendable, Hashable {
         self.agents = agents
         self.capabilities = capabilities
         self.adapters = adapters
+        self.relay = relay
     }
 
     enum CodingKeys: String, CodingKey {
@@ -126,6 +129,7 @@ public struct BoxInfo: Codable, Sendable, Hashable {
         case agents
         case capabilities
         case adapters
+        case relay
     }
 
     public init(from decoder: Decoder) throws {
@@ -140,6 +144,7 @@ public struct BoxInfo: Codable, Sendable, Hashable {
         self.agents = try c.decodeIfPresent([AgentPreset].self, forKey: .agents) ?? []
         self.capabilities = try c.decodeIfPresent([String].self, forKey: .capabilities) ?? []
         self.adapters = try c.decodeIfPresent([String: AdapterCaps].self, forKey: .adapters)
+        self.relay = try c.decodeIfPresent(String.self, forKey: .relay).flatMap { $0.isEmpty ? nil : $0 }
     }
 
     public func has(_ capability: String) -> Bool { capabilities.contains(capability) }

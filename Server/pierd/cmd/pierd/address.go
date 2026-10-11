@@ -101,3 +101,8 @@ func advertise(listening string, ips []net.IP, hostname string) string {
 	}
 	return net.JoinHostPort(pickAddress(ips, hostname, localName()), port)
 }
+
+func netipAddr(ip net.IP) netip.Addr {
+	a, _ := netip.AddrFromSlice(ip)
+	return a.Unmap()
+}

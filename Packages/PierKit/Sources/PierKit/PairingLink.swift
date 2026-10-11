@@ -1,12 +1,22 @@
 import Foundation
 
-/// A single-box pairing link: `pier://HOST:PORT?code=<b32>&fp=<b32>` (from `pierd pair`).
+/// A single-box pairing link: `pier://HOST:PORT?code=<b32>&fp=<b32>[&relay=HOST:PORT]` (from `pierd pair`).
 public struct BoxPairingLink: Sendable, Hashable {
     public let host: String
     public let port: Int
     public let fingerprint: Fingerprint
     /// Raw 32 byte single-use code. A secret: never log.
     public let code: [UInt8]
+    /// The box's relay, "HOST:PORT", when it has one: tried when HOST:PORT does not answer.
+    public let relay: String?
+
+    public init(host: String, port: Int, fingerprint: Fingerprint, code: [UInt8], relay: String? = nil) {
+        self.host = host
+        self.port = port
+        self.fingerprint = fingerprint
+        self.code = code
+        self.relay = relay
+    }
 
     /// "HOST:PORT", IPv6 bracketed.
     public var address: String { host.contains(":") ? "[\(host)]:\(port)" : "\(host):\(port)" }
@@ -20,20 +30,29 @@ public struct JoinLink: Sendable, Hashable {
         public let name: String
         public let network: String
         public let tailnet: String
-        /// "host:port" candidates.
+        /// "host:port" candidates; one written "relay/HOST:PORT" is the box's relay (apps before relays never reach it:
+        /// they take the first address).
         public let addresses: [String]
 
-        /// Converts to a single-box link using the first address.
+        /// The box's relay, when the link names one.
+        public var relay: String? {
+            addresses.first { $0.hasPrefix(JoinLink.relayPrefix) }.map { String($0.dropFirst(JoinLink.relayPrefix.count)) }
+        }
+
+        /// Converts to a single-box link using the first address (and the relay).
         public func pairingLink() throws -> BoxPairingLink {
-            guard let a = addresses.first else { throw PierError.invalidLink("no address") }
+            guard let a = addresses.first(where: { !$0.hasPrefix(JoinLink.relayPrefix) }) else { throw PierError.invalidLink("no address") }
             let (h, p) = try PairingLink.splitHostPort(a)
-            return BoxPairingLink(host: h, port: p, fingerprint: fingerprint, code: code)
+            return BoxPairingLink(host: h, port: p, fingerprint: fingerprint, code: code, relay: relay)
         }
     }
 
     public let expires: Date
     public let from: String
     public let boxes: [Box]
+
+    /// Marks a relay among a box's addresses.
+    public static let relayPrefix = "relay/"
 
     /// The client rejects links older than expiry + 1 minute; the box is the real judge.
     public func isExpired(now: Date = Date()) -> Bool { now.timeIntervalSince(expires) > 60 }
@@ -71,7 +90,9 @@ public enum PairingLink: Sendable, Hashable {
         guard let codeS = params["code"], let code = Base32.decode(codeS), code.count == 32 else {
             throw PierError.invalidLink("bad code")
         }
-        return .box(BoxPairingLink(host: host, port: port, fingerprint: fp, code: code))
+        // A relay that does not parse is left out: the link still pairs directly.
+        let relay = params["relay"].flatMap { (try? splitHostPort($0)) != nil ? $0 : nil }
+        return .box(BoxPairingLink(host: host, port: port, fingerprint: fp, code: code, relay: relay))
     }
 
     /// The link schemes: pierd's.

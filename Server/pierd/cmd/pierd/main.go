@@ -32,6 +32,7 @@ import (
 	"pier/pierd/internal/pairing"
 	"pier/pierd/internal/push"
 	"pier/pierd/internal/qr"
+	"pier/pierd/internal/relay"
 	"pier/pierd/internal/statefile"
 	"pier/pierd/internal/trust"
 	"pier/pierd/internal/version"
@@ -50,6 +51,9 @@ const usage = `pierd — the Pier box server
                                           repositories in ~/code, ~/Projects… as projects, and a
                                           pairing link (on a Mac, the Pier app pairs by itself)
   pierd serve [--listen ADDR]             Serve paired apps (default: every interface, port 7444)
+  pierd relay [use HOST | off | install | serve]
+                                          Reach this box from anywhere through a relay you run on
+                                          a server with a public address (pierd relay for more)
   pierd install [--listen ADDR] [--keep-listen] [--name NAME] [--ports FIRST-LAST] [--no-integrations]
                                           Run serve as a user service (systemd; launchd on a Mac)
                                           and install the agent CLIs' hooks. --name and --ports
@@ -146,6 +150,8 @@ func run(args []string) error {
 		return pair(b, args[1:])
 	case "setup":
 		return setup(b, args[1:])
+	case "relay":
+		return relayCmd(b, args[1:])
 	case "install":
 		return install(b, args[1:])
 	case "uninstall":
@@ -263,6 +269,14 @@ func serve(b boxHome, args []string) error {
 	defer ln.Close()
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	// A relay (pierd relay use): apps that cannot reach ln reach the box
+	// through it, on the same TLS server.
+	var rl *relay.Listener
+	relayAddr := func() string { return "" }
+	if addr := b.setting("relay"); addr != "" {
+		rl = relay.NewListener(addr, b.setting("relay-token"), id, log.New(os.Stderr, "", log.LstdFlags))
+		relayAddr = func() string { return addr }
+	}
 	// pair reads this to advertise the address that actually answers.
 	if err := statefile.Write(filepath.Join(b.dir, "listen"), []byte(ln.Addr().String())); err != nil {
 		return err
@@ -319,14 +333,15 @@ func serve(b boxHome, args []string) error {
 		Sessions:     sessions,
 		Events:       bus,
 		Watcher:      watcher,
-		DaemonChecks: func() []doctor.Check { return daemonChecks(b, ln.Addr().String()) },
+		DaemonChecks: func() []doctor.Check { return append(daemonChecks(b, ln.Addr().String()), relayChecks(rl)...) },
 		LogDir:       filepath.Join(b.dir, "logs"),
 		Units:        &box.Units{Dir: filepath.Join(b.dir, "units")},
 		Turns:        turns,
 		Hooks:        hookRunner,
 		EnvFile:      filepath.Join(userDir, "env.json"),
 		Socket:       b.socket(),
-		Invites:      &box.Invites{Address: func() string { return pairAddress(b) }, TTL: defaultTTL},
+		Invites:      &box.Invites{Address: func() string { return pairAddress(b) }, Relay: relayAddr, TTL: defaultTTL},
+		Relay:        relayAddr,
 	}
 	bx.Mount(s)
 	if err := startPush(ctx, b, s, bx, bus, logger); err != nil {
@@ -371,6 +386,14 @@ func serve(b boxHome, args []string) error {
 	go s.ServeLocal(ctx, local)
 	go hookRunner.Run(ctx, bus)
 
+	if rl != nil {
+		go rl.Run(ctx)
+		go func() {
+			if err := s.Serve(ctx, rl); err != nil && ctx.Err() == nil {
+				logger.Printf("relay: serving stopped: %v", err)
+			}
+		}()
+	}
 	logger.Printf("pierd %s serving %s as %q (%s); local API %s", version.Version, ln.Addr(), hostname, id.Fingerprint().Short(), b.socket())
 	return s.Serve(ctx, ln)
 }
@@ -503,7 +526,7 @@ func issuePairing(b boxHome, address string, ttl time.Duration) (link, target st
 	if err != nil {
 		return "", "", err
 	}
-	return pairing.Token{Address: target, Fingerprint: id.Fingerprint(), Code: code}.String(), target, nil
+	return pairing.Token{Address: target, Fingerprint: id.Fingerprint(), Code: code, Relay: b.setting("relay")}.String(), target, nil
 }
 
 // printPairing shows a pairing link, and its QR code on a terminal.

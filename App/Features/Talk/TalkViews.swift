@@ -24,7 +24,8 @@ struct TalkHoldButton: View {
                 }
             }
             .scaleEffect(holding ? 1.1 : 1)
-            .shadow(color: .black.opacity(0.4), radius: 10, y: 4)
+            // A light lift off the list, not a dark halo.
+            .shadow(color: .black.opacity(0.08), radius: 3, y: 1)
             .animation(.snappy(duration: 0.2), value: holding)
             .contentShape(Circle())
             .gesture(
@@ -80,7 +81,7 @@ struct TalkHoldOverlay: View {
         .padding(14)
         .background(Theme.cardRaised, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Theme.accent.opacity(0.4)))
-        .shadow(color: .black.opacity(0.45), radius: 14, y: 6)
+        .shadow(color: .black.opacity(0.1), radius: 8, y: 2)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("talk-hold-overlay")
     }
@@ -142,7 +143,7 @@ struct TalkReceiptHost: View {
                 .frame(maxWidth: 520)
                 .background(Theme.cardRaised, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Theme.stroke))
-                .shadow(color: .black.opacity(0.4), radius: 14, y: 5)
+                .shadow(color: .black.opacity(0.1), radius: 8, y: 2)
                 .padding(.horizontal, 12).padding(.top, 4)
                 .gesture(DragGesture(minimumDistance: 10).onEnded { if $0.translation.height < -10 { center.dismissReceipt() } })
                 .transition(.move(edge: .top).combined(with: .opacity))

@@ -52,6 +52,9 @@ type Token struct {
 	Address     string
 	Fingerprint identity.Fingerprint
 	Code        Code
+	// Relay, when the box uses one, is where apps reach it when Address does
+	// not answer (package relay): host:port.
+	Relay string
 }
 
 var errMalformed = errors.New("malformed pairing link; copy it again from `pierd pair`")
@@ -60,6 +63,9 @@ func (t Token) String() string {
 	q := url.Values{}
 	q.Set("fp", t.Fingerprint.String())
 	q.Set("code", t.Code.String())
+	if t.Relay != "" {
+		q.Set("relay", t.Relay)
+	}
 	return (&url.URL{Scheme: Scheme, Host: t.Address, RawQuery: q.Encode()}).String()
 }
 
@@ -84,7 +90,13 @@ func ParseToken(s string) (Token, error) {
 	if err != nil {
 		return Token{}, errMalformed
 	}
-	return Token{Address: net.JoinHostPort(host, port), Fingerprint: fp, Code: code}, nil
+	tok := Token{Address: net.JoinHostPort(host, port), Fingerprint: fp, Code: code}
+	if r := q.Get("relay"); r != "" {
+		if h, p, err := net.SplitHostPort(r); err == nil && h != "" && p != "" {
+			tok.Relay = r
+		}
+	}
+	return tok, nil
 }
 
 // Proof binds possession of the code to one TLS session (through its exported

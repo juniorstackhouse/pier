@@ -299,6 +299,15 @@ struct BoxSettingsRow: View {
                 Text(label).font(.caption).foregroundStyle(Theme.textDim)
             }
             MonoText(conn.record.address, size: 12)
+            if let relay = conn.record.relay {
+                // Away from the box's network the app goes through its relay (pierd relay), same keys.
+                HStack(spacing: 5) {
+                    Image(systemName: "point.3.connected.trianglepath.dotted").font(.caption2).foregroundStyle(Theme.textDim)
+                    MonoText(relay, size: 12)
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(Text("Relay \(relay)"))
+            }
             MonoText("SHA \(conn.record.fingerprint.short)", size: 11, color: Theme.textFaint)
         }
         .padding(.vertical, 2)

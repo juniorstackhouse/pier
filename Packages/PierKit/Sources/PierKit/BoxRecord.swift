@@ -7,18 +7,22 @@ public struct BoxRecord: Codable, Sendable, Hashable, Identifiable {
     public var address: String
     public var fingerprint: Fingerprint
     public var pairedAt: Date
+    /// "HOST:PORT" of the relay the box keeps a connection to (pierd relay), dialed when `address` does not answer;
+    /// nil when the box has none. The TLS inside is the same, pinned to `fingerprint`: the relay only carries it.
+    public var relay: String?
 
     public var id: String { fingerprint.description }
 
-    public init(name: String, address: String, fingerprint: Fingerprint, pairedAt: Date = Date()) {
+    public init(name: String, address: String, fingerprint: Fingerprint, pairedAt: Date = Date(), relay: String? = nil) {
         self.name = name
         self.address = address
         self.fingerprint = fingerprint
         self.pairedAt = pairedAt
+        self.relay = relay
     }
 
     enum CodingKeys: String, CodingKey {
-        case name, address, fingerprint
+        case name, address, fingerprint, relay
         case pairedAt = "paired_at"
     }
 }
@@ -69,6 +73,14 @@ public struct BoxStore: Sendable {
         boxes.append(rec)
         try save(boxes)
         return rec
+    }
+
+    /// Replaces the stored entry with the same key (its address or relay changed), in place; nothing when there is none.
+    public func update(_ box: BoxRecord) throws {
+        var boxes = try list()
+        guard let i = boxes.firstIndex(where: { $0.fingerprint == box.fingerprint }) else { return }
+        boxes[i] = box
+        try save(boxes)
     }
 
     public func remove(fingerprint: Fingerprint) throws {

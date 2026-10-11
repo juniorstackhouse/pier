@@ -77,13 +77,16 @@ notifications).
             "efforts":["minimal","low","medium","high"]}],
  "agent_paths":[{"id":"claude","name":"Claude Code","command":"claude","path":"/home/octocat/.local/bin/claude","via":"path"}],
  "capabilities":["transcript","history","diff","..."],
- "adapters":{"claude":{"ready":true,"started":true,"waiting":true,"finished":true,"final_message":true,"via":"hooks"}}}
+ "adapters":{"claude":{"ready":true,"started":true,"waiting":true,"finished":true,"final_message":true,"via":"hooks"}},
+ "relay":"relay.example.com:7443"}
 ```
 
 * `version` is pierd's release (`dev` from a checkout); `build` is a 12-hex digest of the running binary (two
   binaries with the same version and another build are different bytes).
 * `agents` are the presets this box can start (3.1). `adapters`: per agent, which state events it reports and how
   (`hooks`, `notify`, `screen`); `via: "screen"` means state is read from the terminal, less precisely.
+* `relay` (absent without one): the relay the box keeps a connection to, `HOST:PORT` (PROTOCOL.md §10). The app keeps
+  it with the box and dials it when the box's address does not answer.
 
 ### 1.2 `GET /v1/stats`
 

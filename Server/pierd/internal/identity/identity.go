@@ -66,6 +66,15 @@ type Identity struct {
 func (i *Identity) Certificate() tls.Certificate { return i.cert }
 func (i *Identity) Fingerprint() Fingerprint     { return i.fingerprint }
 
+// PublicKeyInfo is the key's SubjectPublicKeyInfo (DER): what the fingerprint
+// is a hash of.
+func (i *Identity) PublicKeyInfo() []byte { return i.cert.Leaf.RawSubjectPublicKeyInfo }
+
+// Sign signs msg with the key, for a proof outside TLS (a relay's challenge).
+func (i *Identity) Sign(msg []byte) []byte {
+	return ed25519.Sign(i.cert.PrivateKey.(ed25519.PrivateKey), msg)
+}
+
 // LoadOrCreate reads the key at path, creating it on first use.
 func LoadOrCreate(path string) (*Identity, error) {
 	unlock, err := statefile.Lock(path)

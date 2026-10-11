@@ -325,6 +325,22 @@ func Start(s Spec) error {
 	return nil
 }
 
+// Restart stops and starts the service, so it runs with what changed on disk
+// (a setting it reads at start).
+func Restart(s Spec) error {
+	var out []byte
+	var err error
+	if goos == "darwin" {
+		out, err = command("launchctl", "kickstart", "-k", launchdTarget(s))
+	} else {
+		out, err = command("systemctl", "--user", "restart", s.Name+".service")
+	}
+	if err != nil {
+		return fmt.Errorf("restarting %s: %v: %s", s.Name, err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
 func launchdTarget(s Spec) string { return fmt.Sprintf("gui/%d/%s", os.Getuid(), s.Name) }
 
 func load(s Spec, path string) error {

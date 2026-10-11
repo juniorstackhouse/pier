@@ -3,9 +3,9 @@
 How a client (the Pier app, `Tools/pierctl`, `pierd client`) talks to pierd: pairing links, the client identity,
 the pairing handshake and the steady-state connection. What travels on that connection is in [API.md](API.md).
 
-Code: `Server/pierd/internal/{identity,pairing,trust,wire}` on the box,
+Code: `Server/pierd/internal/{identity,pairing,trust,wire,relay}` on the box,
 `Packages/PierKit/Sources/PierKit` (`PairingLink.swift`, `Pairing.swift`, `Identity.swift`, `TLSDial.swift`,
-`H2Connection.swift`, `BoxClient.swift`) in the app.
+`H2Connection.swift`, `Race.swift`, `BoxClient.swift`) in the app.
 
 ## 0. Summary
 
@@ -16,6 +16,8 @@ Code: `Server/pierd/internal/{identity,pairing,trust,wire}` on the box,
 * Apple's TLS stack (Network.framework, URLSession) cannot talk to pierd: it does not offer Ed25519 signatures in
   TLS. The app uses **swift-nio-ssl (BoringSSL) + swift-nio-http2**, with a small patch exposing the TLS exporter
   (section 7).
+* A box the client cannot dial (a Mac or a server at home, away from its network) can be reached **through a
+  relay** the person runs: one line to set the connection up, then the same TLS, end to end (section 10).
 
 ## 1. Pairing links
 
@@ -38,6 +40,8 @@ pier://HOST:PORT?code=<base32>&fp=<base32>
 * Example: `pier://192.0.2.10:7444?code=<52 chars>&fp=<52 chars>`. `pierd pair --json` prints `{"link", "address",
   "fingerprint", "expires"}`; `--address HOST[:PORT]` sets the address put in the link. A QR code is just this
   string.
+* Optional `relay=HOST:PORT` (percent-encoded): the box's relay (section 10), dialed when `HOST:PORT` does not
+  answer. A client that knows nothing of relays ignores it; one that cannot parse it pairs directly.
 
 ### 1.2 Join link (several boxes in one link, made by the app)
 
@@ -59,7 +63,8 @@ per box:
   str     name           (^[A-Za-z0-9][A-Za-z0-9._-]{0,62}$)
   str     network        ("" = dial the addresses directly; the app writes "")
   str     tailnet        ("")
-  uint8   address count (1..4), then str "host:port" each
+  uint8   address count (1..4), then str "host:port" each; one written "relay/HOST:PORT" is the box's relay
+          (always after the direct address: a client before relays takes the first address)
 ```
 
 Trailing bytes or short reads make the link invalid. The app rejects it when `now > expires + 1 minute`; each box is
@@ -292,3 +297,39 @@ APP  7.  new TLS connection, ALPN h2, same pin check and client cert
 
   `$PIERCTL_HOME` gives it a separate identity and set of boxes (for example to test another box side by side).
   `pierctl` takes single-box links only.
+
+## 10. Relay (reaching a box from anywhere)
+
+A box behind NAT or away from the client's network keeps a connection **out** to a relay the person runs on a server
+with a public address (`pierd relay install` there, `pierd relay use HOST --token T` on the box). For each client
+connection the relay asks the box for a fresh connection and joins the two; inside, client and box run exactly the TLS
+of sections 2 to 4, pinned to the keys exchanged at pairing. The relay passes bytes it can neither read nor change
+(a relay that tried would fail the pin, and a pairing proof is bound to the TLS session it travels in, section 3). What
+it sees: which box a client asks for (the fingerprint), from which address, when, and how much. Code:
+`Server/pierd/internal/relay`; in PierKit `RelayDialHandler` (TLSDial.swift).
+
+PIER-RELAY/1: one line each way, then raw bytes. A line ends in `\n` and is at most 1 KB.
+
+```
+client → relay   PIER-RELAY/1 DIAL <box fingerprint>
+relay → client   OK                     then the client's TLS ClientHello; or ERR offline | timeout | busy | request
+
+box → relay      PIER-RELAY/1 LISTEN <box fingerprint> <SubjectPublicKeyInfo, base64> [token]
+relay → box      CHALLENGE <32 random bytes, base64>
+box → relay      PROOF <Ed25519 signature of "pier relay v1\n" + fingerprint + "\n" + challenge, base64>
+relay → box      OK, or ERR token | proof | request
+relay → box      CONNECT <id> <client address>     one per client connection
+relay → box      PING every 30 s                   the box answers PONG; 75 s of silence ends the connection
+box → relay      PIER-RELAY/1 ACCEPT <id>          a new connection, joined to that client's
+```
+
+* Only the key's holder can register a fingerprint (the challenge); the same box registering again replaces its old
+  connection. A relay may require a token from boxes (`pierd relay install` makes one); clients need none.
+* The relay reports the client's address with CONNECT, and pierd uses it as the connection's remote address (pairing's
+  per-address rate limit).
+* The box gets a connection within 10 s or the client is told `ERR timeout`.
+* The client learns the relay from the pairing link (`relay=`, 1.1, 1.2) and from `GET /v1/info`'s `relay` (API.md
+  1.1), so a box that starts using one is reachable without pairing again. The app dials the box's address first and,
+  1.2 s later (or at once when that fails), the relay; the first TLS handshake to succeed wins and the other attempt is
+  closed. A box last reached through its relay is dialed relay first the next time.
+

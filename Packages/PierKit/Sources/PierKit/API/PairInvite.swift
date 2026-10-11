@@ -72,8 +72,9 @@ extension JoinLink {
             try str(b.name)
             try str("")   // network: reach it directly
             try str("")   // tailnet
-            out.append(1)
+            out.append(b.link.relay == nil ? 1 : 2)
             try str(b.link.address)
+            if let relay = b.link.relay { try str(JoinLink.relayPrefix + relay) }
         }
         let d = Data(out).base64EncodedString()
             .replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
