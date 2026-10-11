@@ -3,8 +3,8 @@
 <plist version="1.0">
 <dict>
 	<!-- The Mac build of the app: the Mac App Store and TestFlight take it only in the App Sandbox; the network for the
-	     boxes, the camera for the pairing QR code, the microphone for Falar, and the same App Group, keychain groups and
-	     push environment as on iOS. -->
+	     boxes, the camera for the pairing QR code, the microphone for Falar, and the same App Group, keychain groups,
+	     push environment and iCloud container as on iOS. -->
 	<key>com.apple.security.app-sandbox</key>
 	<true/>
 	<key>com.apple.security.network.client</key>
@@ -18,6 +18,14 @@
 	<key>com.apple.security.application-groups</key>
 	<array>
 		<string>group.$(PIER_BUNDLE_ID)</string>
+	</array>
+	<key>com.apple.developer.icloud-container-identifiers</key>
+	<array>
+		<string>iCloud.$(PIER_BUNDLE_ID)</string>
+	</array>
+	<key>com.apple.developer.icloud-services</key>
+	<array>
+		<string>CloudKit</string>
 	</array>
 	<key>keychain-access-groups</key>
 	<array>

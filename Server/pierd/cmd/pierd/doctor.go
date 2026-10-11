@@ -20,9 +20,9 @@ func daemonChecks(b boxHome, listening string) []doctor.Check {
 	host, _, _ := net.SplitHostPort(listening)
 	switch ip := net.ParseIP(host); {
 	case ip != nil && ip.IsUnspecified():
-		checks = append(checks, doctor.Check{Area: area, Name: "listening", Status: doctor.Warn,
-			Detail: listening + " answers on every interface, including the internet",
-			Fix:    "pierd install  (listens on the tailnet address only)"})
+		// The default: only paired devices (mutual TLS) and single-use pairing codes get in.
+		checks = append(checks, doctor.Check{Area: area, Name: "listening", Status: doctor.OK,
+			Detail: listening + " (every interface; pairing links say " + pairAddress(b) + ")"})
 	case ip != nil && ip.IsLoopback():
 		checks = append(checks, doctor.Check{Area: area, Name: "listening", Status: doctor.OK, Detail: listening + " (this box only; reach it through a tunnel)"})
 	default:

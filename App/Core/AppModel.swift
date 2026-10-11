@@ -142,6 +142,17 @@ final class AppModel {
         if UserDefaults.standard.bool(forKey: "testKeychainMigration") { SharedKeychain.debugSelfTest() }
         // Test hook: `-uiTestDemoReset 1` starts outside the demo, whatever an earlier run left.
         if UserDefaults.standard.bool(forKey: "uiTestDemoReset") { DemoMode.isOn = false; prefs.reload() }
+        // `-cloudAlertsSeed 1`: every alert field in CloudKit's development schema; `-cloudAlertsTest 1`: a test alert for
+        // the person's iPhone and iPad; `-cloudAlertsDiagnose 1`: the iCloud subscriptions (an iPhone's shows up from the
+        // Mac too) in the log.
+        let cloudDebug = ["cloudAlertsSeed", "cloudAlertsTest", "cloudAlertsDiagnose"].filter { UserDefaults.standard.bool(forKey: $0) }
+        if !cloudDebug.isEmpty {
+            Task {
+                if cloudDebug.contains("cloudAlertsSeed") { await CloudAlerts.shared.seedSchema() }
+                await CloudAlerts.shared.diagnose()
+                if cloudDebug.contains("cloudAlertsTest") { await CloudAlerts.shared.sendTest() }
+            }
+        }
         #endif
         #if DEBUG
         if UITestMock.enabled { startMock(); return }
@@ -321,6 +332,14 @@ final class AppModel {
     }
 
     private func transition(_ c: BoxConnection, _ s: Session, _ to: AgentState?) {
+        #if targetEnvironment(macCatalyst)
+        // This Mac tells the person's iPhone and iPad through their iCloud when the box has no push of its own
+        // (CloudAlerts). Never the made-up boxes' (the demo's, a UI test's mock) unless a test asks.
+        if !(c.raw is MockBox) || UserDefaults.standard.bool(forKey: "cloudAlertsFromMock") {
+            let (rec, client, id, count) = (c.record, c.client, identity, boxes.count)
+            Task { await CloudAlerts.shared.forward(box: rec, client: client, identity: id, session: s, to: to, showBox: count > 1) }
+        }
+        #endif
         guard !isActive else {
             // Foreground: a banner (and a haptic) unless the person is already looking at that session.
             guard router.visibleSession != "\(c.name)/\(s.name)",
@@ -364,9 +383,18 @@ final class AppModel {
             startStatsLoop()
             push.foreground()
             Task { await notifications.refreshStatus() }
+            #if !targetEnvironment(macCatalyst)
+            // What a Mac relays through iCloud (CloudAlerts) reaches this phone or iPad: subscribed on the first
+            // foreground that can (an iCloud account, the record type known to CloudKit once a Mac saved an alert).
+            Task { await CloudAlerts.shared.subscribeIfNeeded() }
+            #endif
         case .background:
             isActive = false
+            // The Mac keeps running with its window closed or hidden: the edge tab, the menu bar, the notifications
+            // and the alerts for the person's iPhone and iPad (CloudAlerts) still follow every box, so its streams stay.
+            #if !targetEnvironment(macCatalyst)
             hub.stopAll()
+            #endif
             statsTask?.cancel()
             push.background()
             BackgroundRefresh.schedule()

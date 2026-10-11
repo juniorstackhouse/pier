@@ -8,6 +8,8 @@ struct SettingsView: View {
     @State private var confirmUnpair: BoxConnection?
     @AppStorage(Appearance.key) private var appearance = Appearance.system
     @AppStorage(TalkCenter.sendDirectKey) private var talkSendDirect = false
+    @AppStorage(CloudAlerts.enabledKey) private var cloudAlerts = true
+    @State private var openAtLogin = false
     #if DEBUG
     /// `-openInvite 1` (with `-startTab settings`): opens "Levar para o iPhone".
     @State private var debugInvite = UserDefaults.standard.bool(forKey: "openInvite")
@@ -92,8 +94,22 @@ struct SettingsView: View {
                     Button("Permitir notificações") { Task { await model.notifications.requestAuthorization() } }
                         .listRowBackground(Theme.card)
                 }
-                Text("Com o push configurado no pierd da box, as notificações chegam na hora, mesmo com o app fechado. Sem ele, chegam com o app aberto ou quando o iOS atualiza em segundo plano.")
+                #if targetEnvironment(macCatalyst)
+                Toggle("Abrir o Pier quando o Mac ligar", isOn: Binding(get: { openAtLogin }, set: { on in
+                    if LoginItem.set(on) { openAtLogin = LoginItem.isOn }
+                }))
+                .onAppear { openAtLogin = LoginItem.isOn }
+                .accessibilityIdentifier("settings-open-at-login")
+                .listRowBackground(Theme.card)
+                Toggle("Avisar o iPhone e o iPad pelo iCloud", isOn: $cloudAlerts)
+                    .accessibilityIdentifier("settings-cloud-alerts")
+                    .listRowBackground(Theme.card)
+                Text("Quando uma box não envia push, o Pier neste Mac avisa o seu iPhone e o seu iPad pela sua conta do iCloud: sem servidor e sem chave. Funciona enquanto o Pier estiver aberto aqui.")
                     .font(.footnote).foregroundStyle(Theme.textFaint).listRowBackground(Color.clear)
+                #else
+                Text("As notificações chegam na hora, mesmo com o app fechado, quando o pierd da box tem push configurado ou quando um Mac com o Pier aberto avisa este aparelho pelo seu iCloud.")
+                    .font(.footnote).foregroundStyle(Theme.textFaint).listRowBackground(Color.clear)
+                #endif
             }
             PushSettingsSection()
             Section("Sobre") {

@@ -1,20 +1,26 @@
 package main
 
 import (
-	"errors"
 	"net"
 	"net/netip"
+	"os/exec"
+	"runtime"
+	"strings"
 )
 
 // carrierGradeNAT is 100.64.0.0/10, which Tailscale uses and Go's IsPrivate
 // does not cover.
 var carrierGradeNAT = netip.MustParsePrefix("100.64.0.0/10")
 
-// pickAddress guesses the address a laptop should dial. A VPS usually has one
-// public IPv4 address; failing that, a private or tailnet one is still useful,
-// and the hostname is the last resort. `pair --address` overrides the guess.
-func pickAddress(ips []net.IP, hostname string) string {
-	var fallback string
+// pickAddress guesses the address an app should dial: a public IPv4 address
+// first (a VPS), then this Mac's Bonjour name (local, when given: it follows
+// the Mac from one Wi-Fi address to the next, and phones on that network
+// resolve it with nothing installed), then a tailnet address (a server whose
+// owner set up Tailscale reaches their phone from anywhere), then a private
+// address (a server at home or at the office), and the hostname as the last
+// resort. `pair --address` overrides the guess.
+func pickAddress(ips []net.IP, hostname, local string) string {
+	var private, tailnet string
 	for _, ip := range ips {
 		addr, ok := netip.AddrFromSlice(ip)
 		if !ok {
@@ -24,15 +30,23 @@ func pickAddress(ips []net.IP, hostname string) string {
 		if !addr.Is4() || addr.IsLoopback() || addr.IsLinkLocalUnicast() || addr.IsUnspecified() {
 			continue
 		}
-		if !addr.IsPrivate() && !carrierGradeNAT.Contains(addr) {
+		switch {
+		case carrierGradeNAT.Contains(addr):
+			if tailnet == "" {
+				tailnet = addr.String()
+			}
+		case addr.IsPrivate():
+			if private == "" {
+				private = addr.String()
+			}
+		default:
 			return addr.String()
 		}
-		if fallback == "" {
-			fallback = addr.String()
-		}
 	}
-	if fallback != "" {
-		return fallback
+	for _, a := range []string{local, tailnet, private} {
+		if a != "" {
+			return a
+		}
 	}
 	return hostname
 }
@@ -51,23 +65,32 @@ func interfaceIPs() []net.IP {
 	return ips
 }
 
-// defaultListen is where pierd listens when --listen is not given: the
-// box's tailnet address only. Answering on every interface would expose the
-// daemon to the internet, which has to be asked for explicitly.
-func defaultListen(ips []net.IP) (string, error) {
-	for _, ip := range ips {
-		addr, ok := netip.AddrFromSlice(ip)
-		if ok && addr.Unmap().Is4() && carrierGradeNAT.Contains(addr.Unmap()) {
-			return net.JoinHostPort(addr.Unmap().String(), defaultPort), nil
-		}
+// localName is this Mac's Bonjour name ("Ana-MacBook.local"), which phones on
+// the same network resolve by themselves; "" anywhere else.
+var localName = func() string {
+	if runtime.GOOS != "darwin" {
+		return ""
 	}
-	return "", errors.New("this box has no tailnet address, so pierd will not pick where to listen; " +
-		"pass --listen, e.g. --listen 0.0.0.0:" + defaultPort + " to accept connections from the internet")
+	out, err := exec.Command("scutil", "--get", "LocalHostName").Output()
+	name := strings.TrimSpace(string(out))
+	if err != nil || name == "" {
+		return ""
+	}
+	return name + ".local"
 }
 
-// advertise is the address a pairing link tells laptops to dial. When
-// pierd listens on one specific address, that is the only one that works,
-// so it wins over any guess.
+// defaultListen is where pierd listens when --listen is not given: every
+// interface. pierd answers only devices it paired (mutual TLS with pinned
+// keys) and single-use, short-lived pairing codes, so it runs as it is on a
+// VPS, on a server at home or on a Mac, with no Tailscale needed; --listen
+// narrows it (a tailnet address, 127.0.0.1).
+func defaultListen([]net.IP) (string, error) {
+	return net.JoinHostPort("0.0.0.0", defaultPort), nil
+}
+
+// advertise is the address a pairing link tells apps to dial. When pierd
+// listens on one specific address, that is the only one that works, so it
+// wins over any guess.
 func advertise(listening string, ips []net.IP, hostname string) string {
 	host, port, err := net.SplitHostPort(listening)
 	if err != nil {
@@ -76,5 +99,5 @@ func advertise(listening string, ips []net.IP, hostname string) string {
 	if ip := net.ParseIP(host); host != "" && (ip == nil || !ip.IsUnspecified()) {
 		return listening
 	}
-	return net.JoinHostPort(pickAddress(ips, hostname), port)
+	return net.JoinHostPort(pickAddress(ips, hostname, localName()), port)
 }

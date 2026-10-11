@@ -16,19 +16,18 @@ func TestChooseListen(t *testing.T) {
 		keep                bool
 		ips                 []net.IP
 		want                string
-		wantErr             bool
 	}{
-		{name: "the tailnet address by default", ips: tailnet, want: "100.101.102.103:7444"},
-		{name: "--listen wins", flag: "0.0.0.0:7444", ips: tailnet, current: "10.0.0.5:7444", keep: true, want: "0.0.0.0:7444"},
-		{name: "an upgrade keeps an address chosen before", keep: true, current: "0.0.0.0:7444", ips: tailnet, want: "0.0.0.0:7444"},
-		{name: "an upgrade keeps it without a tailnet too", keep: true, current: "0.0.0.0:7444", want: "0.0.0.0:7444"},
-		{name: "an old tailnet address is not kept", keep: true, current: "100.64.0.9:7444", ips: tailnet, want: "100.101.102.103:7444"},
-		{name: "without --keep-listen the tailnet address comes back", current: "0.0.0.0:7444", ips: tailnet, want: "100.101.102.103:7444"},
-		{name: "no tailnet and nothing chosen is an error", ips: ips("203.0.113.5"), wantErr: true},
+		{name: "every interface by default", ips: tailnet, want: "0.0.0.0:7444"},
+		{name: "every interface without a tailnet too", ips: ips("203.0.113.5"), want: "0.0.0.0:7444"},
+		{name: "--listen wins", flag: "100.101.102.103:7444", ips: tailnet, current: "10.0.0.5:7444", keep: true, want: "100.101.102.103:7444"},
+		{name: "an upgrade keeps an address chosen before", keep: true, current: "10.0.0.5:7444", ips: tailnet, want: "10.0.0.5:7444"},
+		{name: "an upgrade keeps a tailnet address the box still has", keep: true, current: "100.101.102.103:7444", ips: tailnet, want: "100.101.102.103:7444"},
+		{name: "an old tailnet address is not kept", keep: true, current: "100.64.0.9:7444", ips: tailnet, want: "0.0.0.0:7444"},
+		{name: "without --keep-listen the default comes back", current: "10.0.0.5:7444", ips: tailnet, want: "0.0.0.0:7444"},
 	} {
 		got, err := chooseListen(tc.flag, tc.keep, tc.current, tc.ips)
-		if (err != nil) != tc.wantErr || got != tc.want {
-			t.Errorf("%s: got %q, %v; want %q (error %v)", tc.name, got, err, tc.want, tc.wantErr)
+		if err != nil || got != tc.want {
+			t.Errorf("%s: got %q, %v; want %q", tc.name, got, err, tc.want)
 		}
 	}
 }
@@ -95,5 +94,36 @@ func TestLogTail(t *testing.T) {
 	}
 	if logTail(filepath.Join(t.TempDir(), "missing"), 2) != "" {
 		t.Error("a missing log has no tail")
+	}
+}
+
+func TestStableExecutableFollowsHomebrewUpgrades(t *testing.T) {
+	prefix := t.TempDir()
+	keg := filepath.Join(prefix, "Cellar", "pierd", "1.0.0", "bin", "pierd")
+	if err := os.MkdirAll(filepath.Dir(keg), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(keg, []byte("pierd"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// No opt link (a keg Homebrew does not manage): the binary stays as it is.
+	if got, err := stableExecutable(keg); err != nil || got != keg {
+		t.Fatalf("stableExecutable without opt = %q, %v; want %q", got, err, keg)
+	}
+	if err := os.MkdirAll(filepath.Join(prefix, "opt"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join("..", "Cellar", "pierd", "1.0.0"), filepath.Join(prefix, "opt", "pierd")); err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(prefix, "opt", "pierd", "bin", "pierd")
+	if got, err := stableExecutable(keg); err != nil || got != want {
+		t.Fatalf("stableExecutable = %q, %v; want the opt link %q", got, err, want)
+	}
+	// Anywhere else: unchanged.
+	for _, exe := range []string{"/usr/local/bin/pierd", "/home/ana/.local/bin/pierd", "/Cellar/pierd"} {
+		if got, err := stableExecutable(exe); err != nil || got != exe {
+			t.Errorf("stableExecutable(%q) = %q, %v", exe, got, err)
+		}
 	}
 }

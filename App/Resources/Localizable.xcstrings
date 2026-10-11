@@ -1445,6 +1445,16 @@
         }
       }
     },
+    "Abra o Terminal e cole este comando:" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Terminal and paste this command:"
+          }
+        }
+      }
+    },
     "Abre a sessão" : {
       "localizations" : {
         "en" : {
@@ -1581,6 +1591,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Open in Editor"
+          }
+        }
+      }
+    },
+    "Abrir o Pier quando o Mac ligar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Pier when the Mac starts"
           }
         }
       }
@@ -1785,16 +1805,6 @@
         }
       }
     },
-    "Ainda sem pierd na box?" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No pierd on the box yet?"
-          }
-        }
-      }
-    },
     "Ajustar no Pier" : {
       "localizations" : {
         "en" : {
@@ -1971,16 +1981,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Point at the screen…"
-          }
-        }
-      }
-    },
-    "Aponte os repositórios que o app deve ver" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Point at the repositories the app should see"
           }
         }
       }
@@ -2205,6 +2205,16 @@
         }
       }
     },
+    "As notificações chegam na hora, mesmo com o app fechado, quando o pierd da box tem push configurado ou quando um Mac com o Pier aberto avisa este aparelho pelo seu iCloud." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notifications arrive right away, even with the app closed, when the box's pierd has push set up or when a Mac with Pier open tells this device through your iCloud."
+          }
+        }
+      }
+    },
     "As worktrees em que há agentes aparecem aqui." : {
       "localizations" : {
         "en" : {
@@ -2361,6 +2371,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "We'll let you know when an agent needs you"
+          }
+        }
+      }
+    },
+    "Avisar o iPhone e o iPad pelo iCloud" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tell my iPhone and iPad through iCloud"
           }
         }
       }
@@ -2825,16 +2845,6 @@
         }
       }
     },
-    "Com o push configurado no pierd da box, as notificações chegam na hora, mesmo com o app fechado. Sem ele, chegam com o app aberto ou quando o iOS atualiza em segundo plano." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "With push set up in the box's pierd, notifications arrive instantly, even with the app closed. Without it, they arrive while the app is open or when iOS refreshes in the background."
-          }
-        }
-      }
-    },
     "Comentar" : {
       "localizations" : {
         "en" : {
@@ -2975,16 +2985,6 @@
         }
       }
     },
-    "Compile o pierd (na pasta Server/pierd do repositório)" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Build pierd (in the repository's Server/pierd folder)"
-          }
-        }
-      }
-    },
     "Concluir" : {
       "localizations" : {
         "en" : {
@@ -3011,16 +3011,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Done."
-          }
-        }
-      }
-    },
-    "Conecte sua box" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Connect your box"
           }
         }
       }
@@ -3185,6 +3175,16 @@
         }
       }
     },
+    "Copiar o comando" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy the command"
+          }
+        }
+      }
+    },
     "Copiar o hash completo" : {
       "localizations" : {
         "en" : {
@@ -3201,16 +3201,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Copy the request"
-          }
-        }
-      }
-    },
-    "Copie o link pier:// que aparece e cole aqui." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copy the pier:// link it prints and paste it here."
           }
         }
       }
@@ -3305,16 +3295,6 @@
         }
       }
     },
-    "Deixe o pierd rodando depois do logout" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Keep pierd running after you log out"
-          }
-        }
-      }
-    },
     "Delegando a um subagente…" : {
       "localizations" : {
         "en" : {
@@ -3361,6 +3341,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Demo"
+          }
+        }
+      }
+    },
+    "Depois, para o iPhone: Ajustes → Levar para o iPhone." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Then, for the iPhone: Settings → Take it to iPhone."
           }
         }
       }
@@ -3725,6 +3715,26 @@
         }
       }
     },
+    "Ele mostra um QR code. Escaneie aqui." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "It shows a QR code. Scan it here."
+          }
+        }
+      }
+    },
+    "Ele mostra um link pier://. Copie e cole aqui." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "It shows a pier:// link. Copy it and paste it here."
+          }
+        }
+      }
+    },
     "Em andamento" : {
       "localizations" : {
         "en" : {
@@ -4071,12 +4081,22 @@
         }
       }
     },
-    "Escaneie o QR code ou cole o link pier:// aqui." : {
+    "Escaneie aqui o código que aparecer." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scan the QR code or paste the pier:// link here."
+            "value" : "Scan the code that shows up, here."
+          }
+        }
+      }
+    },
+    "Escaneie um código com o iPhone ou o iPad" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scan a code with your iPhone or iPad"
           }
         }
       }
@@ -4887,16 +4907,6 @@
         }
       }
     },
-    "Gere o link de pareamento (um QR code aparece)" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Generate the pairing link (a QR code appears)"
-          }
-        }
-      }
-    },
     "Grande" : {
       "localizations" : {
         "en" : {
@@ -5093,6 +5103,26 @@
         }
       }
     },
+    "Instalar o pierd" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Install pierd"
+          }
+        }
+      }
+    },
+    "Instale e pareie (um QR code aparece)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Install and pair (a QR code shows up)"
+          }
+        }
+      }
+    },
     "Instale o Claude Code ou o Codex na box para criar tarefas." : {
       "localizations" : {
         "en" : {
@@ -5283,12 +5313,12 @@
         }
       }
     },
-    "Já roda o Claude Code ou o Codex nessa box? Cole este pedido lá: ele compila, instala e pareia o pierd, e mostra o link pier:// para você escanear." : {
+    "Já roda o Claude Code ou o Codex nessa máquina? Cole este pedido lá: ele instala e pareia o pierd, e mostra o link pier:// para você escanear." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Already running Claude Code or Codex on that box? Paste this request there: it builds, installs and pairs pierd, and shows the pier:// link for you to scan."
+            "value" : "Already running Claude Code or Codex on that machine? Paste this request there: it installs and pairs pierd, and shows the pier:// link for you to scan."
           }
         }
       }
@@ -5299,6 +5329,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Already have pierd? Run  pierd pair  and come back here to scan."
+          }
+        }
+      }
+    },
+    "Já tenho um link pier://" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I already have a pier:// link"
           }
         }
       }
@@ -6043,26 +6083,6 @@
         }
       }
     },
-    "Na box, instale o serviço e os hooks dos agentes" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "On the box, install the service and the agents' hooks"
-          }
-        }
-      }
-    },
-    "Na box, rode  pierd pair  (ou abra “Levar para o iPhone” nos Ajustes de um aparelho já pareado)." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "On the box, run  pierd pair  (or open “Take it to iPhone” in Settings on a device that's already paired)."
-          }
-        }
-      }
-    },
     "Na fila" : {
       "localizations" : {
         "en" : {
@@ -6543,12 +6563,72 @@
         }
       }
     },
+    "Neste Mac" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On this Mac"
+          }
+        }
+      }
+    },
+    "No Linux, deixe o pierd rodando depois do logout" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On Linux, keep pierd running after you log out"
+          }
+        }
+      }
+    },
+    "No Mac, instale o Pier e escolha “Neste Mac”: os agentes rodam lá." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On the Mac, install Pier and choose “On this Mac”: the agents run there."
+          }
+        }
+      }
+    },
+    "No Pier do Mac: Ajustes → Levar para o iPhone." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In Pier on the Mac: Settings → Take it to iPhone."
+          }
+        }
+      }
+    },
+    "No meu Mac" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On my Mac"
+          }
+        }
+      }
+    },
     "No outro aparelho, abra o Pier e escaneie este código, ou abra o link nele." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "On the other device, open Pier and scan this code, or open the link there."
+          }
+        }
+      }
+    },
+    "No servidor, por SSH, rode:" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On the server, over SSH, run:"
           }
         }
       }
@@ -6839,6 +6919,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "New File Here…"
+          }
+        }
+      }
+    },
+    "Num servidor" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On a server"
           }
         }
       }
@@ -7503,12 +7593,22 @@
         }
       }
     },
-    "O pierd é o pequeno servidor que cada box roda. Dois jeitos de colocá-lo lá." : {
+    "O pierd se instala, encontra seus projetos e o Pier pareia sozinho." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "pierd is the small server each box runs. Two ways to put it there."
+            "value" : "pierd installs itself, finds your projects, and Pier pairs on its own."
+          }
+        }
+      }
+    },
+    "O pierd é o pequeno servidor que roda os agentes: num servidor ou no seu Mac. Dois jeitos de instalar." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "pierd is the small server that runs the agents, on a server or on your Mac. Two ways to install it."
           }
         }
       }
@@ -7719,6 +7819,16 @@
         }
       }
     },
+    "Onde seus agentes rodam?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Where do your agents run?"
+          }
+        }
+      }
+    },
     "Opções" : {
       "localizations" : {
         "en" : {
@@ -7859,22 +7969,42 @@
         }
       }
     },
-    "Ou faça na mão" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Or do it by hand"
-          }
-        }
-      }
-    },
     "Ou mandar para" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Or send to"
+          }
+        }
+      }
+    },
+    "Ou pelo Homebrew" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Or with Homebrew"
+          }
+        }
+      }
+    },
+    "Ou pelo npm" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Or with npm"
+          }
+        }
+      }
+    },
+    "Ou rode você mesmo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Or run it yourself"
           }
         }
       }
@@ -7905,6 +8035,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Another agent"
+          }
+        }
+      }
+    },
+    "Outros jeitos de instalar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Other ways to install"
           }
         }
       }
@@ -8921,16 +9061,6 @@
         }
       }
     },
-    "Pôr o pierd na box" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Put pierd on the box"
-          }
-        }
-      }
-    },
     "QR code de pareamento" : {
       "localizations" : {
         "en" : {
@@ -8957,6 +9087,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Agents board"
+          }
+        }
+      }
+    },
+    "Quando uma box não envia push, o Pier neste Mac avisa o seu iPhone e o seu iPad pela sua conta do iCloud: sem servidor e sem chave. Funciona enquanto o Pier estiver aberto aqui." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When a box sends no push, Pier on this Mac tells your iPhone and iPad through your iCloud account: no server, no key. It works while Pier is open here."
           }
         }
       }
@@ -10563,6 +10703,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A single commit on %@, with the PR title."
+          }
+        }
+      }
+    },
+    "Um link de pareamento novo, quando precisar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A new pairing link, whenever you need one"
           }
         }
       }

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Support — Pier</title>
-  <meta name="description" content="Set up pierd on your box, pair the app, and fix the usual problems.">
+  <meta name="description" content="Install pierd on a server or on your Mac, pair the app, and fix the usual problems.">
   <link rel="icon" href="assets/favicon.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
   <link rel="stylesheet" href="assets/site.css">
@@ -30,34 +30,38 @@
 
   <h2>What you need</h2>
   <ul>
-    <li>A box: a Linux machine (x86-64 or arm64) with git, tmux, systemd and the agents you use (Claude Code, Codex),
-      signed in. <code>gh</code> for the pull request features.</li>
+    <li>Where your agents run: a Linux server (x86-64 or arm64, with systemd) or a Mac, with git, tmux and the agents you
+      use (Claude Code, Codex), signed in. <code>gh</code> for the pull request features.</li>
     <li>An iPhone or iPad with iOS 17 or later, or a Mac.</li>
   </ul>
   <p>No box yet? Open the app and tap <strong>Explore with sample data</strong>: a demo with made-up projects and agents.</p>
 
-  <h2>1. Install pierd on the box</h2>
-  <p>pierd is built from the repository (Go 1.25 or later, standard library only):</p>
-<pre>git clone https://github.com/wagnerfnds/pier
-cd pier/Server/pierd
-GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -o pierd ./cmd/pierd
-scp pierd you@devbox:~/.local/bin/</pre>
-  <p>Then, on the box, as the user your agents run as:</p>
-<pre>pierd install --listen &lt;box-ip&gt;:7444   # a user service, and the agents' hooks
-sudo loginctl enable-linger $USER        # keeps it running after you log out
-pierd location add web ~/code/web        # the repositories the app should see
-pierd doctor                             # checks the setup</pre>
+  <h2>1. Install pierd</h2>
+  <p>On the server (over SSH) or in Terminal on your Mac, as the user your agents run as:</p>
+<pre>curl -fsSL https://wagnerfnds.github.io/pier/install.sh | sh</pre>
+  <p>Or with npm: <code>npm install -g pierd &amp;&amp; pierd setup</code>. Or with Homebrew:
+  <code>brew install wagnerfnds/tap/pierd &amp;&amp; pierd setup</code>.</p>
+  <p>It installs pierd as a service with the agents' hooks, adds the git repositories it finds (<code>~/code</code>,
+  <code>~/Projects</code>, …) and prints a pairing link with its QR code. On a Linux server, run
+  <code>sudo loginctl enable-linger $USER</code> once so pierd keeps running after you log out.</p>
 
   <h2>2. Pair the app</h2>
-<pre>pierd pair</pre>
-  <p>It prints a single-use <code>pier://</code> link and its QR code. On the iPhone or iPad, scan it from the app; on the
-  Mac, paste the link. Another device can be invited from Settings → <em>Take it to iPhone</em>.</p>
+  <ul>
+    <li><strong>On a server</strong>: scan the QR code with Pier on your iPhone or iPad, or paste the
+      <code>pier://</code> link in Pier on your Mac.</li>
+    <li><strong>On your Mac</strong>: the link opens Pier, which pairs with your Mac by itself. Then <em>Take it to
+      iPhone</em> (at the end of the setup, or in Settings) shows a code for your phone.</li>
+  </ul>
+  <p>Links work once, for 10 minutes; <code>pierd pair</code> prints a new one. A repository it did not find:
+  <code>pierd location add web ~/code/web</code>.</p>
 
   <h2>Common problems</h2>
   <details>
     <summary>The app can't reach the box</summary>
-    <p>The device must reach the address given to <code>--listen</code>: the same network, or a VPN such as Tailscale.
-    On the box, <code>systemctl --user status pierd</code> tells whether it is running and <code>pierd doctor</code> what to fix.</p>
+    <p>The device must reach the address in the pairing link: a server's public address, or the same network as a Mac
+    or a server at home (from elsewhere, forward port 7444 or use a VPN such as Tailscale). <code>pierd doctor</code> says
+    what to fix; <code>pierd setup --address HOST</code> makes a link with another address. On a Mac with the firewall on
+    (System Settings → Network → Firewall), allow incoming connections for pierd.</p>
   </details>
   <details>
     <summary>The pairing link doesn't work</summary>
@@ -65,13 +69,14 @@ pierd doctor                             # checks the setup</pre>
   </details>
   <details>
     <summary>Files and the editor say the box needs a newer pierd</summary>
-    <p>Build pierd again from the repository, replace the binary and restart it: <code>systemctl --user restart pierd</code>.
-    Running agents keep running.</p>
+    <p>Run the install command again (or <code>npm update -g pierd</code>, <code>brew upgrade pierd</code>, then
+    <code>pierd install</code>): pierd restarts with the new version. Running agents keep running.</p>
   </details>
   <details>
     <summary>Notifications</summary>
-    <p>Pier shows what needs you while it is open. Push notifications to a locked phone are sent by your box through
-    Apple's service, with an APNs key for the app: today that works when you build the app yourself
+    <p>Nothing to set up: Pier on your Mac tells your iPhone and iPad what needs you through your own iCloud, while it
+    is open (Settings → <em>Open Pier when the Mac starts</em>). Without a Mac, Pier shows what needs you while it is
+    open; a box can also push by itself with your own APNs key when you build the app yourself
     (<a href="https://github.com/wagnerfnds/pier/blob/main/docs/PUSH.md">docs/PUSH.md</a>).</p>
   </details>
   <details>
@@ -87,35 +92,39 @@ pierd doctor                             # checks the setup</pre>
 
   <h2>O que você precisa</h2>
   <ul>
-    <li>Uma box: uma máquina Linux (x86-64 ou arm64) com git, tmux, systemd e os agentes que você usa (Claude Code,
-      Codex), já logados. O <code>gh</code> para os recursos de pull request.</li>
+    <li>Onde seus agentes rodam: um servidor Linux (x86-64 ou arm64, com systemd) ou um Mac, com git, tmux e os agentes
+      que você usa (Claude Code, Codex), já logados. O <code>gh</code> para os recursos de pull request.</li>
     <li>Um iPhone ou iPad com iOS 17 ou mais novo, ou um Mac.</li>
   </ul>
   <p>Ainda sem box? Abra o app e toque em <strong>Explorar com dados de exemplo</strong>: uma demonstração com projetos e
   agentes inventados.</p>
 
-  <h2>1. Instale o pierd na box</h2>
-  <p>O pierd é compilado a partir do repositório (Go 1.25 ou mais novo, só a biblioteca padrão):</p>
-<pre>git clone https://github.com/wagnerfnds/pier
-cd pier/Server/pierd
-GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -o pierd ./cmd/pierd
-scp pierd voce@devbox:~/.local/bin/</pre>
-  <p>Depois, na box, com o usuário que roda os seus agentes:</p>
-<pre>pierd install --listen &lt;ip-da-box&gt;:7444   # um serviço de usuário e os hooks dos agentes
-sudo loginctl enable-linger $USER          # continua rodando depois do logout
-pierd location add web ~/code/web          # os repositórios que o app deve ver
-pierd doctor                               # confere a instalação</pre>
+  <h2>1. Instale o pierd</h2>
+  <p>No servidor (por SSH) ou no Terminal do seu Mac, com o usuário que roda os seus agentes:</p>
+<pre>curl -fsSL https://wagnerfnds.github.io/pier/install.sh | sh</pre>
+  <p>Ou pelo npm: <code>npm install -g pierd &amp;&amp; pierd setup</code>. Ou pelo Homebrew:
+  <code>brew install wagnerfnds/tap/pierd &amp;&amp; pierd setup</code>.</p>
+  <p>Ele instala o pierd como serviço com os hooks dos agentes, adiciona os repositórios git que encontrar
+  (<code>~/code</code>, <code>~/Projects</code>, …) e mostra um link de pareamento com o QR code. Num servidor Linux, rode
+  uma vez <code>sudo loginctl enable-linger $USER</code> para o pierd continuar rodando depois do logout.</p>
 
   <h2>2. Pareie o app</h2>
-<pre>pierd pair</pre>
-  <p>Ele mostra um link <code>pier://</code> de uso único e o QR code dele. No iPhone ou no iPad, escaneie pelo app; no Mac,
-  cole o link. Outro aparelho pode ser convidado em Ajustes → <em>Levar para o iPhone</em>.</p>
+  <ul>
+    <li><strong>Num servidor</strong>: escaneie o QR code com o Pier no iPhone ou no iPad, ou cole o link
+      <code>pier://</code> no Pier do Mac.</li>
+    <li><strong>No seu Mac</strong>: o link abre o Pier, que pareia com o Mac sozinho. Depois, <em>Levar para o
+      iPhone</em> (no fim da configuração ou nos Ajustes) mostra um código para o celular.</li>
+  </ul>
+  <p>Os links valem uma vez, por 10 minutos; <code>pierd pair</code> gera outro. Um repositório que ele não achou:
+  <code>pierd location add web ~/code/web</code>.</p>
 
   <h2>Problemas comuns</h2>
   <details>
     <summary>O app não alcança a box</summary>
-    <p>O aparelho precisa chegar ao endereço passado em <code>--listen</code>: a mesma rede ou uma VPN como o Tailscale.
-    Na box, <code>systemctl --user status pierd</code> diz se ele está rodando e <code>pierd doctor</code> o que corrigir.</p>
+    <p>O aparelho precisa chegar ao endereço do link de pareamento: o endereço público de um servidor, ou a mesma rede
+    de um Mac ou de um servidor em casa (de fora, encaminhe a porta 7444 ou use uma VPN como o Tailscale).
+    <code>pierd doctor</code> diz o que corrigir; <code>pierd setup --address HOST</code> gera um link com outro endereço.
+    Num Mac com o firewall ligado (Ajustes do Sistema → Rede → Firewall), permita conexões de entrada para o pierd.</p>
   </details>
   <details>
     <summary>O link de pareamento não funciona</summary>
@@ -123,14 +132,15 @@ pierd doctor                               # confere a instalação</pre>
   </details>
   <details>
     <summary>Arquivos e editor dizem que a box precisa de um pierd mais novo</summary>
-    <p>Compile o pierd de novo a partir do repositório, troque o binário e reinicie: <code>systemctl --user restart pierd</code>.
-    Os agentes que estão rodando continuam rodando.</p>
+    <p>Rode o comando de instalação de novo (ou <code>npm update -g pierd</code>, <code>brew upgrade pierd</code> e depois
+    <code>pierd install</code>): o pierd reinicia com a versão nova. Os agentes que estão rodando continuam rodando.</p>
   </details>
   <details>
     <summary>Notificações</summary>
-    <p>O Pier mostra o que precisa de você enquanto está aberto. As notificações push com o celular bloqueado são enviadas
-    pela sua box através do serviço da Apple, com uma chave APNs do app: hoje isso funciona quando você compila o app
-    (<a href="https://github.com/wagnerfnds/pier/blob/main/docs/PUSH.md">docs/PUSH.md</a>).</p>
+    <p>Nada para configurar: o Pier no seu Mac avisa o seu iPhone e o seu iPad do que precisa de você pelo seu próprio
+    iCloud, enquanto está aberto (Ajustes → <em>Abrir o Pier quando o Mac ligar</em>). Sem um Mac, o Pier mostra o que
+    precisa de você enquanto está aberto; a box também pode enviar push sozinha com a sua chave APNs quando você compila o
+    app (<a href="https://github.com/wagnerfnds/pier/blob/main/docs/PUSH.md">docs/PUSH.md</a>).</p>
   </details>
   <details>
     <summary>Remover um aparelho</summary>

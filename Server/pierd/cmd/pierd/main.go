@@ -45,7 +45,11 @@ const (
 
 const usage = `pierd — the Pier box server
 
-  pierd serve [--listen ADDR]             Serve paired apps (default: the tailnet address only)
+  pierd setup [--repos DIR]… [--address HOST[:PORT]] [--no-projects] [--no-integrations] [--no-open]
+                                          Start here: pierd as a service, the agents' hooks, the git
+                                          repositories in ~/code, ~/Projects… as projects, and a
+                                          pairing link (on a Mac, the Pier app pairs by itself)
+  pierd serve [--listen ADDR]             Serve paired apps (default: every interface, port 7444)
   pierd install [--listen ADDR] [--keep-listen] [--name NAME] [--ports FIRST-LAST] [--no-integrations]
                                           Run serve as a user service (systemd; launchd on a Mac)
                                           and install the agent CLIs' hooks. --name and --ports
@@ -140,6 +144,8 @@ func run(args []string) error {
 		return serve(b, args[1:])
 	case "pair":
 		return pair(b, args[1:])
+	case "setup":
+		return setup(b, args[1:])
 	case "install":
 		return install(b, args[1:])
 	case "uninstall":
@@ -165,6 +171,9 @@ func run(args []string) error {
 	case "integrations":
 		exe, err := os.Executable()
 		if err != nil {
+			return err
+		}
+		if exe, err = stableExecutable(exe); err != nil {
 			return err
 		}
 		return integrations.Install(args[1:], exe, os.Stdout)
@@ -230,7 +239,7 @@ func utf8Locale() {
 
 func serve(b boxHome, args []string) error {
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
-	listen := fs.String("listen", "", "address to listen on (default: this box's tailnet address only)")
+	listen := fs.String("listen", "", "address to listen on (default: every interface, port "+defaultPort+")")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -455,7 +464,31 @@ func pair(b boxHome, args []string) error {
 	if *ttl <= 0 || *ttl > time.Hour {
 		return errors.New("--ttl must be between 0 and 1h")
 	}
-	target := *address
+	link, target, err := issuePairing(b, *address, *ttl)
+	if err != nil {
+		return err
+	}
+	if *asJSON {
+		id, err := b.identity()
+		if err != nil {
+			return err
+		}
+		return json.NewEncoder(os.Stdout).Encode(map[string]string{
+			"link":        link,
+			"address":     target,
+			"fingerprint": id.Fingerprint().String(),
+			"expires":     time.Now().Add(*ttl).UTC().Format(time.RFC3339),
+		})
+	}
+	printPairing(link, target, *ttl)
+	fmt.Println("pierd serve must be running on this box to accept the pairing.")
+	return nil
+}
+
+// issuePairing makes a single-use pairing link for apps to dial address
+// (default: pairAddress).
+func issuePairing(b boxHome, address string, ttl time.Duration) (link, target string, err error) {
+	target = address
 	if target == "" {
 		target = pairAddress(b)
 	}
@@ -464,31 +497,25 @@ func pair(b boxHome, args []string) error {
 	}
 	id, err := b.identity()
 	if err != nil {
-		return err
+		return "", "", err
 	}
-	code, err := b.pending().Issue(*ttl, time.Now())
+	code, err := b.pending().Issue(ttl, time.Now())
 	if err != nil {
-		return err
+		return "", "", err
 	}
-	link := pairing.Token{Address: target, Fingerprint: id.Fingerprint(), Code: code}.String()
-	if *asJSON {
-		return json.NewEncoder(os.Stdout).Encode(map[string]string{
-			"link":        link,
-			"address":     target,
-			"fingerprint": id.Fingerprint().String(),
-			"expires":     time.Now().Add(*ttl).UTC().Format(time.RFC3339),
-		})
-	}
+	return pairing.Token{Address: target, Fingerprint: id.Fingerprint(), Code: code}.String(), target, nil
+}
+
+// printPairing shows a pairing link, and its QR code on a terminal.
+func printPairing(link, target string, ttl time.Duration) {
 	fmt.Printf("Pairing link (single use, valid for %s):\n\n  %s\n\n", ttl, link)
 	if info, err := os.Stdout.Stat(); err == nil && info.Mode()&os.ModeCharDevice != 0 {
 		if m, err := qr.Encode([]byte(link)); err == nil {
 			fmt.Println(qr.Terminal(m))
 		}
 	}
-	fmt.Println("Scan it as a QR code or paste it in the Pier app.")
+	fmt.Println("On a Mac: open Pier and paste the link. On an iPhone or iPad: scan the QR code with Pier.")
 	fmt.Println("Apps will dial " + target + "; pass --address if that is not reachable.")
-	fmt.Println("pierd serve must be running on this box to accept the pairing.")
-	return nil
 }
 
 // pairAddress is the address a pairing link tells apps to dial: where

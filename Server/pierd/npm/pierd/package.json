@@ -1,0 +1,21 @@
+{
+  "name": "pierd",
+  "version": "0.0.0",
+  "description": "The Pier box server: run and follow Claude Code and Codex agents on this machine from the Pier app (iPhone, iPad, Mac).",
+  "keywords": ["pier", "claude-code", "codex", "agents", "remote", "ios", "mac"],
+  "homepage": "https://wagnerfnds.github.io/pier/",
+  "repository": { "type": "git", "url": "git+https://github.com/wagnerfnds/pier.git", "directory": "Server/pierd" },
+  "bugs": "https://github.com/wagnerfnds/pier/issues",
+  "license": "MIT",
+  "bin": { "pierd": "bin/pierd.js" },
+  "files": ["bin/pierd.js", "README.md"],
+  "engines": { "node": ">=16" },
+  "os": ["darwin", "linux"],
+  "cpu": ["x64", "arm64"],
+  "optionalDependencies": {
+    "pierd-darwin-arm64": "0.0.0",
+    "pierd-darwin-x64": "0.0.0",
+    "pierd-linux-arm64": "0.0.0",
+    "pierd-linux-x64": "0.0.0"
+  }
+}

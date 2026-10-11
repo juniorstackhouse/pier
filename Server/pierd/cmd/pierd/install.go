@@ -53,12 +53,21 @@ func daemonService(b boxHome, listen string) service.Spec {
 	}
 }
 
+// installOptions are what install and setup ask of installService.
+type installOptions struct {
+	listen       string // "" chooses (chooseListen)
+	keep         bool   // keep the address an installed unit already names
+	name, ports  string // kept in the box's settings when given
+	integrations bool   // the agent CLIs' hooks
+	next         string // the line printed last ("Next: pierd pair"), "" for none
+}
+
 // install runs pierd serve as a user service (a systemd user unit; a
 // launchd agent on a Mac), then installs the agent CLIs' hooks.
 func install(b boxHome, args []string) error {
 	fs := flag.NewFlagSet("install", flag.ContinueOnError)
-	listen := fs.String("listen", "", "address to listen on (default: this box's tailnet address only)")
-	keep := fs.Bool("keep-listen", false, "keep the address an installed pierd listens on, unless it was a tailnet address")
+	listen := fs.String("listen", "", "address to listen on (default: every interface, port "+defaultPort+")")
+	keep := fs.Bool("keep-listen", false, "keep the address an installed pierd listens on (a tailnet address only while the box still has it)")
 	noIntegrations := fs.Bool("no-integrations", false, "don't install hooks for the agent CLIs on this box")
 	name := fs.String("name", "", "the name the apps show for this box (default: the hostname); kept for later installs")
 	ports := fs.String("ports", "", "FIRST-LAST: the ports worktrees get (default 41000-48999); kept for later installs")
@@ -68,12 +77,18 @@ func install(b boxHome, args []string) error {
 	if fs.NArg() > 0 {
 		return errors.New("usage: pierd install [--listen ADDR] [--keep-listen] [--name NAME] [--ports FIRST-LAST] [--no-integrations]")
 	}
-	if *ports != "" {
-		if _, _, err := box.ParsePortRange(*ports); err != nil {
+	return installService(b, installOptions{listen: *listen, keep: *keep, name: *name, ports: *ports,
+		integrations: !*noIntegrations, next: "Next: pierd pair"})
+}
+
+// installService installs and starts the service and waits for it to answer.
+func installService(b boxHome, o installOptions) error {
+	if o.ports != "" {
+		if _, _, err := box.ParsePortRange(o.ports); err != nil {
 			return err
 		}
 	}
-	for file, v := range map[string]string{"name": *name, "ports": *ports} {
+	for file, v := range map[string]string{"name": o.name, "ports": o.ports} {
 		if v == "" {
 			continue
 		}
@@ -90,11 +105,14 @@ func install(b boxHome, args []string) error {
 			current = unitListen(unit)
 		}
 	}
-	addr, err := chooseListen(*listen, *keep, current, interfaceIPs())
+	addr, err := chooseListen(o.listen, o.keep, current, interfaceIPs())
 	if err != nil {
 		return err
 	}
 	spec := daemonService(b, addr)
+	if spec.Program, err = stableExecutable(spec.Program); err != nil {
+		return err
+	}
 	// systemd's user manager has a PATH without ~/.local/bin, where agent
 	// CLIs install themselves: the unit carries the user's own PATH, as
 	// their login shell sets it now.
@@ -108,7 +126,7 @@ func install(b boxHome, args []string) error {
 		return fmt.Errorf("installed %s, but pierd did not start: %w%s", path, err, logTail(spec.LogPath, 8))
 	}
 	fmt.Printf("Installed %s; pierd is serving on %s.\n", path, addr)
-	if !*noIntegrations {
+	if o.integrations {
 		if home, err := os.UserHomeDir(); err == nil {
 			fmt.Println("Agent hooks:")
 			if err := integrations.InstallPresent(home, spec.Program, indented{os.Stdout}); err != nil {
@@ -120,8 +138,65 @@ func install(b boxHome, args []string) error {
 		fmt.Println("Warning: user lingering is off, so pierd stops when you log out.")
 		fmt.Println("Enable it once with: sudo loginctl enable-linger " + currentUser())
 	}
-	fmt.Println("Next: pierd pair")
+	if o.next != "" {
+		fmt.Println(o.next)
+	}
 	return nil
+}
+
+// stableExecutable is the pierd the service and the hooks run: exe, unless it
+// lives where it will not stay. A Homebrew keg (Cellar/pierd/1.2.3) goes away
+// after an upgrade, so the formula's opt link, which follows upgrades, is used
+// instead; npx's cache may be cleared, so its copy is first copied to
+// ~/.local/bin.
+func stableExecutable(exe string) (string, error) {
+	sep := string(filepath.Separator)
+	if opt, ok := homebrewOpt(exe); ok {
+		return opt, nil
+	}
+	if !strings.Contains(exe, sep+"_npx"+sep) {
+		return exe, nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	dst := filepath.Join(home, ".local", "bin", "pierd")
+	data, err := os.ReadFile(exe)
+	if err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		return "", err
+	}
+	tmp := dst + ".new"
+	if err := os.WriteFile(tmp, data, 0o755); err != nil {
+		return "", err
+	}
+	if err := os.Rename(tmp, dst); err != nil {
+		return "", err
+	}
+	fmt.Println("Copied pierd to " + dst + " (npx's copy may be cleared).")
+	return dst, nil
+}
+
+// homebrewOpt maps a binary in a Homebrew keg, PREFIX/Cellar/FORMULA/VERSION/
+// bin/pierd, to PREFIX/opt/FORMULA/bin/pierd, when that link exists.
+func homebrewOpt(exe string) (string, bool) {
+	sep := string(filepath.Separator)
+	i := strings.LastIndex(exe, sep+"Cellar"+sep)
+	if i < 0 {
+		return "", false
+	}
+	rest := strings.Split(exe[i+len(sep+"Cellar"+sep):], sep) // FORMULA, VERSION, bin, pierd
+	if len(rest) < 3 || rest[0] == "" {
+		return "", false
+	}
+	opt := filepath.Join(append([]string{exe[:i], "opt", rest[0]}, rest[2:]...)...)
+	if _, err := os.Stat(opt); err != nil {
+		return "", false
+	}
+	return opt, true
 }
 
 // uninstall removes the service; pierd's state stays.
@@ -148,17 +223,32 @@ func (i indented) Write(p []byte) (int, error) {
 }
 
 // chooseListen is where the service will listen: --listen when given; with
-// --keep-listen, the address an installed unit already names, unless that is
-// a tailnet address (the box may have a new one); otherwise the tailnet
-// address. An address on every interface is only ever used when asked for.
+// --keep-listen, the address an installed unit already names, unless it is a
+// tailnet address this box no longer has; otherwise every interface
+// (defaultListen).
 func chooseListen(flagListen string, keep bool, current string, ips []net.IP) (string, error) {
 	if flagListen != "" {
 		return flagListen, nil
 	}
-	if keep && current != "" && !onTailnet(current) {
+	if keep && current != "" && (!onTailnet(current) || hasAddress(current, ips)) {
 		return current, nil
 	}
 	return defaultListen(ips)
+}
+
+// hasAddress says whether host:port names one of ips.
+func hasAddress(hostport string, ips []net.IP) bool {
+	host, _, err := net.SplitHostPort(hostport)
+	if err != nil {
+		return false
+	}
+	want := net.ParseIP(host)
+	for _, ip := range ips {
+		if want != nil && ip.Equal(want) {
+			return true
+		}
+	}
+	return false
 }
 
 func onTailnet(hostport string) bool {

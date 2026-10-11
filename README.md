@@ -48,7 +48,7 @@ projects and agents.
 - **The box needs you too.** A signed-out agent, missing hooks, a box out of reach: the Inbox says so, with the command
   to run.
 - **One box, several people.** Each person runs their own pierd as their own user, with a box name and a range of
-  dev-server ports of its own (`pierd install --name … --ports …`).
+  dev-server ports of its own (`pierd setup --name … --ports …`).
 - **Made for each device.** Tabs on iPhone; sidebar, command palette (`⌘K`) and menu shortcuts on iPad and Mac; light
   and dark.
 - **Always there on the Mac.** A narrow black tab hanging from the edge of the screen, over every app: a dot per agent
@@ -71,40 +71,50 @@ with the subscription that is already there. The app holds no API keys.
 │  pinned box key      │ ◀── event stream ─ │  hooks · transcripts · git worktrees ·    │
 └──────────────────────┘                    │  dev servers (systemd) · exec · push      │
            ▲                                └───────────────────────────────────────────┘
-           └──────────────── APNs (alerts, Live Activities, widgets) ◀── pierd
+           └──── APNs (alerts, Live Activities, widgets) ◀── pierd, with your APNs key
+                 or iCloud (alerts) ◀── Pier on your Mac, with no key at all
 ```
 
 - The app pairs with each box once, by scanning a QR code or pasting a `pier://` link. After that it talks to the box
   directly: no account, no relay, no cloud. The box's key is pinned; each device has its own key and can be revoked.
 - pierd runs agents in tmux, knows each agent's state from the agents' own hooks, reads their conversations, manages
-  git worktrees and their dev servers, and sends push notifications through your own APNs key.
+  git worktrees and their dev servers, and sends push notifications through your own APNs key when it has one.
+  Without one, Pier on your Mac tells your iPhone and iPad what needs you through your own iCloud.
 
 ## Requirements
 
-- **Box:** Linux (x86-64 or arm64) with git, tmux, systemd (user units) and the agent CLIs you use (Claude Code, Codex),
-  signed in. `gh` for the pull request features.
-- **App:** Xcode 26 or newer, [XcodeGen](https://github.com/yonaskolb/XcodeGen); iOS/iPadOS 17+, macOS (Mac Catalyst).
-- **Server build:** Go 1.25+ (standard library only).
+- **Box:** a Linux server (x86-64 or arm64, systemd user units) or a Mac, with git, tmux and the agent CLIs you use
+  (Claude Code, Codex), signed in. `gh` for the pull request features. No VPN needed: a server with a public address
+  is reached directly.
+- **App:** iOS/iPadOS 17+ or macOS (Mac Catalyst). To build it: Xcode 26 or newer and
+  [XcodeGen](https://github.com/yonaskolb/XcodeGen).
+- **Server build** (only to build pierd yourself): Go 1.25+ (standard library only).
 
 ## Getting started
 
-### 1. Run pierd on your box
+### 1. Run pierd where your agents run
+
+On a server, over SSH, or in Terminal on your Mac, as the user your agents run as:
 
 ```sh
-cd Server/pierd
-GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -o pierd ./cmd/pierd
-scp pierd you@devbox:~/.local/bin/
-
-# on the box, as the user your agents run as:
-pierd install --listen <box-ip>:7444     # systemd user service + agent hooks
-sudo loginctl enable-linger $USER         # keep it running after logout
-pierd location add web ~/code/web         # the repositories the app should see
-pierd pair                                # prints a single-use pier:// link and its QR code
+curl -fsSL https://wagnerfnds.github.io/pier/install.sh | sh
 ```
 
-More in [`Server/pierd/README.md`](Server/pierd/README.md) (configuration, services, hooks).
+Or `npm install -g pierd && pierd setup`, or `brew install wagnerfnds/tap/pierd && pierd setup`. It installs pierd as a
+user service with the agents' hooks, adds the git repositories it finds (`~/code`, `~/Projects`, …) and prints a
+single-use `pier://` link with its QR code. On a Linux server, `sudo loginctl enable-linger $USER` keeps pierd running
+after you log out.
 
-### 2. Build the app
+- **On a server**: scan the QR code with Pier on your iPhone or iPad, or paste the link in Pier on your Mac.
+- **On your Mac**: the link opens Pier, which pairs with your Mac by itself. Then *Take it to iPhone* (at the end of
+  the setup, or in Settings) shows a code for your phone.
+
+`pierd pair` prints a new link any time and `pierd doctor` says what to fix. More in
+[`Server/pierd/README.md`](Server/pierd/README.md) (flags, configuration, services, hooks, building it yourself).
+
+### 2. The app
+
+Pier for iPhone, iPad and Mac is coming to the App Store. To build it yourself:
 
 ```sh
 brew install xcodegen
@@ -113,8 +123,9 @@ xcodegen generate
 open Pier.xcodeproj
 ```
 
-Every identifier (bundle ids, App Group, keychain groups, APNs topic) derives from `PIER_BUNDLE_ID`. Simulator builds
-need no signing. For daily use on a device, build **Release** (Debug runs the TLS stack unoptimised):
+Every identifier (bundle ids, App Group, keychain groups, iCloud container, APNs topic) derives from
+`PIER_BUNDLE_ID`. Simulator builds need no signing. For daily use on a device, build **Release** (Debug runs the TLS
+stack unoptimised):
 
 ```sh
 xcodebuild -project Pier.xcodeproj -scheme Pier -configuration Release \
@@ -123,13 +134,15 @@ xcodebuild -project Pier.xcodeproj -scheme Pier -configuration Release \
 
 The Mac app is the same target as Mac Catalyst (`-destination 'platform=macOS,variant=Mac Catalyst'`).
 
-Open the app, scan the QR code from `pierd pair` (or paste the link), and your agents appear. A paired device can invite
-another one from Settings → *Take it to iPhone*.
+### 3. Push notifications
 
-### 3. Push notifications (optional)
+Nothing to set up: when a box sends no push of its own, Pier on your Mac relays what needs you to your iPhone and iPad
+through your iCloud (Settings → *Tell my iPhone and iPad through iCloud*, on by default). It needs Pier open on a Mac
+that is on ("Open Pier when the Mac starts").
 
-Create an APNs auth key (`.p8`) in your Apple Developer account, then on the box put it at
-`~/.config/pier/AuthKey.p8` (mode 0600) and write `~/.config/pier/push.json`:
+With an app you build yourself, the box can also push by itself, Mac or not: create an APNs auth key (`.p8`) in your
+Apple Developer account, put it on the box at `~/.config/pier/AuthKey.p8` (mode 0600) and write
+`~/.config/pier/push.json`:
 
 ```json
 { "key_id": "ABC123DEFG", "team_id": "TEAMID1234", "bundle_id": "<your PIER_BUNDLE_ID>" }
@@ -141,8 +154,9 @@ Restart pierd (`systemctl --user restart pierd`). The app registers by itself. D
 
 - Mutual TLS 1.3 with Ed25519 on both sides; the app pins the box's public key, the box only answers paired clients.
 - Pairing links are single use and expire in 10 minutes; `pierd clients` / `pierd revoke` manage devices.
-- pierd listens only on the address you give it (or your tailnet address by default) — keep it off the public internet;
-  a VPN such as Tailscale is the easy way to reach a box from anywhere.
+- pierd listens on every interface by default (port 7444) and answers only paired devices; pairing needs the
+  single-use link. `pierd setup --listen ADDR:PORT` limits it to one address (a VPN's, for instance). Behind NAT, a
+  forwarded port or a VPN such as Tailscale reaches a box from anywhere.
 - Commands that the app builds for the box (`exec`) pass user text base64-encoded, never interpolated into the shell.
 
 Found a problem? Please open an issue (or a private advisory for anything sensitive).
