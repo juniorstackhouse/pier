@@ -7,13 +7,23 @@
   <meta name="description" content="Pier is a native app for iPhone, iPad and Mac to watch and drive the coding agents (Claude Code, Codex) running on your own dev boxes. Open source.">
   <meta property="og:title" content="Pier — your coding agents, in your pocket">
   <meta property="og:description" content="Watch and drive Claude Code and Codex on your own machines, from iPhone, iPad and Mac.">
-  <meta property="og:image" content="assets/icon.png">
-  <meta name="theme-color" content="#fbfaf7" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#0f1115" media="(prefers-color-scheme: dark)">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://docktopier.com/">
+  <meta property="og:image" content="https://docktopier.com/assets/og.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Pier's mascot on the water, beside the boxes its agents run on; one asks: Claude needs you.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#fff8ef" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0b1220" media="(prefers-color-scheme: dark)">
   <link rel="icon" href="assets/favicon.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="preload" href="assets/fonts/bricolage-grotesque.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="assets/site.css">
   <script src="assets/lang.js"></script>
+  <script src="assets/site.js" defer></script>
+  <script type="module" src="assets/hero.js"></script>
+  <noscript><style>.hero-still { opacity: 1; }</style></noscript>
 </head>
 <body>
 
@@ -36,33 +46,46 @@
 <main>
 
 <section class="hero">
-  <div class="wrap">
-    <div>
-      <img class="hero-icon" src="assets/icon.png" alt="Pier">
-      <h1>
-        <span lang="en">Your coding agents, in your pocket.</span>
-        <span lang="pt-BR">Seus agentes de código, no seu bolso.</span>
-      </h1>
-      <p class="lead">
-        <span lang="en">Watch and drive Claude Code and Codex running on your own machines, from iPhone, iPad and Mac. Agents ask; you answer in a tap, from anywhere.</span>
-        <span lang="pt-BR">Acompanhe e conduza o Claude Code e o Codex que rodam nas suas próprias máquinas, pelo iPhone, iPad e Mac. Os agentes perguntam; você responde com um toque, de onde estiver.</span>
-      </p>
-      <div class="ctas">
-        <a class="btn primary" href="#get">
-          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.4 12.7c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.8.9-3.5.9-.7 0-1.8-.8-3-.8-1.5 0-3 .9-3.8 2.3-1.6 2.8-.4 7 1.2 9.3.8 1.1 1.7 2.4 2.9 2.3 1.2 0 1.6-.7 3-.7s1.8.7 3 .7c1.3 0 2-1.1 2.8-2.3.9-1.3 1.2-2.5 1.3-2.6-.1 0-2.5-.9-2.5-3.8zM14.1 5.9c.6-.8 1.1-1.9 1-3-1 0-2.1.7-2.8 1.5-.6.7-1.1 1.8-1 2.9 1.1.1 2.1-.6 2.8-1.4z"/></svg>
-          <span lang="en">On the App Store soon</span><span lang="pt-BR">Em breve na App Store</span>
-        </a>
-        <a class="btn secondary" href="https://github.com/wagnerfnds/pier">
-          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.3-3.4-1.3-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.6 2.4 1.1 3 .8.1-.7.4-1.1.6-1.4-2.2-.3-4.6-1.1-4.6-5 0-1.1.4-2 1-2.7-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.8 1a9.6 9.6 0 0 1 5 0c1.9-1.3 2.8-1 2.8-1 .5 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 3.9-2.3 4.7-4.6 5 .4.3.7.9.7 1.9V21c0 .3.2.6.7.5A10 10 0 0 0 12 2z"/></svg>
-          <span lang="en">Open source on GitHub</span><span lang="pt-BR">Código aberto no GitHub</span>
-        </a>
+  <div class="hero-stage" data-hero-stage aria-hidden="true">
+    <img class="hero-still" src="assets/mascot.png" alt="" width="640" height="640">
+    <div class="hero-bubble" data-hero-bubble>
+      <div>
+        <p class="hb-head"><i></i><span><b data-agent>Claude</b> <span lang="en">needs you</span><span lang="pt-BR">precisa de você</span></span></p>
+        <p class="hb-cmd" data-cmd>Bash(npm test)</p>
+        <p class="hb-actions"><span class="hb-btn yes"><span lang="en">Allow</span><span lang="pt-BR">Permitir</span></span><span class="hb-btn"><span lang="en">Deny</span><span lang="pt-BR">Negar</span></span></p>
       </div>
-      <p class="note">
-        <span lang="en">No box yet? The app has a demo with sample projects and agents.</span>
-        <span lang="pt-BR">Ainda sem box? O app tem uma demonstração com projetos e agentes de exemplo.</span>
-      </p>
     </div>
-    <div class="hero-shots" aria-hidden="true">
+  </div>
+  <div class="wrap hero-copy">
+    <p class="kicker"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><span lang="en">For Claude Code and Codex · open source</span><span lang="pt-BR">Para Claude Code e Codex · código aberto</span></p>
+    <h1>
+      <span lang="en">Your coding agents, <em>in your pocket.</em></span>
+      <span lang="pt-BR">Seus agentes de código, <em>no seu bolso.</em></span>
+    </h1>
+    <p class="lead">
+      <span lang="en">Watch and drive Claude Code and Codex running on your own machines, from iPhone, iPad and Mac. Agents ask; you answer in a tap, from anywhere.</span>
+      <span lang="pt-BR">Acompanhe e conduza o Claude Code e o Codex que rodam nas suas próprias máquinas, pelo iPhone, iPad e Mac. Os agentes perguntam; você responde com um toque, de onde estiver.</span>
+    </p>
+    <div class="ctas">
+      <a class="btn primary" href="#get">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.4 12.7c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.8.9-3.5.9-.7 0-1.8-.8-3-.8-1.5 0-3 .9-3.8 2.3-1.6 2.8-.4 7 1.2 9.3.8 1.1 1.7 2.4 2.9 2.3 1.2 0 1.6-.7 3-.7s1.8.7 3 .7c1.3 0 2-1.1 2.8-2.3.9-1.3 1.2-2.5 1.3-2.6-.1 0-2.5-.9-2.5-3.8zM14.1 5.9c.6-.8 1.1-1.9 1-3-1 0-2.1.7-2.8 1.5-.6.7-1.1 1.8-1 2.9 1.1.1 2.1-.6 2.8-1.4z"/></svg>
+        <span lang="en">On the App Store soon</span><span lang="pt-BR">Em breve na App Store</span>
+      </a>
+      <a class="btn secondary" href="https://github.com/wagnerfnds/pier">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.3-3.4-1.3-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.6 2.4 1.1 3 .8.1-.7.4-1.1.6-1.4-2.2-.3-4.6-1.1-4.6-5 0-1.1.4-2 1-2.7-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.8 1a9.6 9.6 0 0 1 5 0c1.9-1.3 2.8-1 2.8-1 .5 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 3.9-2.3 4.7-4.6 5 .4.3.7.9.7 1.9V21c0 .3.2.6.7.5A10 10 0 0 0 12 2z"/></svg>
+        <span lang="en">Open source on GitHub</span><span lang="pt-BR">Código aberto no GitHub</span>
+      </a>
+    </div>
+    <p class="note">
+      <span lang="en">No box yet? The app has a demo with sample projects and agents.</span>
+      <span lang="pt-BR">Ainda sem box? O app tem uma demonstração com projetos e agentes de exemplo.</span>
+    </p>
+  </div>
+</section>
+
+<section class="devices" aria-hidden="true">
+  <div class="wrap">
+    <div class="device-stage">
       <img class="tablet" lang="en" src="assets/shots/en/ipad-workspace.jpg" alt="">
       <img class="tablet" lang="pt-BR" src="assets/shots/pt/ipad-workspace.jpg" alt="">
       <img class="phone" lang="en" src="assets/shots/en/iphone-home.jpg" alt="">
@@ -83,33 +106,33 @@
       <span lang="pt-BR">O Pier conversa com o pierd, um servidor pequeno em cada uma das suas máquinas de desenvolvimento. Ele sabe o estado de cada agente pelos próprios hooks dos agentes, então nada fica esperando por você sem você saber.</span>
     </p>
     <div class="grid">
-      <div class="card">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="5" cy="12" r="2.5"/><circle cx="12" cy="12" r="2.5"/><circle cx="19" cy="12" r="2.5"/></svg></div>
+      <div class="card rise">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="5" cy="12" r="2.5"/><circle cx="12" cy="12" r="2.5"/><circle cx="19" cy="12" r="2.5"/></svg></div>
         <h3><span lang="en">Every agent, every box, live</span><span lang="pt-BR">Todos os agentes, ao vivo</span></h3>
         <p><span lang="en">Who needs you, who is working and whose turn it is — plus pull requests, CI failures, git activity and running dev servers.</span><span lang="pt-BR">Quem precisa de você, quem está trabalhando e de quem é a vez — e ainda pull requests, falhas de CI, atividade do git e servidores rodando.</span></p>
       </div>
-      <div class="card">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M9 10.5l2 2 4-4"/></svg></div>
+      <div class="card rise">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M9 10.5l2 2 4-4"/></svg></div>
         <h3><span lang="en">Answer anything</span><span lang="pt-BR">Responda qualquer coisa</span></h3>
         <p><span lang="en">Permission prompts, multiple-choice questions and plan approvals become buttons. Every answer waits two seconds with Undo.</span><span lang="pt-BR">Pedidos de permissão, perguntas de múltipla escolha e aprovações de plano viram botões. Toda resposta espera dois segundos com Desfazer.</span></p>
       </div>
-      <div class="card">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1 2h6l1-2h5"/></svg></div>
+      <div class="card rise">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1 2h6l1-2h5"/></svg></div>
         <h3><span lang="en">Inbox, keyboard first</span><span lang="pt-BR">Inbox pensada para o teclado</span></h3>
         <p><span lang="en">Every agent's questions and finished work in one list. Press 1, 2, 3 to answer and J/K to move; finished turns come with suggested next steps.</span><span lang="pt-BR">Perguntas e trabalhos prontos de todos os agentes numa lista só. Aperte 1, 2, 3 para responder e J/K para navegar; turnos encerrados vêm com próximos passos sugeridos.</span></p>
       </div>
-      <div class="card">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/></svg></div>
+      <div class="card rise">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/></svg></div>
         <h3><span lang="en">Talk</span><span lang="pt-BR">Fale</span></h3>
         <p><span lang="en">Say or type what you need. Pier picks the agent already on that work, or starts a new task, and shows you before it sends.</span><span lang="pt-BR">Diga ou escreva o que precisa. O Pier escolhe o agente que já está nesse trabalho, ou começa uma tarefa nova, e mostra antes de enviar.</span></p>
       </div>
-      <div class="card">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h6l2 2h10v11H3z"/><path d="M8 14l-2 1.5L8 17M14 14l2 1.5-2 1.5"/></svg></div>
+      <div class="card rise">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h6l2 2h10v11H3z"/><path d="M8 14l-2 1.5L8 17M14 14l2 1.5-2 1.5"/></svg></div>
         <h3><span lang="en">A workspace per project</span><span lang="pt-BR">Um workspace por projeto</span></h3>
         <p><span lang="en">On iPad and Mac: the file tree, a simple editor, the git history and the changes, side by side.</span><span lang="pt-BR">No iPad e no Mac: a árvore de arquivos, um editor simples, o histórico do git e as alterações, lado a lado.</span></p>
       </div>
-      <div class="card">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.2"/><circle cx="6" cy="18" r="2.2"/><circle cx="18" cy="8" r="2.2"/><path d="M6 8.2v7.6M18 10.2c0 4-6 3-10.5 6.5"/></svg></div>
+      <div class="card rise">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.2"/><circle cx="6" cy="18" r="2.2"/><circle cx="18" cy="8" r="2.2"/><path d="M6 8.2v7.6M18 10.2c0 4-6 3-10.5 6.5"/></svg></div>
         <h3><span lang="en">Review and ship</span><span lang="pt-BR">Revise e entregue</span></h3>
         <p><span lang="en">Diffs, commit, push and a pull request with an AI-written message; checks, reviews and merge in a full PR screen.</span><span lang="pt-BR">Diffs, commit, push e pull request com mensagem escrita por IA; checks, reviews e merge numa tela de PR completa.</span></p>
       </div>
@@ -125,38 +148,40 @@
       <span lang="en">A narrow tab hangs from the edge of the screen with a dot per agent. Under the pointer it opens the Inbox, your agents, a new task and Talk — answer with 1, 2, 3 without leaving the editor you are in.</span>
       <span lang="pt-BR">Uma aba fina na borda da tela, com um ponto por agente. Sob o ponteiro ela abre a Inbox, seus agentes, uma tarefa nova e o Falar — responda com 1, 2, 3 sem sair do editor em que você está.</span>
     </p>
-    <figure class="wide">
-      <img lang="en" src="assets/shots/en/mac-edge-inbox.jpg" alt="The edge tab with the Inbox open beside a code editor: a permission answered with 1, 2, 3" loading="lazy">
-      <img lang="pt-BR" src="assets/shots/pt/mac-edge-inbox.jpg" alt="A aba da borda com a Inbox aberta ao lado de um editor de código: uma permissão respondida com 1, 2, 3" loading="lazy">
+    <figure class="peek rise">
+      <img class="peeker" src="assets/mascot.png" alt="" width="640" height="640" loading="lazy">
+      <img class="shot" lang="en" src="assets/shots/en/mac-edge-inbox.jpg" alt="The edge tab with the Inbox open beside a code editor: a permission answered with 1, 2, 3" loading="lazy">
+      <img class="shot" lang="pt-BR" src="assets/shots/pt/mac-edge-inbox.jpg" alt="A aba da borda com a Inbox aberta ao lado de um editor de código: uma permissão respondida com 1, 2, 3" loading="lazy">
     </figure>
-    </div>
   </div>
 </section>
 
-<section id="notifications">
-  <div class="wrap">
-    <p class="eyebrow"><span lang="en">Notifications</span><span lang="pt-BR">Notificações</span></p>
-    <h2><span lang="en">Notifications that carry the answer.</span><span lang="pt-BR">Notificações que já trazem a resposta.</span></h2>
-    <p class="section-lead">
-      <span lang="en">A question arrives with its choices as buttons, answered from the Lock Screen. Agents at work follow you in Live Activities, on the Lock Screen and in the Dynamic Island.</span>
-      <span lang="pt-BR">Uma pergunta chega com as opções como botões e é respondida da tela bloqueada. Os agentes trabalhando acompanham você em Live Activities, na tela bloqueada e na Dynamic Island.</span>
-    </p>
+<section id="notifications" class="tinted">
+  <div class="wrap notif-row">
+    <div>
+      <p class="eyebrow"><span lang="en">Notifications</span><span lang="pt-BR">Notificações</span></p>
+      <h2><span lang="en">Notifications that carry the answer.</span><span lang="pt-BR">Notificações que já trazem a resposta.</span></h2>
+      <p class="section-lead">
+        <span lang="en">A question arrives with its choices as buttons, answered from the Lock Screen. Agents at work follow you in Live Activities, on the Lock Screen and in the Dynamic Island.</span>
+        <span lang="pt-BR">Uma pergunta chega com as opções como botões e é respondida da tela bloqueada. Os agentes trabalhando acompanham você em Live Activities, na tela bloqueada e na Dynamic Island.</span>
+      </p>
+      <p class="demo-hint">
+        <span lang="en">Nothing to set up: Pier on your Mac tells your iPhone and iPad what needs you through your own iCloud. A box can also push by itself with your own APNs key, when you build the app yourself.</span>
+        <span lang="pt-BR">Nada para configurar: o Pier no seu Mac avisa o seu iPhone e o seu iPad pelo seu próprio iCloud. A box também pode enviar push sozinha com a sua chave APNs, quando você compila o app.</span>
+      </p>
+    </div>
     <div class="gallery two">
-      <figure>
+      <figure class="rise">
         <img lang="en" src="assets/shots/en/notif-choices.jpg" alt="A notification with the question's three choices as buttons" loading="lazy">
         <img lang="pt-BR" src="assets/shots/pt/notif-choices.jpg" alt="Uma notificação com as três opções da pergunta como botões" loading="lazy">
         <figcaption><span lang="en">Answer from the notification</span><span lang="pt-BR">Responda pela notificação</span></figcaption>
       </figure>
-      <figure>
+      <figure class="rise">
         <img lang="en" src="assets/shots/en/notif-lock.jpg" alt="The Lock Screen: a Live Activity with Allow and Deny, and the question's notification" loading="lazy">
         <img lang="pt-BR" src="assets/shots/pt/notif-lock.jpg" alt="A tela bloqueada: uma Live Activity com Permitir e Negar, e a notificação da pergunta" loading="lazy">
         <figcaption><span lang="en">Live Activities on the Lock Screen</span><span lang="pt-BR">Live Activities na tela bloqueada</span></figcaption>
       </figure>
     </div>
-    <p class="demo-hint">
-      <span lang="en">Nothing to set up: Pier on your Mac tells your iPhone and iPad what needs you through your own iCloud. A box can also push by itself with your own APNs key, when you build the app yourself.</span>
-      <span lang="pt-BR">Nada para configurar: o Pier no seu Mac avisa o seu iPhone e o seu iPad pelo seu próprio iCloud. A box também pode enviar push sozinha com a sua chave APNs, quando você compila o app.</span>
-    </p>
   </div>
 </section>
 
@@ -169,35 +194,35 @@
       <span lang="pt-BR">Abas no iPhone; sidebar, a paleta ⌘K e atalhos de teclado no iPad e no Mac; claro e escuro.</span>
     </p>
     <div class="gallery">
-      <figure>
+      <figure class="rise">
         <img lang="en" src="assets/shots/en/iphone-question.jpg" alt="A session waiting on a question, its choices as buttons" loading="lazy">
         <img lang="pt-BR" src="assets/shots/pt/iphone-question.jpg" alt="Uma sessão esperando uma resposta, com as opções como botões" loading="lazy">
         <figcaption><span lang="en">Questions become buttons</span><span lang="pt-BR">Perguntas viram botões</span></figcaption>
       </figure>
-      <figure>
+      <figure class="rise">
         <img lang="en" src="assets/shots/en/iphone-inbox.jpg" alt="The Inbox" loading="lazy">
         <img lang="pt-BR" src="assets/shots/pt/iphone-inbox.jpg" alt="A Inbox" loading="lazy">
         <figcaption><span lang="en">One Inbox for every agent</span><span lang="pt-BR">Uma Inbox para todos os agentes</span></figcaption>
       </figure>
-      <figure>
+      <figure class="rise">
         <img lang="en" src="assets/shots/en/iphone-review.jpg" alt="A finished turn: what changed and the next steps" loading="lazy">
         <img lang="pt-BR" src="assets/shots/pt/iphone-review.jpg" alt="Um turno concluído: o que mudou e os próximos passos" loading="lazy">
         <figcaption><span lang="en">See what your agent did</span><span lang="pt-BR">Veja o que o agente fez</span></figcaption>
       </figure>
-      <figure>
+      <figure class="rise">
         <img lang="en" src="assets/shots/en/iphone-talk.jpg" alt="Talk routing a request to an agent" loading="lazy">
         <img lang="pt-BR" src="assets/shots/pt/iphone-talk.jpg" alt="Falar levando um pedido ao agente" loading="lazy">
         <figcaption><span lang="en">Say it; Pier picks the agent</span><span lang="pt-BR">Fale; o Pier escolhe o agente</span></figcaption>
       </figure>
     </div>
-    <div class="wide">
+    <div class="wide rise">
       <img lang="en" src="assets/shots/en/mac-workspace.jpg" alt="Pier on the Mac: the sidebar and a project's workspace" loading="lazy">
       <img lang="pt-BR" src="assets/shots/pt/mac-workspace.jpg" alt="O Pier no Mac: a sidebar e o workspace de um projeto" loading="lazy">
     </div>
   </div>
 </section>
 
-<section id="how">
+<section id="how" class="tinted">
   <div class="wrap">
     <p class="eyebrow"><span lang="en">How it works</span><span lang="pt-BR">Como funciona</span></p>
     <h2><span lang="en">Your machines, your keys. Encrypted end to end.</span><span lang="pt-BR">Suas máquinas, suas chaves. Cifrado de ponta a ponta.</span></h2>
@@ -206,20 +231,34 @@
       <span lang="pt-BR">O app conversa com cada box por TLS mútuo, direto ou pelo túnel do Pier, que carrega essa criptografia sem conseguir abri-la. Não há conta: seu código, seus prompts e suas conversas ficam nas suas máquinas.</span>
     </p>
     <div class="steps">
-      <div class="step">
+      <div class="step rise">
         <h3><span lang="en">Install pierd</span><span lang="pt-BR">Instale o pierd</span></h3>
         <p><span lang="en">A small open-source server, on a Linux server or on your Mac. It runs the agents in tmux and follows them through their hooks. One command; reachable from anywhere through the Pier tunnel, no VPN.</span><span lang="pt-BR">Um servidor pequeno e de código aberto, num servidor Linux ou no seu Mac. Ele roda os agentes no tmux e acompanha cada um pelos hooks. Um comando; acessível de qualquer lugar pelo túnel do Pier, sem VPN.</span></p>
       </div>
-      <div class="step">
+      <div class="step rise">
         <h3><span lang="en">Pair once</span><span lang="pt-BR">Pareie uma vez</span></h3>
         <p><span lang="en">Scan the QR code it prints. On your Mac, Pier pairs by itself, then brings your iPhone in with a code. The app and the box pin each other's keys.</span><span lang="pt-BR">Escaneie o QR code que ele mostra. No seu Mac, o Pier pareia sozinho e depois leva o iPhone com um código. O app e a box guardam a chave um do outro.</span></p>
       </div>
-      <div class="step">
+      <div class="step rise">
         <h3><span lang="en">Your agents, anywhere</span><span lang="pt-BR">Seus agentes, em qualquer lugar</span></h3>
         <p><span lang="en">Answer, review and ship from your iPhone, iPad or Mac.</span><span lang="pt-BR">Responda, revise e entregue pelo iPhone, iPad ou Mac.</span></p>
       </div>
     </div>
-    <pre class="install"><code>curl -fsSL https://docktopier.com/install.sh | sh</code></pre>
+    <div class="tunnel rise" aria-hidden="true">
+      <div class="end">
+        <svg viewBox="0 0 40 40" fill="none"><rect x="4" y="9" width="32" height="24" rx="7" fill="var(--ink)"/><rect x="9" y="14" width="22" height="10" rx="3" fill="#2b2b33"/><circle cx="14" cy="19" r="2" fill="var(--working)"/><circle cx="20" cy="19" r="2" fill="var(--needs)"/><circle cx="26" cy="19" r="2" fill="var(--done)"/></svg>
+        <span><span lang="en">Your box, running pierd</span><span lang="pt-BR">Sua box, com o pierd</span></span>
+      </div>
+      <div class="line"><span class="lock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span lang="en">Mutual TLS, end to end</span><span lang="pt-BR">TLS mútuo, ponta a ponta</span></span></div>
+      <div class="end">
+        <span><span lang="en">Your iPhone, iPad and Mac</span><span lang="pt-BR">Seu iPhone, iPad e Mac</span></span>
+        <svg viewBox="0 0 40 40" fill="none"><rect x="12" y="3" width="17" height="34" rx="5" fill="var(--red)"/><rect x="14.5" y="7" width="12" height="24" rx="2" fill="#fff"/><circle cx="20.5" cy="34" r="1.3" fill="#fff"/></svg>
+      </div>
+    </div>
+    <div class="terminal rise">
+      <div class="bar"><i></i><i></i><i></i><button type="button" data-copy="curl -fsSL https://docktopier.com/install.sh | sh"><span lang="en">Copy</span><span lang="pt-BR">Copiar</span></button></div>
+      <pre class="install"><code>curl -fsSL https://docktopier.com/install.sh | sh</code></pre>
+    </div>
     <p class="demo-hint">
       <span lang="en">Or <code>npm install -g pierd</code>, or <code>brew install wagnerfnds/tap/pierd</code>, then <code>pierd setup</code>. More on the <a href="support.html">support page</a>.</span>
       <span lang="pt-BR">Ou <code>npm install -g pierd</code>, ou <code>brew install wagnerfnds/tap/pierd</code>, e depois <code>pierd setup</code>. Mais na <a href="support.html">página de suporte</a>.</span>
@@ -232,7 +271,7 @@
     <p class="eyebrow"><span lang="en">Get Pier</span><span lang="pt-BR">Baixar</span></p>
     <h2><span lang="en">Two ways to get it.</span><span lang="pt-BR">Duas formas de usar.</span></h2>
     <div class="plans">
-      <div class="plan featured">
+      <div class="plan featured rise">
         <h3>App Store</h3>
         <p class="tag"><span lang="en">iPhone, iPad and Mac</span><span lang="pt-BR">iPhone, iPad e Mac</span></p>
         <ul>
@@ -240,9 +279,9 @@
           <li><span lang="en">Updates arrive by themselves</span><span lang="pt-BR">Atualizações chegam sozinhas</span></li>
           <li><span lang="en">A demo to look around before setting up a box</span><span lang="pt-BR">Uma demonstração para conhecer antes de preparar uma box</span></li>
         </ul>
-        <span class="btn primary" aria-disabled="true"><span lang="en">Coming soon</span><span lang="pt-BR">Em breve</span></span>
+        <span class="btn primary" aria-disabled="true"><i class="lamp" aria-hidden="true"></i><span lang="en">Coming soon</span><span lang="pt-BR">Em breve</span></span>
       </div>
-      <div class="plan">
+      <div class="plan rise">
         <h3><span lang="en">Open source</span><span lang="pt-BR">Código aberto</span></h3>
         <p class="tag"><span lang="en">MIT license</span><span lang="pt-BR">Licença MIT</span></p>
         <ul>
@@ -258,9 +297,9 @@
 
 <section>
   <div class="wrap">
-    <div class="band">
-      <img src="assets/icon.png" alt="">
-      <div>
+    <div class="band rise">
+      <img src="assets/mascot.png" alt="" width="640" height="640" loading="lazy">
+      <div class="copy">
         <h2><span lang="en">Your code stays on your machines.</span><span lang="pt-BR">Seu código fica nas suas máquinas.</span></h2>
         <p>
           <span lang="en">No accounts, no analytics, no tracking. The AI touches — titles, recaps, commit messages — run on your box, with the agent you already use. <a href="privacy.html">Privacy policy</a></span>
