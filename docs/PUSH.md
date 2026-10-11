@@ -289,15 +289,17 @@ no server, only their iCloud. Code: `App/Core/CloudAlerts.swift` (both sides), `
   and the Mac's own "Avisar o iPhone e o iPad pelo iCloud" (on by default). It first asks the box whether it pushes
   to this app itself (`GET /v1/push/info` answers with this app's bundle id, checked every 10 minutes); if it does,
   nothing is relayed (the phone would ring twice). Otherwise it saves a `PierAlert` record in the person's private database of the container
-  `iCloud.<PIER_BUNDLE_ID>`: `title` and `body` (the same words as a local notification), `box`, `session`,
-  `location`, `category` (4.1) and, for a question, `options` (the choices, 4.3). The record's name is
+  `iCloud.<PIER_BUNDLE_ID>`: `title` and `body` (the same words as a local notification) and `info`, a JSON string
+  with `box`, `session`, `location`, `category` (4.1) and, for a question, `options` (the choices, 4.3). One field,
+  because CloudKit refuses a subscription that asks for more additional fields ("notification additional fields limit
+  exceeded"). The record's name is
   `alert-` + the first 16 bytes of SHA-256(box ␟ session ␟ state ␟ state_since) in hex, so two Macs following one box
   save it once (the second save fails with `serverRecordChanged`) and the phone rings once. Each Mac deletes the
   records it saved after an hour.
 * **On the iPhone and iPad**: a `CKQuerySubscription` (`pier-alerts-v1`) on the creation of `PierAlert` records, saved
   on the first foreground with an iCloud account (tried again on each foreground until it works). Its notification:
   title and body from the record's fields (`%1$@` localization keys with the fields as arguments), the default sound,
-  `mutable-content`, and every field as desired keys. The notification service extension turns it into the content a
+  `mutable-content`, and `info` as the one desired key. The notification service extension turns it into the content a
   pierd push has: `box`, `session`, `location` and `options` in the userInfo, one thread per session, the category,
   the choices as buttons; a tap opens the session and an answer goes to the box like any other.
 * CloudKit does not notify the device that saved a record: the Mac shows its own local notifications as before.

@@ -51,11 +51,10 @@ import os
         let r = CKRecord(recordType: CloudAlertPayload.recordType, recordID: id)
         r["title"] = title
         r["body"] = body
-        r["box"] = box.name
-        r["session"] = session.name
-        if let l = session.location { r["location"] = l }
-        r["category"] = NotificationCategoryID.category(state: state, ask: session.ask) ?? ""
-        if let options, options.count >= 2 { r["options"] = options }
+        r[CloudAlertPayload.infoKey] = CloudAlertPayload.encode(.init(
+            box: box.name, session: session.name, location: session.location,
+            category: NotificationCategoryID.category(state: state, ask: session.ask),
+            options: (options?.count ?? 0) >= 2 ? options : nil))
         do {
             _ = try await database.save(r)
             remember(id.recordName)
@@ -109,6 +108,53 @@ import os
         }
     }
 
+    #if DEBUG
+    /// The subscriptions in the person's private database, every device's (the phone's shows up from the Mac), in the
+    /// log (`-cloudAlertsDiagnose 1`).
+    func diagnose() async {
+        do {
+            let subs = try await database.allSubscriptions()
+            log.info("subscriptions: \(subs.map(\.subscriptionID).joined(separator: ", "), privacy: .public)")
+        } catch {
+            log.error("diagnose: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    /// Saves a test alert the person's iPhone and iPad should ring for (`-cloudAlertsTest 1`), as a waiting agent with two
+    /// choices; deleted with the rest after an hour.
+    func sendTest() async {
+        let id = CKRecord.ID(recordName: "alert-test-\(Int(Date().timeIntervalSince1970))")
+        let r = CKRecord(recordType: CloudAlertPayload.recordType, recordID: id)
+        r["title"] = "Pier · teste"
+        r["body"] = "Aviso do Mac pelo iCloud: ele chegou?"
+        r[CloudAlertPayload.infoKey] = CloudAlertPayload.encode(.init(box: "pier-test", session: "icloud-test", options: ["Sim", "Não"]))
+        do {
+            _ = try await database.save(r)
+            remember(id.recordName)
+            log.info("test alert saved: \(id.recordName, privacy: .public)")
+        } catch {
+            log.error("test alert: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    /// Saves an alert with every field and deletes it (`-cloudAlertsSeed 1`): CloudKit's development environment then
+    /// knows the record type and all its fields, the schema to deploy to production. A device already subscribed gets it.
+    func seedSchema() async {
+        let r = CKRecord(recordType: CloudAlertPayload.recordType, recordID: CKRecord.ID(recordName: "alert-schema-seed"))
+        r["title"] = "Pier"
+        r["body"] = "schema"
+        r[CloudAlertPayload.infoKey] = CloudAlertPayload.encode(.init(box: "box", session: "session", location: "location",
+                                                                      category: "category", options: ["one", "two"]))
+        do {
+            _ = try await database.modifyRecords(saving: [r], deleting: [], savePolicy: .allKeys)
+            _ = try await database.modifyRecords(saving: [], deleting: [r.recordID])
+            log.info("schema seeded")
+        } catch {
+            log.error("seeding the schema: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+    #endif
+
     // MARK: iPhone, iPad: the subscription
 
     /// Subscribes this device to the alerts a Mac saves, once (CloudKit keeps the subscription with the person's iCloud).
@@ -132,7 +178,7 @@ import os
         n.alertLocalizationArgs = ["body"]
         n.soundName = "default"
         n.shouldSendMutableContent = true
-        n.desiredKeys = CloudAlertPayload.desiredKeys
+        n.desiredKeys = [CloudAlertPayload.infoKey]
         s.notificationInfo = n
         do {
             _ = try await database.save(s)
@@ -140,6 +186,13 @@ import os
             log.info("subscribed to the Mac's alerts")
         } catch {
             log.error("subscribing: \(error.localizedDescription, privacy: .public)")
+            // CloudKit asked to wait (a throttle, the service busy): try again then, while the app still runs.
+            if let wait = (error as? CKError)?.retryAfterSeconds, wait < 1800 {
+                Task { [weak self] in
+                    try? await Task.sleep(for: .seconds(wait + 1))
+                    await self?.subscribeIfNeeded()
+                }
+            }
         }
     }
 }

@@ -142,6 +142,17 @@ final class AppModel {
         if UserDefaults.standard.bool(forKey: "testKeychainMigration") { SharedKeychain.debugSelfTest() }
         // Test hook: `-uiTestDemoReset 1` starts outside the demo, whatever an earlier run left.
         if UserDefaults.standard.bool(forKey: "uiTestDemoReset") { DemoMode.isOn = false; prefs.reload() }
+        // `-cloudAlertsSeed 1`: every alert field in CloudKit's development schema; `-cloudAlertsTest 1`: a test alert for
+        // the person's iPhone and iPad; `-cloudAlertsDiagnose 1`: the iCloud subscriptions (an iPhone's shows up from the
+        // Mac too) in the log.
+        let cloudDebug = ["cloudAlertsSeed", "cloudAlertsTest", "cloudAlertsDiagnose"].filter { UserDefaults.standard.bool(forKey: $0) }
+        if !cloudDebug.isEmpty {
+            Task {
+                if cloudDebug.contains("cloudAlertsSeed") { await CloudAlerts.shared.seedSchema() }
+                await CloudAlerts.shared.diagnose()
+                if cloudDebug.contains("cloudAlertsTest") { await CloudAlerts.shared.sendTest() }
+            }
+        }
         #endif
         #if DEBUG
         if UITestMock.enabled { startMock(); return }

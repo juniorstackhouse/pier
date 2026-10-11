@@ -319,7 +319,10 @@ follows it); only an exit (`ended`) ends the activity. Debug `-openLink pier://�
 `-runIntent postNotif|notifAction|notifDelivered …` (App/Intents/DebugIntentRunner.swift), `-openLink <pier://…>`,
 `-debugStartActivity 1`, `-widgetGallery home|lock|activity|island|all`, `-openTalk 1 [-talkText "…" -talkRoute 1]`,
 `-openPalette 1`, `-openFaxina 1`, `-openProject <loc>[/<worktree>] [-workspaceTab files|changes|history|overview]
-[-openFile <path>]` (a project's workspace); Mac: `-macSurfaceDebug <commands>`, `-macFakeShot <png>`, `-macWindowSize 1280x800`.
+[-openFile <path>]` (a project's workspace); Mac: `-macSurfaceDebug <commands>`, `-macFakeShot <png>`, `-macWindowSize 1280x800`,
+and for the alerts through iCloud (`CloudAlerts`, docs/PUSH.md 8) `-cloudAlertsDiagnose 1` (logs every device's
+subscription), `-cloudAlertsTest 1` (a test alert for the iPhone and iPad), `-cloudAlertsSeed 1` (every field in
+CloudKit's development schema, before deploying it) and `-cloudAlertsFromMock 1` (the mock's transitions relayed too).
 `-uiTestShowcase 1` (with the mock) swaps the fixture data for an English showcase dataset (`App/Debug/UITestShowcase.swift`:
 four projects, a permission, a question with a recommended choice, a finished turn with a diff and next steps, agents at
 work, a chat, pull requests, CI, git activity, dev servers, the AI touches' answers) for screenshots; the widget gallery and

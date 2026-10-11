@@ -13,7 +13,7 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
     override func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void) {
         let c = (request.content.mutableCopy() as? UNMutableNotificationContent) ?? UNMutableNotificationContent()
         // An alert a Mac relayed through the person's iCloud (CloudAlertPayload): the same content a push from pierd has.
-        if let alert = CloudAlertPayload.alert(in: request.content.userInfo) { CloudAlertPayload.apply(alert, to: c) }
+        if let alert = CloudAlertPayload.info(in: request.content.userInfo) { CloudAlertPayload.apply(alert, to: c) }
         lock.withLock { handler = contentHandler; content = c }
         guard let options = NotificationChoices.options(in: c.userInfo) else { finish(); return }
         Task {
