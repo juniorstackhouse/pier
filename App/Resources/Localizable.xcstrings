@@ -473,6 +473,16 @@
         }
       }
     },
+    "%lld arquivos abertos no editor têm alterações não salvas, que se perdem." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld files open in the editor have unsaved changes, which will be lost."
+          }
+        }
+      }
+    },
     "%lld arquivos com mudanças não commitadas" : {
       "localizations" : {
         "en" : {
@@ -539,6 +549,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld commit(s) not on GitHub"
+          }
+        }
+      }
+    },
+    "%lld commits à frente" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld commits ahead"
           }
         }
       }
@@ -733,6 +753,16 @@
         }
       }
     },
+    "%lld × %lld · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld × %lld · %@"
+          }
+        }
+      }
+    },
     "%lld%%" : {
       "localizations" : {
         "en" : {
@@ -755,6 +785,26 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$lld/%2$lld"
+          }
+        }
+      }
+    },
+    "(lista cortada)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(list cut short)"
+          }
+        }
+      }
+    },
+    "(sem mensagem)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(no message)"
           }
         }
       }
@@ -839,6 +889,26 @@
         }
       }
     },
+    "1 arquivo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 file"
+          }
+        }
+      }
+    },
+    "1 arquivo aberto no editor tem alterações não salvas, que se perdem." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 file open in the editor has unsaved changes, which will be lost."
+          }
+        }
+      }
+    },
     "1 arquivo lido" : {
       "localizations" : {
         "en" : {
@@ -875,6 +945,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "1 command"
+          }
+        }
+      }
+    },
+    "1 commit à frente" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 commit ahead"
           }
         }
       }
@@ -1495,6 +1575,36 @@
         }
       }
     },
+    "Abrir no editor" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open in Editor"
+          }
+        }
+      }
+    },
+    "Abrir o arquivo no editor" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open the file in the editor"
+          }
+        }
+      }
+    },
+    "Abrir rápido…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Quickly…"
+          }
+        }
+      }
+    },
     "Abrir sessão" : {
       "localizations" : {
         "en" : {
@@ -1665,6 +1775,16 @@
         }
       }
     },
+    "Ainda não enviado" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not pushed yet"
+          }
+        }
+      }
+    },
     "Ainda sem pierd na box?" : {
       "localizations" : {
         "en" : {
@@ -1695,6 +1815,16 @@
         }
       }
     },
+    "Ajustes (⌘,)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settings (⌘,)"
+          }
+        }
+      }
+    },
     "Ajustes pedidos" : {
       "localizations" : {
         "en" : {
@@ -1721,6 +1851,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Something went wrong."
+          }
+        }
+      }
+    },
+    "Alguém (talvez um agente) mudou este arquivo depois que você o abriu. Salvar por cima descarta a versão da box; recarregar descarta o que você digitou." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Someone (maybe an agent) changed this file after you opened it. Saving over it drops the box's version; reloading drops what you typed."
+          }
+        }
+      }
+    },
+    "Alterações" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Changes"
           }
         }
       }
@@ -1885,7 +2035,27 @@
         }
       }
     },
+    "Aprovar…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Approve…"
+          }
+        }
+      }
+    },
     "Arquivada" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Archived"
+          }
+        }
+      }
+    },
+    "Arquivadas" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1955,6 +2125,16 @@
         }
       }
     },
+    "Arquivo grande demais para abrir aqui" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "File too large to open here"
+          }
+        }
+      }
+    },
     "Arquivos" : {
       "localizations" : {
         "en" : {
@@ -1965,12 +2145,42 @@
         }
       }
     },
+    "Arquivos ignorados" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ignored files"
+          }
+        }
+      }
+    },
+    "Arquivos não salvos" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unsaved files"
+          }
+        }
+      }
+    },
     "Arraste para reordenar; use a chave para mostrar ou ocultar." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Drag to reorder; use the switch to show or hide."
+          }
+        }
+      }
+    },
+    "Arraste projetos para cá" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drag projects here"
           }
         }
       }
@@ -2055,6 +2265,16 @@
         }
       }
     },
+    "Atividade recente" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recent activity"
+          }
+        }
+      }
+    },
     "Atrás de %@: atualize a branch antes de mesclar." : {
       "localizations" : {
         "en" : {
@@ -2091,6 +2311,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Updating the to-do list…"
+          }
+        }
+      }
+    },
+    "Atualizar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Refresh"
           }
         }
       }
@@ -2325,6 +2555,16 @@
         }
       }
     },
+    "Buscando na box…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Searching on the box…"
+          }
+        }
+      }
+    },
     "Buscando…" : {
       "localizations" : {
         "en" : {
@@ -2361,6 +2601,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Search branches"
+          }
+        }
+      }
+    },
+    "Buscar no arquivo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Find in File"
+          }
+        }
+      }
+    },
+    "Buscar no arquivo (⌘F)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Find in file (⌘F)"
           }
         }
       }
@@ -2445,6 +2705,16 @@
         }
       }
     },
+    "Cancelar (Esc)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel (Esc)"
+          }
+        }
+      }
+    },
     "Cancelar mensagem da fila" : {
       "localizations" : {
         "en" : {
@@ -2461,6 +2731,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Loading…"
+          }
+        }
+      }
+    },
+    "Carregar mais" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Load More"
           }
         }
       }
@@ -2605,12 +2885,42 @@
         }
       }
     },
+    "Commit, enviar e abrir PR" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Commit, push and open a PR"
+          }
+        }
+      }
+    },
     "Commits" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Commits"
+          }
+        }
+      }
+    },
+    "Commits a enviar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Commits to push"
+          }
+        }
+      }
+    },
+    "Commits a receber" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Commits to pull"
           }
         }
       }
@@ -2835,6 +3145,26 @@
         }
       }
     },
+    "Copiar caminho" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy Path"
+          }
+        }
+      }
+    },
+    "Copiar caminho na box" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy Path on the Box"
+          }
+        }
+      }
+    },
     "Copiar código" : {
       "localizations" : {
         "en" : {
@@ -2851,6 +3181,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Copy link"
+          }
+        }
+      }
+    },
+    "Copiar o hash completo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy the full hash"
           }
         }
       }
@@ -2945,6 +3285,16 @@
         }
       }
     },
+    "Criar uma seção para agrupar projetos" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create a section to group projects"
+          }
+        }
+      }
+    },
     "Câmera indisponível" : {
       "localizations" : {
         "en" : {
@@ -3001,6 +3351,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Delegated to a subagent"
+          }
+        }
+      }
+    },
+    "Desarquivar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unarchive"
+          }
+        }
+      }
+    },
+    "Descartar alterações" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discard Changes"
+          }
+        }
+      }
+    },
+    "Descartar alterações…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discard Changes…"
           }
         }
       }
@@ -3691,6 +4071,26 @@
         }
       }
     },
+    "Escolha um arquivo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a file"
+          }
+        }
+      }
+    },
+    "Escolha um arquivo na árvore" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a file in the tree"
+          }
+        }
+      }
+    },
     "Escolha um projeto" : {
       "localizations" : {
         "en" : {
@@ -3901,6 +4301,26 @@
         }
       }
     },
+    "Esta box precisa de um pierd mais novo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This box needs a newer pierd"
+          }
+        }
+      }
+    },
+    "Esta branch ainda não tem commits." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This branch has no commits yet."
+          }
+        }
+      }
+    },
     "Esta sessão foi encerrada na box." : {
       "localizations" : {
         "en" : {
@@ -3917,6 +4337,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "This session runs a plain program; below is what its screen shows."
+          }
+        }
+      }
+    },
+    "Esta worktree está limpa em relação a %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This worktree is clean against %@."
           }
         }
       }
@@ -3957,6 +4387,46 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "This device"
+          }
+        }
+      }
+    },
+    "Este arquivo foi apagado na box." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This file was deleted on the box."
+          }
+        }
+      }
+    },
+    "Este arquivo foi apagado na box. Salvar o cria de novo com o que você digitou." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This file was deleted on the box. Saving creates it again with what you typed."
+          }
+        }
+      }
+    },
+    "Este arquivo mudou na box depois que você o abriu (um agente pode tê-lo editado)." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This file changed on the box after you opened it (an agent may have edited it)."
+          }
+        }
+      }
+    },
+    "Este commit não muda arquivos." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This commit changes no files."
           }
         }
       }
@@ -4187,6 +4657,16 @@
         }
       }
     },
+    "Faxina (⇧⌘L)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cleanup (⇧⌘L)"
+          }
+        }
+      }
+    },
     "Faxina nas boxes" : {
       "localizations" : {
         "en" : {
@@ -4247,12 +4727,32 @@
         }
       }
     },
+    "Fechar %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close %@"
+          }
+        }
+      }
+    },
     "Fechar PR" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Close PR"
+          }
+        }
+      }
+    },
+    "Fechar as outras" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close Others"
           }
         }
       }
@@ -4407,6 +4907,16 @@
         }
       }
     },
+    "Histórico" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "History"
+          }
+        }
+      }
+    },
     "Hooks do %@ não instalados em %@" : {
       "localizations" : {
         "en" : {
@@ -4529,6 +5039,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Start agent here"
+          }
+        }
+      }
+    },
+    "Iniciar agente em %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start an agent in %@"
           }
         }
       }
@@ -4703,6 +5223,16 @@
         }
       }
     },
+    "Já existe um arquivo com esse nome." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A file with that name already exists."
+          }
+        }
+      }
+    },
     "Já existe uma sessão com esse nome. Tente de novo." : {
       "localizations" : {
         "en" : {
@@ -4853,6 +5383,16 @@
         }
       }
     },
+    "Limpar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear"
+          }
+        }
+      }
+    },
     "Limpar filtros" : {
       "localizations" : {
         "en" : {
@@ -4869,6 +5409,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Invalid link. Use a pier:// link generated by “pierd pair”."
+          }
+        }
+      }
+    },
+    "Ln %lld, Col %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ln %lld, Col %lld"
           }
         }
       }
@@ -4959,6 +5509,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Send to"
+          }
+        }
+      }
+    },
+    "Manter o meu" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep Mine"
+          }
+        }
+      }
+    },
+    "Manualmente" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manually"
           }
         }
       }
@@ -5283,6 +5853,16 @@
         }
       }
     },
+    "Mostrar arquivos ignorados pelo git" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show files git ignores"
+          }
+        }
+      }
+    },
     "Mostrar mais" : {
       "localizations" : {
         "en" : {
@@ -5339,6 +5919,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Show all"
+          }
+        }
+      }
+    },
+    "Mover para" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Move To"
           }
         }
       }
@@ -5653,6 +6243,16 @@
         }
       }
     },
+    "Nenhum agente agora" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No agents right now"
+          }
+        }
+      }
+    },
     "Nenhum agente ativo." : {
       "localizations" : {
         "en" : {
@@ -5739,6 +6339,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "No agents working"
+          }
+        }
+      }
+    },
+    "Nenhum arquivo encontrado" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No file found"
+          }
+        }
+      }
+    },
+    "Nenhum commit ainda" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No commits yet"
           }
         }
       }
@@ -5943,12 +6563,42 @@
         }
       }
     },
+    "Nome da nova seção" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New section name"
+          }
+        }
+      }
+    },
+    "Nome da seção" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Section name"
+          }
+        }
+      }
+    },
     "Nome de worktree inválido. Use letras, números, ponto, hífen ou sublinhado." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Invalid worktree name. Use letters, numbers, dot, hyphen or underscore."
+          }
+        }
+      }
+    },
+    "Nome do projeto" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Project name"
           }
         }
       }
@@ -6003,6 +6653,16 @@
         }
       }
     },
+    "Nova conversa (⇧⌘N)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New chat (⇧⌘N)"
+          }
+        }
+      }
+    },
     "Nova seção" : {
       "localizations" : {
         "en" : {
@@ -6013,12 +6673,32 @@
         }
       }
     },
+    "Nova seção…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Section…"
+          }
+        }
+      }
+    },
     "Nova tarefa" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "New task"
+          }
+        }
+      }
+    },
+    "Nova tarefa (⌘N)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New task (⌘N)"
           }
         }
       }
@@ -6063,6 +6743,26 @@
         }
       }
     },
+    "Nova tarefa nesta worktree" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Task in This Worktree"
+          }
+        }
+      }
+    },
+    "Nova tarefa nesta worktree (⌘N)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New task in this worktree (⌘N)"
+          }
+        }
+      }
+    },
     "Nova tarefa no sandbox: escrever o README" : {
       "localizations" : {
         "en" : {
@@ -6093,12 +6793,52 @@
         }
       }
     },
+    "Nova worktree…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Worktree…"
+          }
+        }
+      }
+    },
+    "Novo arquivo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New File"
+          }
+        }
+      }
+    },
+    "Novo arquivo aqui…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New File Here…"
+          }
+        }
+      }
+    },
     "Numa worktree nova" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "In a new worktree"
+          }
+        }
+      }
+    },
+    "Não commitadas" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uncommitted"
           }
         }
       }
@@ -6173,12 +6913,32 @@
         }
       }
     },
+    "Não encontrado na box." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not found on the box."
+          }
+        }
+      }
+    },
     "Não encontrei a sessão “%@”." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Couldn't find the session “%@”."
+          }
+        }
+      }
+    },
+    "Não foi possível abrir o arquivo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't open the file"
           }
         }
       }
@@ -6253,12 +7013,62 @@
         }
       }
     },
+    "Não foi possível ler este commit" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't read this commit"
+          }
+        }
+      }
+    },
+    "Não foi possível ler este commit." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't read this commit."
+          }
+        }
+      }
+    },
     "Não foi possível ler o git" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Couldn't read git"
+          }
+        }
+      }
+    },
+    "Não foi possível ler o histórico" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't read the history"
+          }
+        }
+      }
+    },
+    "Não foi possível ler os arquivos" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't read the files"
+          }
+        }
+      }
+    },
+    "Não foi possível listar os arquivos" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't list the files"
           }
         }
       }
@@ -6293,6 +7103,16 @@
         }
       }
     },
+    "Não foi possível salvar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't save"
+          }
+        }
+      }
+    },
     "Não há diff de texto para mostrar." : {
       "localizations" : {
         "en" : {
@@ -6309,6 +7129,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "There is no message to sum up in a title."
+          }
+        }
+      }
+    },
+    "Não salvar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Don't Save"
+          }
+        }
+      }
+    },
+    "Não salvo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not saved"
           }
         }
       }
@@ -6463,6 +7303,16 @@
         }
       }
     },
+    "O arquivo mudou na box" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The file changed on the box"
+          }
+        }
+      }
+    },
     "O autor não permite que mantenedores enviem para o fork, então o push vai falhar: me avise antes de tentar." : {
       "localizations" : {
         "en" : {
@@ -6569,6 +7419,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "pierd still lists the folder; remove it, or move the project back."
+          }
+        }
+      }
+    },
+    "O pierd desta box ainda não tem as rotas de arquivos. Atualize-o com o build deste repositório (Server/pierd) para navegar e editar os arquivos daqui. Alterações e Histórico já funcionam." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This box's pierd doesn't have the file routes yet. Update it with the build from this repository (Server/pierd) to browse and edit files from here. Changes and History already work."
           }
         }
       }
@@ -6779,6 +7639,16 @@
         }
       }
     },
+    "Ocultar arquivos ignorados pelo git" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide files git ignores"
+          }
+        }
+      }
+    },
     "Ocultos" : {
       "localizations" : {
         "en" : {
@@ -6845,6 +7715,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Options"
+          }
+        }
+      }
+    },
+    "Opções da seção %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ section options"
+          }
+        }
+      }
+    },
+    "Ordem alfabética" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alphabetical order"
+          }
+        }
+      }
+    },
+    "Ordenar projetos" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sort Projects"
           }
         }
       }
@@ -7341,6 +8241,26 @@
         }
       }
     },
+    "Pasta com arquivos demais: nem todos aparecem." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Folder with too many files: not all of them show."
+          }
+        }
+      }
+    },
+    "Pasta vazia" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Empty folder"
+          }
+        }
+      }
+    },
     "Pede para o agente do login adicionar um teste de senha vazia" : {
       "localizations" : {
         "en" : {
@@ -7641,6 +8561,16 @@
         }
       }
     },
+    "Por atividade recente" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "By Recent Activity"
+          }
+        }
+      }
+    },
     "Por enquanto só funciona com o Pier na frente (⌃⌥Espaço funciona em qualquer app). Para os dois toques valerem em qualquer app, permita o Monitoramento de Entrada do Pier." : {
       "localizations" : {
         "en" : {
@@ -7657,6 +8587,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "For example"
+          }
+        }
+      }
+    },
+    "Por nome" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "By Name"
           }
         }
       }
@@ -7777,6 +8717,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Projects"
+          }
+        }
+      }
+    },
+    "Projetos ocultos" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hidden projects"
           }
         }
       }
@@ -8031,6 +8981,46 @@
         }
       }
     },
+    "Recarregar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reload"
+          }
+        }
+      }
+    },
+    "Recarregar (⌘R)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reload (⌘R)"
+          }
+        }
+      }
+    },
+    "Recarregar da box" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reload from the Box"
+          }
+        }
+      }
+    },
+    "Recarregar pasta" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reload Folder"
+          }
+        }
+      }
+    },
     "Recentes" : {
       "localizations" : {
         "en" : {
@@ -8087,6 +9077,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hide the steps"
+          }
+        }
+      }
+    },
+    "Recolher tudo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Collapse all"
           }
         }
       }
@@ -8201,6 +9201,16 @@
         }
       }
     },
+    "Remover worktree…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove Worktree…"
+          }
+        }
+      }
+    },
     "Remover “%@”" : {
       "localizations" : {
         "en" : {
@@ -8247,6 +9257,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Rename section"
+          }
+        }
+      }
+    },
+    "Renomear…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rename…"
+          }
+        }
+      }
+    },
+    "Repositório grande: a busca cobre parte dos arquivos." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Large repository: search covers part of the files."
           }
         }
       }
@@ -8491,12 +9521,62 @@
         }
       }
     },
+    "Salvando…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saving…"
+          }
+        }
+      }
+    },
     "Salvar" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Save"
+          }
+        }
+      }
+    },
+    "Salvar as alterações em “%@”?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save the changes to “%@”?"
+          }
+        }
+      }
+    },
+    "Salvar de novo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save Again"
+          }
+        }
+      }
+    },
+    "Salvar na box (⌘S)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save to the box (⌘S)"
+          }
+        }
+      }
+    },
+    "Salvar por cima" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save Over It"
           }
         }
       }
@@ -8517,6 +9597,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Save current prompt…"
+          }
+        }
+      }
+    },
+    "Salvo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saved"
           }
         }
       }
@@ -8547,6 +9637,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "If you reinstalled pierd yourself, unpair and pair again; if not, be suspicious."
+          }
+        }
+      }
+    },
+    "Se não salvar, o que você digitou se perde." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "If you don't save, what you typed is lost."
           }
         }
       }
@@ -8817,6 +9917,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ended sessions"
+          }
+        }
+      }
+    },
+    "Sessões nesta worktree" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sessions in this worktree"
           }
         }
       }
@@ -9327,6 +10437,16 @@
         }
       }
     },
+    "Trocar de worktree" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Switch worktree"
+          }
+        }
+      }
+    },
     "Tudo enviado ao GitHub: nada se perde. A branch continua lá (e o PR, se houver)." : {
       "localizations" : {
         "en" : {
@@ -9563,6 +10683,16 @@
         }
       }
     },
+    "Ver todas no Quadro (%lld)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "See all on the Board (%lld)"
+          }
+        }
+      }
+    },
     "Ver todos (%lld)" : {
       "localizations" : {
         "en" : {
@@ -9603,6 +10733,16 @@
         }
       }
     },
+    "Visão geral" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Overview"
+          }
+        }
+      }
+    },
     "Você está na branch do PR, `%@`. Ao terminar, faça commit e `git push`: isso atualiza o PR." : {
       "localizations" : {
         "en" : {
@@ -9633,6 +10773,16 @@
         }
       }
     },
+    "Voltar ao nome “%@”" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Go Back to the Name “%@”"
+          }
+        }
+      }
+    },
     "Voltar para “Sua vez”" : {
       "localizations" : {
         "en" : {
@@ -9649,6 +10799,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Worktree"
+          }
+        }
+      }
+    },
+    "Worktree %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Worktree %@"
           }
         }
       }
@@ -9783,12 +10943,32 @@
         }
       }
     },
+    "adicionado" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "added"
+          }
+        }
+      }
+    },
     "agora" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "now"
+          }
+        }
+      }
+    },
+    "apagado" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "deleted"
           }
         }
       }
@@ -9943,12 +11123,42 @@
         }
       }
     },
+    "em conflito" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "in conflict"
+          }
+        }
+      }
+    },
+    "encerrada" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ended"
+          }
+        }
+      }
+    },
     "erro" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "error"
+          }
+        }
+      }
+    },
+    "erro do git" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "git error"
           }
         }
       }
@@ -10123,12 +11333,32 @@
         }
       }
     },
+    "merge" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "merge"
+          }
+        }
+      }
+    },
     "modelo %@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "model %@"
+          }
+        }
+      }
+    },
+    "modificado" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "modified"
           }
         }
       }
@@ -10179,6 +11409,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "worktree-name"
+          }
+        }
+      }
+    },
+    "nome-do-arquivo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "file-name"
+          }
+        }
+      }
+    },
+    "novo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "new"
+          }
+        }
+      }
+    },
+    "não enviado" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "not pushed"
           }
         }
       }
@@ -10363,6 +11623,16 @@
         }
       }
     },
+    "renomeado" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "renamed"
+          }
+        }
+      }
+    },
     "responder" : {
       "localizations" : {
         "en" : {
@@ -10539,6 +11809,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "⇧⌘A, the camera button on the bar or the Go menu: the screen dims, you mark a part of it and say what to do; the picture goes to the agent with the words."
+          }
+        }
+      }
+    },
+    "⇧⌘O abre um arquivo pelo nome" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "⇧⌘O opens a file by name"
           }
         }
       }
