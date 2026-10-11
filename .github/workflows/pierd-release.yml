@@ -1,6 +1,7 @@
 # Releases pierd when a tag pierd-v<version> is pushed: the tests, binaries for Linux and macOS (x64, arm64) on a
 # GitHub Release with their checksums (what the install script and the Homebrew formula download), then the npm
-# packages (pierd and pierd-<os>-<cpu>) when the NPM_TOKEN secret is set.
+# packages (pierd and pierd-<os>-<cpu>) through npm's trusted publishing: each package trusts this workflow, which
+# proves itself with GitHub's OIDC token, so no npm token is kept anywhere.
 name: pierd release
 
 on:
@@ -9,12 +10,11 @@ on:
 
 permissions:
   contents: write
+  id-token: write # npm's trusted publishing
 
 jobs:
   release:
     runs-on: ubuntu-latest
-    env:
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -64,15 +64,10 @@ jobs:
           gh release create "$GITHUB_REF_NAME" dist/* --title "pierd v$VERSION" --notes-file notes.md
 
       - uses: actions/setup-node@v4
-        if: env.NPM_TOKEN != ''
         with:
-          node-version: 20
-          registry-url: https://registry.npmjs.org
+          node-version: 24 # its npm (11.5.1 or later) publishes with the workflow's OIDC token
 
       - name: npm
-        if: env.NPM_TOKEN != ''
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           Server/pierd/npm/build.sh "$VERSION" dist npm-out
           Server/pierd/npm/publish.sh npm-out
