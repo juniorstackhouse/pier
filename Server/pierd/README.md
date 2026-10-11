@@ -67,8 +67,8 @@ the binary to `~/.local/bin` on the box, then `pierd setup`.
 ### From anywhere: the Pier tunnel
 
 A box the apps cannot dial from outside (a Mac or a server at home, behind NAT) is reached through the Pier tunnel,
-with nothing to set up: pierd keeps a connection out to `t.TUNNEL_DOMAIN`, the box gets a name there
-(`<id>.t.TUNNEL_DOMAIN`, which `pierd relay` and `pierd setup` print) and pairing links carry it. The app dials the
+with nothing to set up: pierd keeps a connection out to `t.docktopier.com`, the box gets a name there
+(`<id>.t.docktopier.com`, which `pierd relay` and `pierd setup` print) and pairing links carry it. The app dials the
 box's own address first and the tunnel when that does not answer; inside runs the same mutual TLS, pinned to the keys
 from pairing, so the tunnel only carries bytes it cannot read. `pierd relay off` turns it off; `pierd relay default`
 back on.

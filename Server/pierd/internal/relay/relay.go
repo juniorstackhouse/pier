@@ -62,7 +62,7 @@ const (
 // box behind NAT is reachable from anywhere with nothing to set up. host:port;
 // empty, a build connects to no relay by itself. A build of your own can name
 // another with -ldflags "-X pier/pierd/internal/relay.Official=host:443".
-var Official = ""
+var Official = "t.docktopier.com:443"
 
 // TunnelAddress is the address apps dial for the box with fingerprint fp on
 // relay: its own name under the relay's (`<short fingerprint>.t.example.com`),
