@@ -5,8 +5,10 @@ import { CUE, at, BEAT } from '../time.js';
 import { clamp, lerp, ease, prog, spring, springTrack, cubicPoint, tween, bezier } from '../anim.js';
 import { createMac, MAC_W, MAC_H, MENU_H, TAB_CENTER } from '../ui/mac.js';
 import { CW, column } from '../ui/edgeTab.js';
+import { FORMAT } from '../format.js';
 
-const BASE = 1920 / MAC_W;           // display points → frame pixels at zoom 1
+const V = FORMAT.vertical, FW = FORMAT.w, FH = FORMAT.h;
+const BASE = FW / MAC_W;             // display points → frame pixels at zoom 1 (the display's width fills the frame's)
 const N = 4;
 
 /** Camera keyframes: the display point F shown at frame point S, zoom z. Between two keys, eased. */
@@ -55,7 +57,24 @@ export function createMacScene(layer) {
   const T = CUE;
   const close = { fx: 1215, fy: panelTop + panelH / 2, sx: 1440, sy: 545, z: 1.27 };
   const tabClose = { fx: 1497, fy: tabCenterY, sx: 1830, sy: 540, z: 2.9 };
-  const camKeys = [
+  // vertical: the right strip of the screen (menu bar, clock, tab) fills the frame; the Inbox fills its width
+  const stripV = { fx: MAC_W - 540 / (BASE * 4.0), fy: 336, sx: 540, sy: 960, z: 4.0 };   // the menu bar's right end over the tab
+  const tabCloseV = { fx: 1497, fy: tabCenterY, sx: 1016, sy: 960, z: 6.0 };
+  const panelV = { fx: MAC_W - 540 / (BASE * 2.3), fy: panelTop + panelH / 2, sx: 540, sy: 40 + (panelH * BASE * 2.3) / 2, z: 2.3 };
+  const toolsV = { fx: 1497, fy: tabCenterY, sx: 1016, sy: 960, z: 5.2 };
+  const camKeys = V ? [
+    { t: 0, fx: tabX, fy: tabCenterY, sx: 540, sy: 900, z: 9.0, ease: ease.linear },
+    { t: T.pullBack, fx: tabX, fy: tabCenterY, sx: 540, sy: 900, z: 9.4, ease: ease.linear },
+    { t: T.macIn + 0.35, ...stripV, ease: ease.cinematic },
+    { t: T.pushIn, ...stripV, z: 4.1, ease: ease.cinematic },
+    { t: T.needs - 0.12, ...tabCloseV, ease: ease.inOutSine },
+    { t: T.cursorIn, ...tabCloseV, z: 6.2, ease: ease.cinematic },
+    { t: T.inboxHover - 0.1, ...panelV, ease: ease.linear },
+    { t: T.toolNew - BEAT * 0.75, ...panelV, z: 2.36, ease: ease.cinematic },
+    { t: T.toolNew, ...toolsV, ease: ease.linear },
+    { t: T.stepBack, ...toolsV, z: 5.3, ease: ease.cinematic },
+    { t: T.stepBack + 1.5, fx: 756, fy: 425, sx: 540, sy: 960, z: 0.85, ease: bezier(0.25, 0.0, 0.1, 1) },
+  ] : [
     { t: 0, fx: tabX, fy: tabCenterY, sx: 960, sy: 540, z: 6.0, ease: ease.linear },
     { t: T.pullBack, fx: tabX, fy: tabCenterY, sx: 960, sy: 540, z: 6.35, ease: ease.linear },
     { t: T.macIn + 0.35, fx: tabX, fy: tabCenterY, sx: tabX * BASE, sy: tabCenterY * BASE, z: 1, ease: ease.cinematic, easeS: ease.outQuint },
@@ -100,18 +119,19 @@ export function createMacScene(layer) {
     if (t > T.macIn + 0.3 && t < T.stepBack + 0.05) {
       const left = cam.sx - cam.fx * scale, top = cam.sy - cam.fy * scale;
       const right = left + MAC_W * scale, bottom = top + MAC_H * scale;
-      if (right < 1920) cam.sx += 1920 - right;
+      if (right < FW) cam.sx += FW - right;               // the tab stays glued to the frame's edge
       if (left > 0) cam.sx -= left;
-      if (bottom < 1080) cam.sy += 1080 - bottom;
       if (top > 0) cam.sy -= top;
+      if (!V && bottom < FH) cam.sy += FH - bottom;       // vertical: under the screen, the wallpaper simply goes on
     }
     css(mac.el, { transform: `translate(${(cam.sx - cam.fx * scale).toFixed(3)}px, ${(cam.sy - cam.fy * scale).toFixed(3)}px) scale(${scale.toFixed(5)})` });
 
     // the night before the pull back, lifting as the camera leaves the tab
     const nightK = 1 - ease.inOutQuad(prog(t, T.pullBack + 0.2, T.macIn + 0.2));
     css(night, { opacity: nightK, display: nightK > 0.001 ? 'block' : 'none' });
-    // until the pull back ends the display does not clip: past its edge the night (then the wallpaper) goes on
-    css(mac.el, { overflow: t < T.macIn + 0.45 ? 'visible' : 'hidden' });
+    // until the pull back ends the display does not clip: past its edge the night (then the wallpaper) goes on;
+    // vertical, it never clips until it steps back into a card
+    css(mac.el, { overflow: (V ? t < T.stepBack + 0.1 : t < T.macIn + 0.45) ? 'visible' : 'hidden' });
 
     // the Mac steps back: a rounded screen with a shadow, then away
     const back = ease.inOutCubic(prog(t, T.stepBack + 0.2, T.stepBack + 1.2));
@@ -120,7 +140,7 @@ export function createMacScene(layer) {
     css(layer, { opacity: 1 - away, filter: away > 0.01 ? `blur(${(away * 14).toFixed(2)}px)` : 'none' });
 
     // depth of field: the code softens while the camera looks at the tab
-    const dof = clamp((cam.z - 1.08) / 0.3) * (1 - back);
+    const dof = (V ? clamp((cam.z - 3.4) / 0.8) : clamp((cam.z - 1.08) / 0.3)) * (1 - back);
     css(mac.editor.win, { filter: dof > 0.01 ? `blur(${(dof * 5.5).toFixed(2)}px) brightness(${(1 - dof * 0.18).toFixed(3)})` : 'none' });
 
     // the caret, typing a little while the agents work

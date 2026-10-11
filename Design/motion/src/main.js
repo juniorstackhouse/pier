@@ -8,6 +8,7 @@ import { createCaptions } from './captions.js';
 import { createMacScene } from './scenes/mac.js';
 import { createPhoneScene } from './scenes/phone.js';
 import { createOutroScene } from './scenes/outro.js';
+import { FORMAT } from './format.js';
 import { renderAudio } from './audio.js';
 
 registerSymbols(sizes);
@@ -27,28 +28,33 @@ const outroScene = createOutroScene(layers.montage, layers.end);
 
 const T = CUE;
 const LEFT = 150;
+const V = FORMAT.vertical;
+// where the words go: wide, on the left of the picture; vertical, above or under it, centred
+const W = (wide, vert) => (V ? vert : wide);
+const left = (y, size) => ({ x: LEFT, y, size });
+const centre = (x, y, size) => ({ x, y, size, align: 'center' });
 const updateCaptions = createCaptions(layers.captions, [
-  { t0: T.introLine, t1: T.pullBack - 0.15, lines: ['Your agents', 'are at work.'], x: LEFT, y: 540, size: 92 },
-  { t0: T.macLine, t1: T.pushIn + BEAT * 0.5, lines: ['One tab. Every agent.'], x: LEFT, y: 968, size: 76 },
-  { t0: T.needsLine, t1: T.keyLine - 0.2, lines: ['When one', '*needs you*,'], x: LEFT, y: 520, size: 96 },
-  { t0: T.keyLine, t1: T.editorLine - 0.5, lines: ['answer in', 'a keystroke.'], x: LEFT, y: 520, size: 96 },
-  { t0: T.editorLine, t1: T.toolNew - 0.5, lines: ['Never leave', 'your editor.'], x: LEFT, y: 520, size: 96 },
-  { t0: T.toolNew, t1: T.cursorOut, lines: ['Start a *task*.'], x: LEFT, y: 420, size: 84, accent: 'var(--cream)' },
-  { t0: T.toolTalk, t1: T.cursorOut, lines: ['*Talk* to it.'], x: LEFT, y: 520, size: 84, accent: 'var(--cream)' },
-  { t0: T.toolPoint, t1: T.cursorOut, lines: ['*Point* at it.'], x: LEFT, y: 620, size: 84, accent: 'var(--cream)' },
-  { t0: T.stepLine, t1: T.phoneUp - 0.2, lines: ['Step away.'], x: 960, y: 540, size: 150, align: 'center' },
-  { t0: T.followLine, t1: T.islandLine - 0.3, lines: ['They come', 'with you.'], x: LEFT, y: 540, size: 96 },
-  { t0: T.islandLine, t1: T.askLine - 0.45, lines: ['Live, in the', '*Dynamic Island.*'], x: LEFT, y: 540, size: 96, accent: 'var(--blue)' },
-  { t0: T.askLine, t1: T.menuLine - 0.3, lines: ['Every *question*', 'finds you.'], x: LEFT, y: 540, size: 96 },
-  { t0: T.menuLine, t1: T.tapLine - 0.3, lines: ['Answer it from', 'the notification.'], x: LEFT, y: 540, size: 88 },
-  { t0: T.tapLine, t1: T.lockCard - 0.2, lines: ['One tap.', 'Back to *work.*'], x: LEFT, y: 540, size: 96, accent: 'var(--blue)' },
-  { t0: T.lockLine, t1: T.turnLine - 0.35, lines: ['Even from the', 'Lock Screen.'], x: LEFT, y: 540, size: 96 },
-  { t0: T.turnLine, t1: T.phoneOut + 0.2, lines: ['*Your turn.*', 'Review when', 'you’re ready.'], x: LEFT, y: 540, size: 88, accent: 'var(--green)' },
-  { t0: T.every1, t1: T.every2 - 0.1, outDur: 0.1, stagger: 0.05, lines: ['Every agent.'], x: LEFT, y: 540, size: 112 },
-  { t0: T.every2, t1: T.every3 - 0.1, outDur: 0.1, stagger: 0.05, lines: ['Every box.'], x: LEFT, y: 540, size: 112 },
-  { t0: T.every3, t1: T.secure - 0.2, outDur: 0.2, stagger: 0.05, lines: ['Anywhere.'], x: LEFT, y: 540, size: 112 },
-  { t0: T.secure + 0.15, t1: T.endIn - 0.6, lines: ['End-to-end encrypted.'], x: 960, y: 250, size: 88, align: 'center' },
-  { t0: T.keys, t1: T.endIn - 0.6, lines: ['Your machines. *Your keys.*'], x: 960, y: 845, size: 64, align: 'center', accent: '#7FE3DC' },
+  { t0: T.introLine, t1: T.pullBack - 0.15, lines: ['Your agents', 'are at work.'], ...W(left(540, 92), centre(540, 1540, 92)) },
+  { t0: T.macLine, t1: T.pushIn + BEAT * 0.5, lines: W(['One tab. Every agent.'], ['One tab.', 'Every agent.']), ...W(left(968, 76), { x: 80, y: 1330, size: 100 }) },
+  { t0: T.needsLine, t1: W(T.keyLine - 0.2, T.inboxClick - 0.15), outDur: W(0.38, 0.18), lines: ['When one', '*needs you*,'], ...W(left(520, 96), { x: 70, y: 560, size: 104 }) },
+  { t0: T.keyLine, t1: T.editorLine - 0.5, lines: ['answer in', 'a keystroke.'], ...W(left(520, 96), centre(540, 1290, 96)) },
+  { t0: T.editorLine, t1: T.toolNew - 0.5, lines: ['Never leave', 'your editor.'], ...W(left(520, 96), centre(540, 1360, 96)) },
+  { t0: T.toolNew, t1: T.cursorOut, lines: ['Start a *task*.'], ...W(left(420, 84), { x: 70, y: 400, size: 92 }), accent: 'var(--cream)' },
+  { t0: T.toolTalk, t1: T.cursorOut, lines: ['*Talk* to it.'], ...W(left(520, 84), { x: 70, y: 520, size: 92 }), accent: 'var(--cream)' },
+  { t0: T.toolPoint, t1: T.cursorOut, lines: ['*Point* at it.'], ...W(left(620, 84), { x: 70, y: 640, size: 92 }), accent: 'var(--cream)' },
+  { t0: T.stepLine, t1: T.phoneUp - 0.2, lines: ['Step away.'], ...W(centre(960, 540, 150), centre(540, 960, 150)) },
+  { t0: T.followLine, t1: T.islandLine - 0.3, lines: ['They come', 'with you.'], ...W(left(540, 96), centre(540, 290, 96)) },
+  { t0: T.islandLine, t1: T.askLine - 0.45, lines: ['Live, in the', '*Dynamic Island.*'], ...W(left(540, 96), centre(540, 290, 96)), accent: 'var(--blue)' },
+  { t0: T.askLine, t1: T.menuLine - 0.3, lines: ['Every *question*', 'finds you.'], ...W(left(540, 96), centre(540, 290, 96)) },
+  { t0: T.menuLine, t1: T.tapLine - 0.3, lines: ['Answer it from', 'the notification.'], ...W(left(540, 88), centre(540, 290, 88)) },
+  { t0: T.tapLine, t1: T.lockCard - 0.2, lines: ['One tap.', 'Back to *work.*'], ...W(left(540, 96), centre(540, 290, 96)), accent: 'var(--blue)' },
+  { t0: T.lockLine, t1: T.turnLine - 0.35, lines: ['Even from the', 'Lock Screen.'], ...W(left(540, 96), centre(540, 290, 96)) },
+  { t0: T.turnLine, t1: T.phoneOut + 0.2, lines: ['*Your turn.*', 'Review when', 'you’re ready.'], ...W(left(540, 88), centre(540, 240, 84)), accent: 'var(--green)' },
+  { t0: T.every1, t1: T.every2 - 0.1, outDur: 0.1, stagger: 0.05, lines: ['Every agent.'], ...W(left(540, 112), centre(540, 330, 112)) },
+  { t0: T.every2, t1: T.every3 - 0.1, outDur: 0.1, stagger: 0.05, lines: ['Every box.'], ...W(left(540, 112), centre(540, 330, 112)) },
+  { t0: T.every3, t1: T.secure - 0.2, outDur: 0.2, stagger: 0.05, lines: ['Anywhere.'], ...W(left(540, 112), centre(540, 330, 112)) },
+  { t0: T.secure + 0.15, t1: T.endIn - 0.6, lines: W(['End-to-end encrypted.'], ['End-to-end', 'encrypted.']), ...W(centre(960, 250, 88), centre(540, 560, 92)) },
+  { t0: T.keys, t1: T.endIn - 0.6, lines: W(['Your machines. *Your keys.*'], ['Your machines.', '*Your keys.*']), ...W(centre(960, 845, 64), centre(540, 1440, 76)), accent: '#7FE3DC' },
 ]);
 
 // "1": a Mac key pressed on the beat, under "answer in a keystroke."
@@ -60,7 +66,7 @@ function updateKey(t) {
   const on = t > T.press1 - BEAT && t < T.sent;
   const press = t >= T.press1 ? Math.max(0, 1 - spring(t - T.press1 - 0.09, 0.22, 0.6)) * (t < T.press1 + 0.09 ? prog(t, T.press1 - 0.02, T.press1 + 0.03) : 1) : 0;
   css(key, { display: on ? 'block' : 'none', opacity: clamp(inK * 1.5) * (1 - out),
-    transform: `translate(${LEFT}px, 720px) translateY(${((1 - clamp(inK)) * 40 + out * 20).toFixed(2)}px) scale(${lerp(0.85, 1, clamp(inK)).toFixed(4)})` });
+    transform: `translate(${V ? 452 : LEFT}px, ${V ? 1480 : 720}px) translateY(${((1 - clamp(inK)) * 40 + out * 20).toFixed(2)}px) scale(${lerp(0.85, 1, clamp(inK)).toFixed(4)})` });
   css(key.firstChild, { transform: `translateY(${(press * 9).toFixed(2)}px)`, boxShadow: `0 ${(12 - press * 9).toFixed(1)}px 0 #0E0F11, 0 ${(22 - press * 14).toFixed(1)}px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12)` });
 }
 

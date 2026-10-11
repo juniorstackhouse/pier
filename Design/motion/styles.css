@@ -20,7 +20,7 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; background: #000; }
-body { width: 1920px; height: 1080px; overflow: hidden; font-family: var(--sf); -webkit-font-smoothing: antialiased; color: #fff; }
+body { width: var(--frame-w, 1920px); height: var(--frame-h, 1080px); overflow: hidden; font-family: var(--sf); -webkit-font-smoothing: antialiased; color: #fff; }
 
 #frame { position: absolute; inset: 0; overflow: hidden; background: #05080F; }
 .layer { position: absolute; inset: 0; transform-origin: 0 0; }
@@ -320,3 +320,16 @@ img.ios-icon { object-fit: cover; }
 }
 .big-key-cap .main { position: absolute; left: 0; right: 0; bottom: 34px; text-align: center; font-size: 72px; font-weight: 500; }
 .big-key-cap .shift { position: absolute; left: 0; right: 0; top: 18px; text-align: center; font-size: 30px; font-weight: 500; color: rgba(242, 242, 244, 0.55); }
+
+/* the vertical cut's end: the words centred on top, the harbour under them */
+.vertical .end-veil { background: linear-gradient(180deg, rgba(5, 9, 19, 0.7) 0%, rgba(5, 9, 19, 0.35) 38%, transparent 55%); }
+.vertical .end-copy { left: 0; right: 0; top: 190px; transform: none; display: flex; flex-direction: column; align-items: center; text-align: center; }
+.vertical .end-word { font-size: 170px; gap: 26px; }
+.vertical .end-icon { width: 132px; height: 132px; border-radius: 30px; }
+.vertical .end-tag { font-size: 74px; margin-top: 34px; }
+.vertical .end-details { font-size: 25px; margin-top: 30px; }
+.vertical .end-url { margin-top: 30px; }
+.vertical .end-stage { transform-origin: 50% 70%; }
+.vertical .bg-glow.a { left: 40px; top: 700px; }
+.vertical .bg-glow.b { left: 300px; top: 1300px; }
+.vertical .bg-glow.c { left: -300px; top: 200px; }

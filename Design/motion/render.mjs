@@ -55,11 +55,15 @@ if (cmd === 'page') {
   await browser.close(); server.close();
 }
 
+// --format vertical: the 1080 × 1920 cut (the same story and sound, framed for phones)
+const vertical = flag('format', 'wide') === 'vertical';
+const FW = vertical ? 1080 : 1920, FH = vertical ? 1920 : 1080, PAGE = vertical ? 'index.html?format=vertical' : 'index.html';
+
 if (cmd === 'stills') {
   const times = args[0].split(',').map(Number);
-  const dir = args[1] || 'out/stills';
+  const dir = args[1] && !args[1].startsWith('--') ? args[1] : 'out/stills';
   fs.mkdirSync(dir, { recursive: true });
-  const { p, browser, server } = await open('index.html', 1920, 1080, +flag('scale', 1));
+  const { p, browser, server } = await open(PAGE, FW, FH, +flag('scale', 1));
   await p.waitForFunction(() => window.motion?.ready);
   for (const t of times) {
     await p.evaluate((t) => window.motion.renderAt(t), t);
@@ -70,7 +74,7 @@ if (cmd === 'stills') {
 
 if (cmd === 'video') {
   const fps = +flag('fps', 60), scale = +flag('scale', 1);
-  const { p, browser, server } = await open('index.html', 1920, 1080, scale);
+  const { p, browser, server } = await open(PAGE, FW, FH, scale);
   await p.waitForFunction(() => window.motion?.ready);
   const duration = await p.evaluate(() => window.motion.duration);
   const from = +flag('from', 0), to = Math.min(+flag('to', duration), duration);
@@ -86,7 +90,7 @@ if (cmd === 'video') {
   const t0 = Date.now();
   for (let i = 0; i < frames; i++) for (let k = 0; k < blur; k++) {
     await p.evaluate((t) => window.motion.renderAt(t), from + i / fps + (blur > 1 ? (k / blur) * (shutter / fps) : 0));
-    const { data } = await cdp.send('Page.captureScreenshot', { format: 'png', optimizeForSpeed: true, clip: { x: 0, y: 0, width: 1920, height: 1080, scale } });
+    const { data } = await cdp.send('Page.captureScreenshot', { format: 'png', optimizeForSpeed: true, clip: { x: 0, y: 0, width: FW, height: FH, scale } });
     if (!ff.stdin.write(Buffer.from(data, 'base64'))) await new Promise((r) => ff.stdin.once('drain', r));
     if (i % 60 === 0 && k === 0) process.stdout.write(`\r${i}/${frames} frames · ${((Date.now() - t0) / 1000).toFixed(0)} s`);
   }
