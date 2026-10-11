@@ -13,6 +13,13 @@ import (
 // does. Pairing (bound to the TLS session) and requests still work, because
 // the relay only carries the mutual TLS between the two ends.
 func TestPairAndRequestThroughARelay(t *testing.T) {
+	t.Run("tcp", func(t *testing.T) { pairAndRequestThroughARelay(t, func(addr string) string { return addr }) })
+	t.Run("websocket", func(t *testing.T) {
+		pairAndRequestThroughARelay(t, func(addr string) string { return "ws://" + addr })
+	})
+}
+
+func pairAndRequestThroughARelay(t *testing.T, relayAddr func(string) string) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -24,7 +31,7 @@ func TestPairAndRequestThroughARelay(t *testing.T) {
 	defer func() { cancel(); <-relayDone }()
 
 	b := startBox(t)
-	rl := relay.NewListener(ln.Addr().String(), "t0ken", b.server.Identity, nil)
+	rl := relay.NewListener(relayAddr(ln.Addr().String()), "t0ken", b.server.Identity, nil)
 	go rl.Run(ctx)
 	served := make(chan struct{})
 	go func() { b.server.Serve(ctx, rl); close(served) }()
@@ -40,7 +47,7 @@ func TestPairAndRequestThroughARelay(t *testing.T) {
 	// Port 1 refuses at once: the box's own address is out of reach.
 	const unreachable = "127.0.0.1:1"
 	tok := b.issue(t)
-	tok.Address, tok.Relay = unreachable, ln.Addr().String()
+	tok.Address, tok.Relay = unreachable, relayAddr(ln.Addr().String())
 	me := laptop(t)
 	name, err := Pair(context.Background(), me, tok, "alex-phone")
 	if err != nil {
@@ -50,7 +57,7 @@ func TestPairAndRequestThroughARelay(t *testing.T) {
 		t.Fatalf("box name = %q", name)
 	}
 	peer := b.peer()
-	peer.Address, peer.Relay = unreachable, ln.Addr().String()
+	peer.Address, peer.Relay = unreachable, relayAddr(ln.Addr().String())
 	c := NewClient(me, peer)
 	defer c.Close()
 	if _, err := c.Ping(context.Background()); err != nil {

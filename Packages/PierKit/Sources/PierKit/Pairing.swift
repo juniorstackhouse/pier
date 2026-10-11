@@ -54,14 +54,13 @@ public enum Pairing {
     ) async throws -> BoxRecord {
         // At the link's address; when it does not answer and the box has a relay, through the relay (pairing a phone
         // away from home). The proof below is bound to whichever TLS session carries it: the relay only passes it on.
-        @Sendable func attempt(host: String, port: Int, viaRelay: Bool, timeout: TimeAmount)
+        @Sendable func attempt(_ route: DialRoute, timeout: TimeAmount)
             async throws -> (TLSDial.Result, EventLoopPromise<(Int, Data)>)
         {
             let responsePromise = group.next().makePromise(of: (Int, Data).self)
             do {
                 let dial = try await TLSDial.connect(
-                    host: host, port: port, viaRelay: viaRelay, identity: identity, pin: link.fingerprint,
-                    alpn: ["http/1.1"], group: group, timeout: timeout
+                    route: route, identity: identity, pin: link.fingerprint, alpn: ["http/1.1"], group: group, timeout: timeout
                 ) { ops in
                     try ops.addHTTPClientHandlers()
                     try ops.addHandler(HTTP1ResponseCollector(promise: responsePromise))
@@ -75,14 +74,15 @@ public enum Pairing {
         }
         let dial: TLSDial.Result
         let responsePromise: EventLoopPromise<(Int, Data)>
-        if let relay = link.relay, let r = try? PairingLink.splitHostPort(relay) {
+        let direct = DialRoute.direct(host: link.host, port: link.port)
+        if let relay = link.relay.flatMap(RelayEndpoint.parse) {
             do {
-                (dial, responsePromise) = try await attempt(host: link.host, port: link.port, viaRelay: false, timeout: .seconds(4))
+                (dial, responsePromise) = try await attempt(direct, timeout: .seconds(4))
             } catch {
-                (dial, responsePromise) = try await attempt(host: r.0, port: r.1, viaRelay: true, timeout: .seconds(15))
+                (dial, responsePromise) = try await attempt(.relay(relay), timeout: .seconds(15))
             }
         } else {
-            (dial, responsePromise) = try await attempt(host: link.host, port: link.port, viaRelay: false, timeout: .seconds(15))
+            (dial, responsePromise) = try await attempt(direct, timeout: .seconds(15))
         }
         let channel = dial.channel
         defer { channel.close(promise: nil) }

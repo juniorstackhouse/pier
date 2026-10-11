@@ -53,7 +53,7 @@ type Token struct {
 	Fingerprint identity.Fingerprint
 	Code        Code
 	// Relay, when the box uses one, is where apps reach it when Address does
-	// not answer (package relay): host:port.
+	// not answer (package relay): host:port, or a ws:// or wss:// URL.
 	Relay string
 }
 
@@ -92,7 +92,9 @@ func ParseToken(s string) (Token, error) {
 	}
 	tok := Token{Address: net.JoinHostPort(host, port), Fingerprint: fp, Code: code}
 	if r := q.Get("relay"); r != "" {
-		if h, p, err := net.SplitHostPort(r); err == nil && h != "" && p != "" {
+		if ru, err := url.Parse(r); err == nil && (ru.Scheme == "wss" || ru.Scheme == "ws") && ru.Host != "" {
+			tok.Relay = r
+		} else if h, p, err := net.SplitHostPort(r); err == nil && h != "" && p != "" {
 			tok.Relay = r
 		}
 	}

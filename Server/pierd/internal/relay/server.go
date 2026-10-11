@@ -38,6 +38,10 @@ type Server struct {
 	// LogAddresses logs where boxes connect from; off, the log holds no
 	// address at all.
 	LogAddresses bool
+	// BehindProxy says every connection comes through a proxy in front of
+	// the relay (a Cloudflare Tunnel): a WebSocket's client address is the
+	// one the proxy names, not the proxy's own.
+	BehindProxy bool
 	// Now is the clock (tests).
 	Now func() time.Time
 
@@ -173,6 +177,14 @@ func (s *Server) track(c net.Conn) bool {
 	return true
 }
 
+// swap tracks a connection's WebSocket in its place (closing either closes both).
+func (s *Server) swap(old, c net.Conn) {
+	s.mu.Lock()
+	delete(s.conns, old)
+	s.conns[c] = struct{}{}
+	s.mu.Unlock()
+}
+
 func (s *Server) untrack(c net.Conn) {
 	s.mu.Lock()
 	delete(s.conns, c)
@@ -193,6 +205,16 @@ func (s *Server) handle(c net.Conn) {
 	}()
 	c.SetReadDeadline(time.Now().Add(setupWithin))
 	r := newReader(c)
+	if head, err := r.Peek(4); err == nil && string(head) == "GET " {
+		// The same protocol inside a WebSocket (an HTTPS front, ws.go).
+		ws, err := upgradeWebSocket(c, r, s.BehindProxy)
+		if err != nil {
+			return
+		}
+		s.swap(c, ws)
+		c = ws
+		r = newReader(ws)
+	}
 	line, err := readLine(r)
 	if err != nil {
 		return

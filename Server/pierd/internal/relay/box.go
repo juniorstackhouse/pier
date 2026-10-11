@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -96,8 +97,7 @@ func (l *Listener) Run(ctx context.Context) {
 
 // session registers once and serves CONNECTs until the connection drops.
 func (l *Listener) session(ctx context.Context) error {
-	d := net.Dialer{Timeout: setupWithin, KeepAlive: 30 * time.Second}
-	c, err := d.DialContext(ctx, "tcp", l.Relay)
+	c, err := dialRelay(ctx, l.Relay)
 	if err != nil {
 		return err
 	}
@@ -164,8 +164,7 @@ func (l *Listener) session(ctx context.Context) error {
 
 // open makes the box's side of one app connection and hands it to Accept.
 func (l *Listener) open(ctx context.Context, id, from string) {
-	d := net.Dialer{Timeout: setupWithin, KeepAlive: 30 * time.Second}
-	c, err := d.DialContext(ctx, "tcp", l.Relay)
+	c, err := dialRelay(ctx, l.Relay)
 	if err != nil {
 		return
 	}
@@ -222,8 +221,7 @@ func (c *relayedConn) RemoteAddr() net.Addr {
 // Dial opens a connection to the box with fingerprint fp through the relay at
 // addr. When it returns, the box is on the other end: the caller starts TLS.
 func Dial(ctx context.Context, addr string, fp identity.Fingerprint) (net.Conn, error) {
-	d := net.Dialer{Timeout: setupWithin, KeepAlive: 30 * time.Second}
-	c, err := d.DialContext(ctx, "tcp", addr)
+	c, err := dialRelay(ctx, addr)
 	if err != nil {
 		return nil, err
 	}
@@ -251,11 +249,18 @@ func Dial(ctx context.Context, addr string, fp identity.Fingerprint) (net.Conn, 
 	return &bufferedConn{Conn: c, r: r}, nil
 }
 
-// NormalizeAddr gives a relay address its default port when it has none.
+// NormalizeAddr gives a relay address its default port when it has none; a
+// ws:// or wss:// URL stays as it is.
 func NormalizeAddr(addr string) (string, error) {
 	addr = strings.TrimSpace(addr)
 	if addr == "" {
 		return "", errors.New("empty relay address")
+	}
+	if IsWebSocket(addr) {
+		if u, err := url.Parse(addr); err != nil || u.Host == "" {
+			return "", fmt.Errorf("bad relay address %q", addr)
+		}
+		return addr, nil
 	}
 	if _, _, err := net.SplitHostPort(addr); err != nil {
 		addr = net.JoinHostPort(strings.Trim(addr, "[]"), DefaultPort)

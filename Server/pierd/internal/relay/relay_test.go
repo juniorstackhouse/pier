@@ -378,3 +378,67 @@ func TestAPublicRelayEndsABoxsDayAtItsQuota(t *testing.T) {
 		c.Close()
 	}
 }
+
+func TestTheProtocolRunsInsideAWebSocket(t *testing.T) {
+	relay, _ := startRelay(t, "")
+	ws := "ws://" + relay
+	id := newIdentity(t)
+	waitConnected(t, startBox(t, ws, "", id))
+	// An app through the WebSocket, its box through it too.
+	c, err := dialAndEcho(t, ws+"/"+id.Fingerprint().Short(), id.Fingerprint())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	r := bufio.NewReader(c)
+	big := strings.Repeat("ab", 20<<10) // 40 KB: more than one 32 KB frame, under the echo's 64 KB lines
+	fmt.Fprintln(c, big)
+	if got, _ := r.ReadString('\n'); got != strings.ToUpper(big)+"\n" {
+		t.Fatalf("echo through the WebSocket: %d bytes", len(got))
+	}
+	// And a TCP app reaches the same box: one relay, both ways in.
+	tcp, err := dialAndEcho(t, relay, id.Fingerprint())
+	if err != nil {
+		t.Fatalf("TCP beside WebSocket: %v", err)
+	}
+	tcp.Close()
+}
+
+func TestBehindAProxyTheClientAddressIsTheProxys(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ln.Close()
+	got := make(chan string, 1)
+	go func() {
+		c, err := ln.Accept()
+		if err != nil {
+			return
+		}
+		ws, err := upgradeWebSocket(c, bufio.NewReader(c), true)
+		if err != nil {
+			got <- "error: " + err.Error()
+			return
+		}
+		got <- ws.RemoteAddr().String()
+		ws.Close()
+	}()
+	c, err := net.Dial("tcp", ln.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	fmt.Fprintf(c, "GET /x HTTP/1.1\r\nHost: t.example.com\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"+
+		"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\nCF-Connecting-IP: 203.0.113.9\r\n\r\n")
+	if addr := <-got; !strings.HasPrefix(addr, "203.0.113.9:") {
+		t.Fatalf("client address = %q, want the one Cloudflare named", addr)
+	}
+}
+
+func TestTunnelAddressOnAWebSocketRelayIsAPath(t *testing.T) {
+	id := newIdentity(t)
+	if got, want := TunnelAddress("wss://t.example.com", id.Fingerprint()), "wss://t.example.com/"+id.Fingerprint().Short(); got != want {
+		t.Fatalf("TunnelAddress = %q, want %q", got, want)
+	}
+}

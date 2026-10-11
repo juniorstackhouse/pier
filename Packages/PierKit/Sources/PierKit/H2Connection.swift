@@ -32,16 +32,16 @@ final class H2Connection: Sendable {
     /// A connection to the box: at its address or, when it has a relay, whichever of the two answers first (the
     /// address at home, the relay away from it). Both run the same TLS, pinned to the box's key.
     static func dial(box: BoxRecord, identity: PierIdentity, group: EventLoopGroup) async throws -> H2Connection {
-        guard let relay = box.relay, let r = try? PairingLink.splitHostPort(relay) else {
+        guard let relay = box.relay.flatMap(RelayEndpoint.parse) else {
             let a = try PairingLink.splitHostPort(box.address)
-            return try await dialOne(box: box, host: a.0, port: a.1, viaRelay: false, identity: identity, group: group)
+            return try await dialOne(box: box, route: .direct(host: a.0, port: a.1), identity: identity, group: group)
         }
         @Sendable func direct() async throws -> H2Connection {
             let a = try PairingLink.splitHostPort(box.address)
-            return try await dialOne(box: box, host: a.0, port: a.1, viaRelay: false, identity: identity, group: group)
+            return try await dialOne(box: box, route: .direct(host: a.0, port: a.1), identity: identity, group: group)
         }
         @Sendable func relayed() async throws -> H2Connection {
-            try await dialOne(box: box, host: r.0, port: r.1, viaRelay: true, identity: identity, group: group)
+            try await dialOne(box: box, route: .relay(relay), identity: identity, group: group)
         }
         let order: [@Sendable () async throws -> H2Connection] =
             relayFirst.withLockedValue { $0.contains(box.fingerprint) } ? [relayed, direct] : [direct, relayed]
@@ -51,7 +51,7 @@ final class H2Connection: Sendable {
     }
 
     private static func dialOne(
-        box: BoxRecord, host: String, port: Int, viaRelay: Bool, identity: PierIdentity, group: EventLoopGroup
+        box: BoxRecord, route: DialRoute, identity: PierIdentity, group: EventLoopGroup
     ) async throws -> H2Connection {
         // The multiplexer is created inside the channel initializer so no frame can arrive unhandled.
         let muxBox = MuxBox()
@@ -64,7 +64,7 @@ final class H2Connection: Sendable {
             + [HTTP2Setting(parameter: .initialWindowSize, value: 4 << 20)]
         let config = cfg
         let dial = try await TLSDial.connect(
-            host: host, port: port, viaRelay: viaRelay, identity: identity, pin: box.fingerprint, alpn: ["h2"], group: group
+            route: route, identity: identity, pin: box.fingerprint, alpn: ["h2"], group: group
         ) { ops in
             let mux = try ops.configureAsyncHTTP2Pipeline(mode: .client, configuration: config) { channel in
                 channel.eventLoop.makeSucceededVoidFuture()
@@ -87,7 +87,7 @@ final class H2Connection: Sendable {
                 HTTP2Frame(streamID: .rootStream, payload: .ping(HTTP2PingData(withInteger: 0), ack: false)), promise: nil)
         }
         channel.closeFuture.whenComplete { _ in ping.cancel() }
-        return H2Connection(channel: channel, multiplexer: muxBox.get(), authority: box.address, viaRelay: viaRelay)
+        return H2Connection(channel: channel, multiplexer: muxBox.get(), authority: box.address, viaRelay: route.viaRelay)
     }
 
     func close() { channel.close(promise: nil) }

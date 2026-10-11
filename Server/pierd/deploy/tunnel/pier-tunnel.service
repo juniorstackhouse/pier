@@ -1,5 +1,5 @@
-# The Pier tunnel: `pierd relay serve --public` on port 443, as a system service of its own user with no other
-# privilege than binding that port. deploy.sh installs it; docs/PROTOCOL.md §10 says what it carries.
+# The Pier tunnel: `pierd relay serve --public`, as a system service of its own user with no other privilege than
+# binding port 443. deploy.sh installs it; docs/PROTOCOL.md §10 says what it carries.
 [Unit]
 Description=Pier tunnel (pierd relay)
 After=network-online.target
@@ -9,7 +9,11 @@ Wants=network-online.target
 User=pier
 Group=pier
 Environment=PIER_HOME=/var/lib/pier
-ExecStart=/usr/local/bin/pierd relay serve --listen :443 --public
+# Port 443 to the internet by default; behind a Cloudflare Tunnel, /etc/default/pier-tunnel says
+# PIER_TUNNEL_ARGS="--listen 127.0.0.1:7443 --public --behind-proxy" (deploy.sh --cloudflared writes it).
+Environment=PIER_TUNNEL_ARGS="--listen :443 --public"
+EnvironmentFile=-/etc/default/pier-tunnel
+ExecStart=/usr/local/bin/pierd relay serve $PIER_TUNNEL_ARGS
 AmbientCapabilities=CAP_NET_BIND_SERVICE
 CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 NoNewPrivileges=true

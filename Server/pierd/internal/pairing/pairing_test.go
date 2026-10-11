@@ -211,4 +211,9 @@ func TestTokenCarriesTheRelay(t *testing.T) {
 	if back, err := ParseToken(tok.String() + "&relay=nonsense"); err != nil || back.Relay != "" {
 		t.Fatalf("a malformed relay: %+v, %v", back, err)
 	}
+	// A WebSocket relay (behind an HTTPS front).
+	tok.Relay = "wss://t.example.com/ue4nkpjupj6v"
+	if back, err := ParseToken(tok.String()); err != nil || back.Relay != tok.Relay {
+		t.Fatalf("a WebSocket relay: %+v, %v", back, err)
+	}
 }

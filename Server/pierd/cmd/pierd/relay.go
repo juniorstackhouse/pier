@@ -34,10 +34,11 @@ const relayUsage = `usage:
   pierd relay install [--listen ADDR] [--open]
                                            On a server with a public address: run a relay as a user
                                            service (port 7443; --open lets any box use it)
-  pierd relay serve [--listen ADDR] [--token T | --open | --public]
+  pierd relay serve [--listen ADDR] [--token T | --open | --public] [--behind-proxy]
                                            Run a relay in the foreground (--public: the Pier tunnel's
                                            mode, open to any box with per-box limits and no addresses
-                                           in the log)`
+                                           in the log; it also speaks WebSocket, for an HTTPS front such
+                                           as a Cloudflare Tunnel: --behind-proxy then)`
 
 // relayCmd is `pierd relay`: a box's relay (use, off, status) and the relay
 // itself (serve, install).
@@ -98,6 +99,7 @@ func relayServe(b boxHome, args []string) error {
 	connsPerBox := fs.Int("conns-per-box", 16, "with --public: app connections at once per box")
 	boxesPerSource := fs.Int("boxes-per-address", 20, "with --public: boxes registered from one address")
 	gbPerDay := fs.Float64("gb-per-day", 5, "with --public: GB a box's apps may move per day")
+	behindProxy := fs.Bool("behind-proxy", false, "every connection comes through a proxy in front (a Cloudflare Tunnel): take the client's address from its CF-Connecting-IP / X-Forwarded-For")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -117,7 +119,7 @@ func relayServe(b boxHome, args []string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	logger := log.New(os.Stderr, "", log.LstdFlags)
-	srv := &relay.Server{Token: *token, Log: logger, LogAddresses: !*public}
+	srv := &relay.Server{Token: *token, Log: logger, LogAddresses: !*public, BehindProxy: *behindProxy}
 	access := "boxes need its token"
 	switch {
 	case *public:

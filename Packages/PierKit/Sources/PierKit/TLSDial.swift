@@ -1,9 +1,45 @@
 import Foundation
 import NIOConcurrencyHelpers
 import NIOCore
+import NIOHTTP1
 import NIOPosix
 import NIOSSL
 import NIOTLS
+import NIOWebSocket
+
+/// Where a box's relay is: "HOST:PORT", the relay's own TCP, or a `ws://` / `wss://` URL, its protocol inside a
+/// WebSocket, behind an HTTPS front (the Pier tunnel). docs/PROTOCOL.md §10.
+struct RelayEndpoint: Sendable, Hashable {
+    let host: String
+    let port: Int
+    let webSocket: Bool
+    let tls: Bool
+    /// The WebSocket's path, and the Host header.
+    let path: String
+    let authority: String
+
+    static func parse(_ s: String) -> RelayEndpoint? {
+        if s.hasPrefix("wss://") || s.hasPrefix("ws://") {
+            guard let u = URLComponents(string: s), let host = u.host, !host.isEmpty else { return nil }
+            let tls = u.scheme == "wss"
+            let port = u.port ?? (tls ? 443 : 80)
+            var path = u.percentEncodedPath.isEmpty ? "/" : u.percentEncodedPath
+            if let q = u.percentEncodedQuery { path += "?" + q }
+            return RelayEndpoint(host: host, port: port, webSocket: true, tls: tls, path: path,
+                                 authority: u.port.map { "\(host):\($0)" } ?? host)
+        }
+        guard let (h, p) = try? PairingLink.splitHostPort(s) else { return nil }
+        return RelayEndpoint(host: h, port: p, webSocket: false, tls: false, path: "", authority: s)
+    }
+}
+
+/// How a connection reaches the box: at its address, or through its relay.
+enum DialRoute: Sendable, Hashable {
+    case direct(host: String, port: Int)
+    case relay(RelayEndpoint)
+
+    var viaRelay: Bool { if case .relay = self { return true } else { return false } }
+}
 
 /// Completes once the TLS handshake finished (or fails with the first error). Passes everything through.
 final class HandshakeWaiter: ChannelInboundHandler, @unchecked Sendable {
@@ -38,7 +74,7 @@ final class HandshakeWaiter: ChannelInboundHandler, @unchecked Sendable {
     }
 }
 
-/// The relay's side of a relayed connection, before TLS (pierd's package relay; docs/PROTOCOL.md §5): asks the relay
+/// The relay's side of a relayed connection, before TLS (pierd's package relay; docs/PROTOCOL.md §10): asks the relay
 /// for the box by its key's fingerprint and waits for "OK", then passes every byte through untouched. The TLS that
 /// follows is the box's own, pinned as on a direct connection: the relay only carries it.
 final class RelayDialHandler: ChannelInboundHandler, @unchecked Sendable {
@@ -56,11 +92,24 @@ final class RelayDialHandler: ChannelInboundHandler, @unchecked Sendable {
         self.promise = promise
     }
 
+    private var asked = false
+
+    /// On a WebSocket the channel is active long before: ask as soon as the handler is in.
+    func handlerAdded(context: ChannelHandlerContext) {
+        if context.channel.isActive { ask(context) }
+    }
+
     func channelActive(context: ChannelHandlerContext) {
+        ask(context)
+        context.fireChannelActive()
+    }
+
+    private func ask(_ context: ChannelHandlerContext) {
+        guard !asked else { return }
+        asked = true
         var b = context.channel.allocator.buffer(capacity: 120)
         b.writeString("\(Self.version) DIAL \(fingerprint)\n")
         context.writeAndFlush(NIOAny(b), promise: nil)
-        context.fireChannelActive()
     }
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
@@ -110,8 +159,78 @@ final class RelayDialHandler: ChannelInboundHandler, @unchecked Sendable {
     }
 }
 
-/// Dials `host:port`, TLS 1.3, presents our Ed25519 client cert, and pins the server key by SPKI hash. With `viaRelay`,
-/// `host:port` is the box's relay: it is asked for the box (`RelayDialHandler`) before the same TLS starts.
+/// A WebSocket's binary messages as one stream of bytes (the relay's protocol, then the box's TLS, travel inside):
+/// frames in become bytes, bytes out become masked binary frames; pings are answered, a close closes.
+final class WebSocketByteStream: ChannelDuplexHandler, @unchecked Sendable {
+    typealias InboundIn = WebSocketFrame
+    typealias InboundOut = ByteBuffer
+    typealias OutboundIn = ByteBuffer
+    typealias OutboundOut = WebSocketFrame
+
+    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+        let frame = unwrapInboundIn(data)
+        switch frame.opcode {
+        case .binary, .continuation, .text:
+            context.fireChannelRead(wrapInboundOut(frame.unmaskedData))
+        case .ping:
+            let pong = WebSocketFrame(fin: true, opcode: .pong, maskKey: .random(), data: frame.unmaskedData)
+            context.writeAndFlush(wrapOutboundOut(pong), promise: nil)
+        case .connectionClose:
+            context.close(promise: nil)
+        default:
+            break
+        }
+    }
+
+    func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
+        let bytes = unwrapOutboundIn(data)
+        context.write(wrapOutboundOut(WebSocketFrame(fin: true, opcode: .binary, maskKey: .random(), data: bytes)), promise: promise)
+    }
+}
+
+/// Sends the WebSocket's opening request once the channel is up (the upgrade handler adds its headers).
+final class WebSocketOpener: ChannelInboundHandler, @unchecked Sendable {
+    typealias InboundIn = NIOAny
+    typealias OutboundOut = HTTPClientRequestPart
+    let path: String
+    let authority: String
+
+    init(path: String, authority: String) {
+        self.path = path
+        self.authority = authority
+    }
+
+    func channelActive(context: ChannelHandlerContext) {
+        var headers = HTTPHeaders()
+        headers.add(name: "Host", value: authority)
+        headers.add(name: "User-Agent", value: "Pier")
+        headers.add(name: "Content-Length", value: "0")
+        context.write(wrapOutboundOut(.head(HTTPRequestHead(version: .http1_1, method: .GET, uri: path, headers: headers))), promise: nil)
+        context.writeAndFlush(wrapOutboundOut(.end(nil)), promise: nil)
+        context.fireChannelActive()
+    }
+}
+
+/// Fails the relay step on any error or close before the relay's OK (the WebSocket's TLS, its upgrade).
+final class RelayGuard: ChannelInboundHandler, @unchecked Sendable {
+    typealias InboundIn = NIOAny
+    let promise: EventLoopPromise<Void>
+    init(promise: EventLoopPromise<Void>) { self.promise = promise }
+
+    func errorCaught(context: ChannelHandlerContext, error: Error) {
+        promise.fail(error)
+        context.fireErrorCaught(error)
+    }
+
+    func channelInactive(context: ChannelHandlerContext) {
+        promise.fail(PierError.transport("the relay closed the connection"))
+        context.fireChannelInactive()
+    }
+}
+
+/// Dials the box, TLS 1.3, presents our Ed25519 client cert, and pins the server key by SPKI hash: at its address, or
+/// through its relay, which is first asked for the box (`RelayDialHandler`; inside a WebSocket for a `ws(s)://` relay)
+/// before the same TLS starts.
 enum TLSDial {
     struct Result {
         let channel: Channel
@@ -121,7 +240,19 @@ enum TLSDial {
     static func connect(
         host: String,
         port: Int,
-        viaRelay: Bool = false,
+        identity: PierIdentity,
+        pin: Fingerprint,
+        alpn: [String],
+        group: EventLoopGroup,
+        timeout: TimeAmount = .seconds(15),
+        configure: @escaping @Sendable (ChannelPipeline.SynchronousOperations) throws -> Void
+    ) async throws -> Result {
+        try await connect(route: .direct(host: host, port: port), identity: identity, pin: pin, alpn: alpn, group: group,
+                          timeout: timeout, configure: configure)
+    }
+
+    static func connect(
+        route: DialRoute,
         identity: PierIdentity,
         pin: Fingerprint,
         alpn: [String],
@@ -130,9 +261,15 @@ enum TLSDial {
         configure: @escaping @Sendable (ChannelPipeline.SynchronousOperations) throws -> Void
     ) async throws -> Result {
         let context = try sslContext(identity: identity, alpn: alpn)
-        return try await dial(host: host, port: port, viaRelay: viaRelay, context: context, pin: pin, group: group, timeout: timeout,
-                              configure: configure)
+        return try await dial(route: route, context: context, pin: pin, group: group, timeout: timeout, configure: configure)
     }
+
+    /// The TLS a `wss://` relay's front speaks: the system's roots, the relay's name.
+    private static let frontContext: NIOSSLContext? = {
+        var config = TLSConfiguration.makeClientConfiguration()
+        config.applicationProtocols = ["http/1.1"]
+        return try? NIOSSLContext(configuration: config)
+    }()
 
     /// The TLS context depends only on our identity and ALPN: built once (key parsing, BoringSSL setup), not per dial.
     private static let contexts = NIOLockedValueBox<[String: NIOSSLContext]>([:])
@@ -159,13 +296,25 @@ enum TLSDial {
     }
 
     private static func dial(
-        host: String, port: Int, viaRelay: Bool, context: NIOSSLContext, pin: Fingerprint, group: EventLoopGroup,
+        route: DialRoute, context: NIOSSLContext, pin: Fingerprint, group: EventLoopGroup,
         timeout: TimeAmount, configure: @escaping @Sendable (ChannelPipeline.SynchronousOperations) throws -> Void
     ) async throws -> Result {
 
         let actualFP = NIOLockedValueBox<Fingerprint?>(nil)
         let handshake = group.next().makePromise(of: String?.self)
-        let relayed = viaRelay ? group.next().makePromise(of: Void.self) : nil
+        let relayed = route.viaRelay ? group.next().makePromise(of: Void.self) : nil
+        let (host, port): (String, Int)
+        let relay: RelayEndpoint?
+        switch route {
+        case .direct(let h, let p): (host, port, relay) = (h, p, nil)
+        case .relay(let r): (host, port, relay) = (r.host, r.port, r)
+        }
+        let front = relay?.tls == true ? frontContext : nil
+        if relay?.tls == true && front == nil {
+            handshake.fail(PierError.tls("no TLS for the relay"))
+            relayed?.fail(PierError.tls("no TLS for the relay"))
+            throw PierError.tls("could not set up TLS for the relay")
+        }
 
         // TLS, pinned, then the caller's handlers: at once on a direct connection, after the relay's OK on a relayed one.
         @Sendable func addTLS(_ ops: ChannelPipeline.SynchronousOperations) throws {
@@ -196,9 +345,23 @@ enum TLSDial {
             .channelInitializer { channel in
                 channel.eventLoop.makeCompletedFuture {
                     let ops = channel.pipeline.syncOperations
-                    if let relayed {
+                    switch (relay, relayed) {
+                    case (let r?, let relayed?) where r.webSocket:
+                        // The relay's protocol inside a WebSocket: its TLS (an HTTPS front) and upgrade first.
+                        if let front { try ops.addHandler(try NIOSSLClientHandler(context: front, serverHostname: r.host)) }
+                        let upgrader = NIOWebSocketClientUpgrader(maxFrameSize: 1 << 20) { channel, _ in
+                            channel.eventLoop.makeCompletedFuture {
+                                let ops = channel.pipeline.syncOperations
+                                try ops.addHandler(WebSocketByteStream())
+                                try ops.addHandler(RelayDialHandler(fingerprint: pin, promise: relayed))
+                            }
+                        }
+                        try ops.addHTTPClientHandlers(withClientUpgrade: (upgraders: [upgrader], completionHandler: { _ in }))
+                        try ops.addHandler(WebSocketOpener(path: r.path, authority: r.authority))
+                        try ops.addHandler(RelayGuard(promise: relayed))
+                    case (_, let relayed?):
                         try ops.addHandler(RelayDialHandler(fingerprint: pin, promise: relayed))
-                    } else {
+                    default:
                         try addTLS(ops)
                     }
                 }
