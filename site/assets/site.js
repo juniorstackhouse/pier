@@ -23,6 +23,20 @@
   var film = document.getElementById('film-video');
   if (film) {
     var frame = film.parentNode;
+    // a phone held upright gets the 9:16 cut (its file, its poster, the frame's shape), everything else the 16:9 one;
+    // picked again when the phone turns, until the film starts (preload="none": nothing is downloaded before play)
+    var upright = window.matchMedia && matchMedia('(max-width: 700px) and (orientation: portrait)');
+    var cut = null;
+    var shape = function () {
+      var v = !!(upright && upright.matches);
+      if (v === cut || frame.classList.contains('is-playing')) return;
+      cut = v;
+      frame.classList.toggle('is-vertical', v);
+      film.poster = 'assets/film/' + (v ? 'poster-vertical.jpg' : 'poster.jpg');
+      film.src = 'assets/film/' + (v ? 'pier-film-vertical.mp4' : 'pier-film.mp4');
+    };
+    shape();
+    if (upright && upright.addEventListener) upright.addEventListener('change', shape);
     var playFilm = function () {
       frame.classList.add('is-playing');
       film.controls = true;
@@ -31,7 +45,7 @@
     };
     frame.querySelector('.film-play').addEventListener('click', playFilm);
     document.querySelectorAll('[data-play-film]').forEach(function (a) { a.addEventListener('click', playFilm); });
-    film.addEventListener('ended', function () { film.controls = false; frame.classList.remove('is-playing'); film.currentTime = 0; });
+    film.addEventListener('ended', function () { film.controls = false; frame.classList.remove('is-playing'); film.currentTime = 0; shape(); });
   }
 
   var risers = document.querySelectorAll('.rise');

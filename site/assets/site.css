@@ -272,7 +272,7 @@ h2 { font-size: clamp(34px, 4.4vw, 56px); line-height: 1.04; letter-spacing: -0.
 
 .film { padding-top: 120px; }
 .film-frame { position: relative; border-radius: 26px; overflow: hidden; aspect-ratio: 16 / 9; background: #0b1220 url("film/poster.jpg") center / cover;
-  box-shadow: var(--shadow); }
+  box-shadow: var(--shadow); width: min(100%, 151vh); width: min(100%, 151svh); margin: 0 auto; }   /* never taller than the screen (a phone on its side) */
 .film-frame video { display: block; width: 100%; height: 100%; object-fit: cover; }
 .film-play {
   position: absolute; left: 50%; top: 50%; width: 104px; height: 104px; margin: -52px 0 0 -52px; border: 0; border-radius: 50%; cursor: pointer;
@@ -282,6 +282,9 @@ h2 { font-size: clamp(34px, 4.4vw, 56px); line-height: 1.04; letter-spacing: -0.
 .film-play:hover { transform: scale(1.06); box-shadow: 0 0 0 14px rgba(244, 236, 223, 0.2), 0 24px 60px rgba(0, 0, 0, 0.45); }
 .film-play svg { width: 38px; height: 38px; margin-left: 6px; }
 .film-frame.is-playing .film-play { display: none; }
+/* a phone held upright gets the vertical cut (site.js), the whole frame on the screen, the button between the words and the mascot */
+.film-frame.is-vertical { aspect-ratio: 9 / 16; width: min(100%, 460px, 47vh); width: min(100%, 460px, 47svh); background-image: url("film/poster-vertical.jpg"); }
+.film-frame.is-vertical .film-play { top: 44%; }
 
 /* features */
 
