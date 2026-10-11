@@ -62,10 +62,10 @@
     or a server at home. <code>pierd doctor</code> says what to fix; <code>pierd setup --address HOST</code> makes a link
     with another address. On a Mac with the firewall on (System Settings → Network → Firewall), allow incoming
     connections for pierd.</p>
-    <p><strong>Away from home:</strong> run a relay on any server with a public address and point the box at it. The app
-    then reaches the box from anywhere; the relay only carries the end-to-end encryption, it cannot read anything.</p>
-<pre>pierd relay install              # on the server: prints the line below
-pierd relay use HOST --token …   # on the Mac or the server at home</pre>
+    <p><strong>Away from home:</strong> nothing to set up. pierd keeps a connection to the Pier tunnel, and the app goes
+    through it when it cannot reach the box directly; the tunnel only carries the end-to-end encryption. <code>pierd
+    relay</code> says whether the box is connected to it; <code>pierd relay off</code> turns it off, and
+    <code>pierd relay use HOST</code> points the box at a relay of your own instead.</p>
   </details>
   <details>
     <summary>The pairing link doesn't work</summary>
@@ -129,10 +129,10 @@ pierd relay use HOST --token …   # on the Mac or the server at home</pre>
     de um Mac ou de um servidor em casa. <code>pierd doctor</code> diz o que corrigir; <code>pierd setup --address HOST</code>
     gera um link com outro endereço. Num Mac com o firewall ligado (Ajustes do Sistema → Rede → Firewall), permita
     conexões de entrada para o pierd.</p>
-    <p><strong>Fora de casa:</strong> rode um relay em qualquer servidor com endereço público e aponte a box para ele. O app
-    passa a alcançar a box de qualquer lugar; o relay só carrega a criptografia de ponta a ponta e não consegue ler nada.</p>
-<pre>pierd relay install              # no servidor: mostra a linha abaixo
-pierd relay use HOST --token …   # no Mac ou no servidor de casa</pre>
+    <p><strong>Fora de casa:</strong> nada para configurar. O pierd mantém uma conexão com o túnel do Pier, e o app passa
+    por ele quando não alcança a box diretamente; o túnel só carrega a criptografia de ponta a ponta. <code>pierd
+    relay</code> diz se a box está conectada a ele; <code>pierd relay off</code> desliga, e <code>pierd relay use
+    HOST</code> aponta a box para um relay seu.</p>
   </details>
   <details>
     <summary>O link de pareamento não funciona</summary>

@@ -372,8 +372,14 @@ func relayDoctorCheck(b boxHome) (doctor.Check, bool) {
 	return doctor.Check{}, false
 }
 
-// tunnelName is how the box's tunnel address reads (no port when it is 443).
+// tunnelName is how the box's tunnel address reads: no scheme, no port when
+// it is 443.
 func tunnelName(addr string) string {
+	for _, scheme := range []string{"wss://", "ws://"} {
+		if rest, ok := strings.CutPrefix(addr, scheme); ok {
+			return rest
+		}
+	}
 	if host, port, err := net.SplitHostPort(addr); err == nil && port == "443" {
 		return host
 	}
@@ -382,7 +388,7 @@ func tunnelName(addr string) string {
 
 func printRelayCheck(b boxHome, c doctor.Check) {
 	cfg := relayConfig(b)
-	name := "Relay " + cfg.Connect
+	name := "Relay " + tunnelName(cfg.Connect)
 	if id, err := b.identity(); err == nil && cfg.Official {
 		name = "Tunnel " + tunnelName(cfg.advertise(id.Fingerprint()))
 	}

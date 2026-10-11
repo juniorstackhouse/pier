@@ -48,3 +48,15 @@ func TestTheBoxUsesThePierTunnelUnlessToldOtherwise(t *testing.T) {
 		t.Fatalf("off: %+v", cfg)
 	}
 }
+
+func TestTunnelNameReadsWithoutSchemeOrPort(t *testing.T) {
+	for in, want := range map[string]string{
+		"wss://t.example.com/ue4nkpjupj6v": "t.example.com/ue4nkpjupj6v",
+		"ue4nkpjupj6v.t.example.com:443":   "ue4nkpjupj6v.t.example.com",
+		"relay.example.org:7443":           "relay.example.org:7443",
+	} {
+		if got := tunnelName(in); got != want {
+			t.Errorf("tunnelName(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

@@ -301,7 +301,8 @@ struct BoxSettingsRow: View {
             MonoText(conn.record.address, size: 12)
             if let relay = conn.record.relay {
                 // Away from the box's network the app goes through its tunnel (pierd relay), same keys.
-                let name = relay.hasSuffix(":443") ? String(relay.dropLast(4)) : relay
+                let bare = relay.replacingOccurrences(of: "wss://", with: "").replacingOccurrences(of: "ws://", with: "")
+                let name = bare.hasSuffix(":443") ? String(bare.dropLast(4)) : bare
                 HStack(spacing: 5) {
                     Image(systemName: "point.3.connected.trianglepath.dotted").font(.caption2).foregroundStyle(Theme.textDim)
                     MonoText(name, size: 12)

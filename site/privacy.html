@@ -34,8 +34,9 @@
   <h2>The short version</h2>
   <ul>
     <li>We do not collect any data from you. There are no accounts, no analytics, no advertising and no tracking.</li>
-    <li>The app talks only to the boxes you pair it with, directly, over mutual TLS. We run no server in between and
-      never see your code, prompts, conversations or files.</li>
+    <li>The app talks only to the boxes you pair it with, over mutual TLS: directly, or, away from the box's network,
+      through the Pier tunnel, which carries that encryption without being able to open it. We never see your code,
+      prompts, conversations or files.</li>
   </ul>
 
   <h2>What stays on your device</h2>
@@ -54,6 +55,15 @@
   <p>Your boxes are yours: what happens there (the agents you run, the services they call) is under your control and their
   providers' terms. The AI features of the app — titles, recaps, commit messages, suggested next steps — run on your box,
   with the agent command-line tool you already use there.</p>
+
+  <h2>The Pier tunnel</h2>
+  <p>So you can reach a box from anywhere without a VPN, pierd keeps a connection to the Pier tunnel
+  (<code>t.docktopier.com</code>), which we run, and the app goes through it when it cannot reach the box directly.
+  The tunnel only joins the two connections: what travels inside is encrypted end to end between the app and your box
+  with keys the tunnel does not have, so it cannot read or change it. To do its job it handles, without storing them,
+  which box a connection is for (its key's fingerprint), the addresses of both ends and how much data passes; its logs
+  keep no addresses. Cloudflare carries connections to it, under Cloudflare's privacy policy. <code>pierd relay
+  off</code> turns the tunnel off for a box, and <code>pierd relay use</code> points it at a relay of your own.</p>
 
   <h2>Alerts through your iCloud</h2>
   <p>When a box sends no push notifications of its own, Pier on your Mac can tell your iPhone and iPad what needs you
@@ -91,8 +101,9 @@
   <h2>Em resumo</h2>
   <ul>
     <li>Não coletamos nenhum dado seu. Não há contas, analytics, publicidade nem rastreamento.</li>
-    <li>O app conversa só com as boxes que você pareia, diretamente, por TLS mútuo. Não temos servidor no meio e nunca
-      vemos seu código, seus prompts, suas conversas ou seus arquivos.</li>
+    <li>O app conversa só com as boxes que você pareia, por TLS mútuo: diretamente ou, fora da rede da box, pelo túnel
+      do Pier, que carrega essa criptografia sem conseguir abri-la. Nunca vemos seu código, seus prompts, suas conversas
+      ou seus arquivos.</li>
   </ul>
 
   <h2>O que fica no seu aparelho</h2>
@@ -111,6 +122,15 @@
   <p>Suas boxes são suas: o que acontece nelas (os agentes que você roda, os serviços que eles chamam) está sob o seu
   controle e nos termos desses fornecedores. Os recursos de IA do app — títulos, resumos, mensagens de commit, próximos
   passos sugeridos — rodam na sua box, com a ferramenta de linha de comando do agente que você já usa lá.</p>
+
+  <h2>O túnel do Pier</h2>
+  <p>Para você alcançar uma box de qualquer lugar sem VPN, o pierd mantém uma conexão com o túnel do Pier
+  (<code>t.docktopier.com</code>), que nós mantemos, e o app passa por ele quando não alcança a box diretamente. O túnel
+  só junta as duas conexões: o que vai dentro é cifrado de ponta a ponta entre o app e a sua box, com chaves que o túnel
+  não tem, então ele não consegue ler nem alterar nada. Para funcionar, ele lida, sem guardar, com a box a que cada
+  conexão se destina (a impressão digital da chave dela), os endereços das duas pontas e o volume de dados; os registros
+  dele não guardam endereços. A Cloudflare leva as conexões até ele, sob a política de privacidade da Cloudflare.
+  <code>pierd relay off</code> desliga o túnel numa box, e <code>pierd relay use</code> aponta para um relay seu.</p>
 
   <h2>Avisos pelo seu iCloud</h2>
   <p>Quando uma box não envia notificações push próprias, o Pier no seu Mac pode avisar o seu iPhone e o seu iPad do que
