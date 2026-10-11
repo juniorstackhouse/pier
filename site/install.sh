@@ -1,7 +1,7 @@
 #!/bin/sh
 # Installs pierd, the Pier box server, and sets it up:
 #
-#   curl -fsSL https://wagnerfnds.github.io/pier/install.sh | sh
+#   curl -fsSL https://docktopier.com/install.sh | sh
 #
 # It downloads the latest pierd release for this OS and CPU from GitHub (github.com/wagnerfnds/pier), checks it
 # against the release's checksums, puts it in ~/.local/bin and runs `pierd setup`: pierd as a user service, the

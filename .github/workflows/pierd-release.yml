@@ -56,7 +56,7 @@ jobs:
           Install and pair, on a server over SSH or on your Mac:
 
           \`\`\`sh
-          curl -fsSL https://wagnerfnds.github.io/pier/install.sh | sh
+          curl -fsSL https://docktopier.com/install.sh | sh
           \`\`\`
 
           or \`npm install -g pierd && pierd setup\`, or \`brew install wagnerfnds/tap/pierd && pierd setup\`.

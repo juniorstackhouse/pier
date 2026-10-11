@@ -4,7 +4,7 @@ import PierKit
 /// Where Pier lives on the web, and the commands that install and pair pierd (site/install.sh, the npm package, the
 /// Homebrew formula): the onboarding and "Instalar o pierd" show them with Copiar.
 enum PierLinks {
-    static let site = "https://wagnerfnds.github.io/pier/"
+    static let site = "https://docktopier.com/"
     static let installCommand = "curl -fsSL \(site)install.sh | sh"
     static let npmCommand = "npm install -g pierd && pierd setup"
     static let brewCommand = "brew install wagnerfnds/tap/pierd && pierd setup"

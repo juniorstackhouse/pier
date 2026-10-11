@@ -30,7 +30,7 @@ scripts/smoke.sh                                              # end to end, see 
 On the machine that runs the agents (a Linux server or a Mac), as the user the agents run as:
 
 ```sh
-curl -fsSL https://wagnerfnds.github.io/pier/install.sh | sh
+curl -fsSL https://docktopier.com/install.sh | sh
 # or: npm install -g pierd && pierd setup
 # or: brew install wagnerfnds/tap/pierd && pierd setup
 ```
@@ -78,7 +78,7 @@ Or run a relay of your own on any server with a public address. It is the same b
 ```sh
 # on the server (a small VPS): pierd without setting up a box, then the relay as a user service on port 7443,
 # with a token boxes must present
-curl -fsSL https://wagnerfnds.github.io/pier/install.sh | PIERD_NO_SETUP=1 sh
+curl -fsSL https://docktopier.com/install.sh | PIERD_NO_SETUP=1 sh
 ~/.local/bin/pierd relay install        # prints: pierd relay use 203.0.113.7:7443 --token …
 # on the box (or at setup: pierd setup --relay 203.0.113.7 --relay-token …)
 pierd relay use 203.0.113.7 --token …

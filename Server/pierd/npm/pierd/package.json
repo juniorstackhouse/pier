@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "description": "The Pier box server: run and follow Claude Code and Codex agents on this machine from the Pier app (iPhone, iPad, Mac).",
   "keywords": ["pier", "claude-code", "codex", "agents", "remote", "ios", "mac"],
-  "homepage": "https://wagnerfnds.github.io/pier/",
+  "homepage": "https://docktopier.com/",
   "repository": { "type": "git", "url": "git+https://github.com/wagnerfnds/pier.git", "directory": "Server/pierd" },
   "bugs": "https://github.com/wagnerfnds/pier/issues",
   "license": "MIT",
