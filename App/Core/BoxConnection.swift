@@ -30,6 +30,9 @@ final class BoxConnection: Identifiable {
     @ObservationIgnored var onTransition: ((BoxConnection, Session, AgentState?, AgentState?) -> Void)?
     /// Called after sessions or the connection state changed (feeds widgets and Live Activities).
     @ObservationIgnored var onChange: ((BoxConnection) -> Void)?
+    /// Called when the box names another relay than the record has (`GET /v1/info`): the record is updated and the
+    /// box reconnected with it, so it is reachable away from its network.
+    @ObservationIgnored var onRelay: ((BoxConnection, String?) -> Void)?
     @ObservationIgnored private var refreshTasks: [String: Task<Void, Never>] = [:]
 
     init(record: BoxRecord, client: any PierBoxClient, raw: any PierTransport) {
@@ -68,6 +71,7 @@ final class BoxConnection: Identifiable {
             applySessions(try await s)
             locations = try await l
             state = .online
+            if info?.relay != record.relay { onRelay?(self, info?.relay) }
         } catch {
             apply(error: error)
             onChange?(self)

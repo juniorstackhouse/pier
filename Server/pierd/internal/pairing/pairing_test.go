@@ -190,3 +190,25 @@ func TestIssuingKeepsOtherLiveCodes(t *testing.T) {
 		}
 	}
 }
+
+func TestTokenCarriesTheRelay(t *testing.T) {
+	var code Code
+	code[0] = 7
+	tok := Token{Address: "192.0.2.10:7444", Code: code, Relay: "relay.example.com:7443"}
+	s := tok.String()
+	if !strings.Contains(s, "relay=relay.example.com%3A7443") {
+		t.Fatalf("link %q has no relay", s)
+	}
+	back, err := ParseToken(s)
+	if err != nil || back.Relay != "relay.example.com:7443" || back.Address != tok.Address {
+		t.Fatalf("ParseToken = %+v, %v", back, err)
+	}
+	// No relay, or a malformed one: the link still pairs, directly.
+	tok.Relay = ""
+	if back, err := ParseToken(tok.String()); err != nil || back.Relay != "" {
+		t.Fatalf("without a relay: %+v, %v", back, err)
+	}
+	if back, err := ParseToken(tok.String() + "&relay=nonsense"); err != nil || back.Relay != "" {
+		t.Fatalf("a malformed relay: %+v, %v", back, err)
+	}
+}

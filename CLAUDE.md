@@ -7,7 +7,9 @@ Pier is a monorepo with two halves that talk to each other over a mutual-TLS `/v
 - **pierd** (Go): the server each Linux dev box runs. It runs the agents (Claude Code, Codex) in tmux, follows them
   through their hooks, manages git worktrees and dev servers, and sends push through the user's own APNs key.
 
-There is no cloud or relay: the app pairs with each box once (QR code / `pier://` link) and talks to it directly.
+There is no cloud: the app pairs with each box once (QR code / `pier://` link) and talks to it directly, or, for a box
+behind NAT, through a relay the person runs (`pierd relay`, docs/PROTOCOL.md §10) that only carries the end-to-end
+mutual TLS.
 
 ## Layout
 

@@ -61,6 +61,9 @@ type Box struct {
 	// Invites, when set, lets paired clients mint pairing links for another
 	// device (POST /v1/pair/invite).
 	Invites *Invites
+	// Relay, when set, is the relay apps can reach the box through when its
+	// own address does not answer (GET /v1/info's relay).
+	Relay func() string
 }
 
 // Mount registers the box's routes on s. They are reachable by paired

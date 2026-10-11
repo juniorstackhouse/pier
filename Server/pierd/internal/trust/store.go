@@ -24,6 +24,8 @@ type Peer struct {
 	Network     string               `json:"network,omitempty"`
 	Fingerprint identity.Fingerprint `json:"fingerprint"`
 	PairedAt    time.Time            `json:"paired_at"`
+	// Relay is where the box is reached when Address does not answer.
+	Relay string `json:"relay,omitempty"`
 }
 
 var (

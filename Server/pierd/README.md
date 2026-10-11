@@ -64,6 +64,27 @@ logs in `~/.config/pier/box/pierd.log`.
 To build it yourself instead: `GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -o pierd ./cmd/pierd`, copy
 the binary to `~/.local/bin` on the box, then `pierd setup`.
 
+### From anywhere: a relay
+
+A box the apps cannot dial from outside (a Mac or a server at home, behind NAT) is reached through a relay you run on
+any server with a public address. It is the same binary:
+
+```sh
+# on the server (a small VPS): pierd without setting up a box, then the relay as a user service on port 7443,
+# with a token boxes must present
+curl -fsSL https://wagnerfnds.github.io/pier/install.sh | PIERD_NO_SETUP=1 sh
+~/.local/bin/pierd relay install        # prints: pierd relay use 203.0.113.7:7443 --token …
+# on the box (or at setup: pierd setup --relay 203.0.113.7 --relay-token …)
+pierd relay use 203.0.113.7 --token …
+pierd relay                             # connected?
+```
+
+The box keeps a connection out to the relay and opens one more for each app connection; the relay joins the two.
+Inside runs the same mutual TLS as on a direct connection, pinned to the keys exchanged at pairing, so the relay only
+carries bytes it cannot read or alter (the protocol: the app's docs/PROTOCOL.md §10). Pairing links name the relay and
+`GET /v1/info` reports it, so paired apps start using it by themselves: the box's own address at home, the relay away
+from it. `pierd relay off` stops using it; `pierd relay serve --open` runs a relay any box may use.
+
 ### One box, several people
 
 Each person gets an Ubuntu user of their own and runs their own pierd as that user: their own agent logins, sessions,
@@ -142,7 +163,7 @@ contract in the app's `docs/PUSH.md`.
 
 ## Commands
 
-`pierd help` lists them all: `setup`, `serve`, `install`, `uninstall`, `pair`, `clients`, `revoke`, `id`,
+`pierd help` lists them all: `setup`, `serve`, `relay`, `install`, `uninstall`, `pair`, `clients`, `revoke`, `id`,
 `doctor`, `version`, `hook`, `integrations`, `client` (a paired client for scripts: `pierd client pair LINK`,
 then `pierd client GET /v1/sessions`), and the box commands over the local socket: `locations`,
 `location add|rm|config`, `worktree new|rm`, `services`, `service list|start|stop|restart`, `sessions`,

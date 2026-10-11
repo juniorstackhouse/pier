@@ -52,20 +52,37 @@ public enum Pairing {
         identity: PierIdentity,
         group: EventLoopGroup = NIOSingletons.posixEventLoopGroup
     ) async throws -> BoxRecord {
-        let responsePromise = group.next().makePromise(of: (Int, Data).self)
-        let dial: TLSDial.Result
-        do {
-            dial = try await TLSDial.connect(
-                host: link.host, port: link.port, identity: identity, pin: link.fingerprint,
-                alpn: ["http/1.1"], group: group
-            ) { ops in
-                try ops.addHTTPClientHandlers()
-                try ops.addHandler(HTTP1ResponseCollector(promise: responsePromise))
+        // At the link's address; when it does not answer and the box has a relay, through the relay (pairing a phone
+        // away from home). The proof below is bound to whichever TLS session carries it: the relay only passes it on.
+        @Sendable func attempt(host: String, port: Int, viaRelay: Bool, timeout: TimeAmount)
+            async throws -> (TLSDial.Result, EventLoopPromise<(Int, Data)>)
+        {
+            let responsePromise = group.next().makePromise(of: (Int, Data).self)
+            do {
+                let dial = try await TLSDial.connect(
+                    host: host, port: port, viaRelay: viaRelay, identity: identity, pin: link.fingerprint,
+                    alpn: ["http/1.1"], group: group, timeout: timeout
+                ) { ops in
+                    try ops.addHTTPClientHandlers()
+                    try ops.addHandler(HTTP1ResponseCollector(promise: responsePromise))
+                }
+                return (dial, responsePromise)
+            } catch {
+                // No channel, so nothing completes the promise: fail it (NIO traps on a leaked promise in debug builds).
+                responsePromise.fail(error)
+                throw error
             }
-        } catch {
-            // No channel, so nothing completes the promise: fail it (NIO traps on a leaked promise in debug builds).
-            responsePromise.fail(error)
-            throw error
+        }
+        let dial: TLSDial.Result
+        let responsePromise: EventLoopPromise<(Int, Data)>
+        if let relay = link.relay, let r = try? PairingLink.splitHostPort(relay) {
+            do {
+                (dial, responsePromise) = try await attempt(host: link.host, port: link.port, viaRelay: false, timeout: .seconds(4))
+            } catch {
+                (dial, responsePromise) = try await attempt(host: r.0, port: r.1, viaRelay: true, timeout: .seconds(15))
+            }
+        } else {
+            (dial, responsePromise) = try await attempt(host: link.host, port: link.port, viaRelay: false, timeout: .seconds(15))
         }
         let channel = dial.channel
         defer { channel.close(promise: nil) }
@@ -107,7 +124,7 @@ public enum Pairing {
         switch status {
         case 200:
             let boxName = PierName.fromHostname(reply?.name ?? "", fallback: "box")
-            return BoxRecord(name: boxName, address: link.address, fingerprint: link.fingerprint)
+            return BoxRecord(name: boxName, address: link.address, fingerprint: link.fingerprint, relay: link.relay)
         case 403: throw PierError.pairingRejected(reply?.error ?? "pairing rejected")
         case 429: throw PierError.rateLimited(message: reply?.error ?? "too many pairing attempts; try again in a minute")
         default: throw PierError.api(status: status, message: reply?.error ?? "pairing failed (HTTP \(status))", code: nil)

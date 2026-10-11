@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -34,16 +35,24 @@ func setup(b boxHome, args []string) error {
 	noProjects := fs.Bool("no-projects", false, "don't add the git repositories found in the usual folders")
 	noOpen := fs.Bool("no-open", false, "on a Mac, don't hand the pairing link to the Pier app")
 	noService := fs.Bool("no-service", false, "pierd already runs (a container, a supervisor of your own): only add projects and pair")
+	relayAddr := fs.String("relay", "", "HOST[:PORT]: also reach this box through this relay (pierd relay)")
+	relayToken := fs.String("relay-token", "", "the relay's token")
 	var dirs folderList
 	fs.Var(&dirs, "repos", "a folder whose git repositories become projects; repeatable (default: ~/code, ~/Projects, ~/src, …)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if fs.NArg() > 0 {
-		return errors.New("usage: pierd setup [--repos DIR]… [--address HOST[:PORT]] [--listen ADDR] [--name NAME] [--ports FIRST-LAST] [--no-projects] [--no-integrations] [--no-open] [--no-service]")
+		return errors.New("usage: pierd setup [--repos DIR]… [--address HOST[:PORT]] [--listen ADDR] [--relay HOST[:PORT] [--relay-token T]] [--name NAME] [--ports FIRST-LAST] [--no-projects] [--no-integrations] [--no-open] [--no-service]")
 	}
 	fmt.Println("Pier · setting up this box")
 	fmt.Println()
+	if *relayAddr != "" {
+		// Before the service starts: pierd serve reads it at start.
+		if err := saveRelay(b, *relayAddr, *relayToken); err != nil {
+			return err
+		}
+	}
 	if *noService {
 		if err := waitServing(b, time.Time{}, 5*time.Second); err != nil {
 			return fmt.Errorf("--no-service: pierd serve is not answering here: %w", err)
@@ -70,12 +79,21 @@ func setup(b boxHome, args []string) error {
 		doctor.Print(os.Stdout, missing)
 		fmt.Println()
 	}
+	if r := b.setting("relay"); r != "" {
+		if c, ok := relayDoctorCheck(b); ok {
+			printRelayCheck(b, c)
+			fmt.Println()
+		}
+	}
 	link, target, err := issuePairing(b, *address, defaultTTL)
 	if err != nil {
 		return err
 	}
 	if runtime.GOOS == "darwin" && !*noOpen && !remoteSession() && exec.Command("open", link).Run() == nil {
 		fmt.Println("Pier is pairing with this Mac. Nothing to do there: the app opens and pairs by itself.")
+		if b.setting("relay") == "" {
+			fmt.Println("Away from home, the phone reaches this Mac through a relay of your own: pierd relay")
+		}
 		fmt.Println("For your iPhone or iPad: \"Take it to iPhone\" in Pier on this Mac (its last setup step, or")
 		fmt.Println("Settings), then scan the code with the phone.")
 		fmt.Println("(If the app was not installed yet, paste this link in it once it is.)")
@@ -84,7 +102,24 @@ func setup(b boxHome, args []string) error {
 	}
 	printPairing(link, target, defaultTTL)
 	fmt.Println("A new link any time: pierd pair")
+	if b.setting("relay") == "" && !publicAddress(target) {
+		fmt.Println("Away from this network, reach the box through a relay of your own: pierd relay")
+	}
 	return nil
+}
+
+// publicAddress says whether apps anywhere can dial host:port (a public IP;
+// a name may well be, so it counts too, unless it is a .local one).
+func publicAddress(hostport string) bool {
+	host, _, err := net.SplitHostPort(hostport)
+	if err != nil {
+		host = hostport
+	}
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return !strings.HasSuffix(strings.ToLower(host), ".local")
+	}
+	return !(ip.IsPrivate() || ip.IsLoopback() || ip.IsLinkLocalUnicast() || carrierGradeNAT.Contains(netipAddr(ip)))
 }
 
 // missingTools are the checks of what every session needs (git, tmux) that

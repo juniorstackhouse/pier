@@ -221,7 +221,7 @@ func rawPair(t *testing.T, id *identity.Identity, b *box, proof func(exporter []
 	t.Helper()
 	cfg := clientConfig(id, b.server.Identity.Fingerprint())
 	cfg.NextProtos = []string{"http/1.1"}
-	conn, err := dialTLS(context.Background(), cfg, b.address)
+	conn, err := dialTLS(context.Background(), cfg, b.address, "", b.server.Identity.Fingerprint())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -243,7 +243,7 @@ func TestAProofReplayedOnAnotherConnectionIsRejected(t *testing.T) {
 	me := laptop(t)
 	cfg := clientConfig(me, tok.Fingerprint)
 	cfg.NextProtos = []string{"http/1.1"}
-	conn, err := dialTLS(context.Background(), cfg, b.address)
+	conn, err := dialTLS(context.Background(), cfg, b.address, "", b.server.Identity.Fingerprint())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -455,7 +455,7 @@ func TestOversizedPairingBodyIsRejectedAndTheServerKeepsServing(t *testing.T) {
 	me := laptop(t)
 	cfg := clientConfig(me, b.server.Identity.Fingerprint())
 	cfg.NextProtos = []string{"http/1.1"}
-	conn, err := dialTLS(context.Background(), cfg, b.address)
+	conn, err := dialTLS(context.Background(), cfg, b.address, "", b.server.Identity.Fingerprint())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -21,7 +21,7 @@ by the box's own user over the Unix socket `$PIER_HOME/box/pierd.sock` (the `pie
 
 | Route | Handler | Caller |
 |---|---|---|
-| `GET /v1/info` | `info.go` `handleInfo` | App `info()`: BoxConnection, HeadlessBoxes, PushSupport |
+| `GET /v1/info` | `info.go` `handleInfo` | App `info()`: BoxConnection (its `relay` updates the box's record: `AppModel.relayChanged`), HeadlessBoxes, PushSupport |
 | `GET /v1/stats` | `stats.go` `handleStats` | App `stats()`: BoxConnection (box card); `pierd stats` |
 | `GET /v1/doctor` | `doctor.go` `handleDoctor` | `pierd doctor`; pierctl selftest (the app has `doctor()` but no caller today) |
 | `GET /v1/agents` | `info.go` `listAgentCLIs` | pierctl selftest (`installableAgents`); kept small: claude and codex, no installer |

@@ -9,7 +9,7 @@ import Testing
         func d<T: Decodable>(_ t: T.Type) -> @Sendable (Data) throws -> Void { { _ = try JSONDecoder.pier.decode(T.self, from: $0) } }
         struct Obj: Decodable {}
         return [
-            "info.json": d(BoxInfo.self), "stats.json": d(BoxStats.self), "stats_running.json": d(BoxStats.self),
+            "info.json": d(BoxInfo.self), "info_relay.json": d(BoxInfo.self), "stats.json": d(BoxStats.self), "stats_running.json": d(BoxStats.self),
             "doctor.json": d([DoctorCheck].self), "agents.json": d([AgentCLI].self),
             "locations.json": d([Location].self), "branches_sandbox.json": d(BranchList.self),
             "worktrees_sandbox.json": d([WorktreeStatus].self), "worktrees_sandbox2.json": d([WorktreeStatus].self),
@@ -77,6 +77,9 @@ import Testing
         let codex = try #require(i.agents.first { $0.id == "codex" })
         #expect(codex.effortFlag == "-c model_reasoning_effort=")
         #expect(i.adapters?["claude"]?.via == "hooks")
+        #expect(i.relay == nil)
+        let relayed: BoxInfo = try Fixture.decode("info_relay.json")
+        #expect(relayed.relay == "relay.example.com:7443")
         #expect(i.adapters?["claude"]?.finalMessage == true)
     }
 

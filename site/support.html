@@ -59,9 +59,13 @@
   <details>
     <summary>The app can't reach the box</summary>
     <p>The device must reach the address in the pairing link: a server's public address, or the same network as a Mac
-    or a server at home (from elsewhere, forward port 7444 or use a VPN such as Tailscale). <code>pierd doctor</code> says
-    what to fix; <code>pierd setup --address HOST</code> makes a link with another address. On a Mac with the firewall on
-    (System Settings → Network → Firewall), allow incoming connections for pierd.</p>
+    or a server at home. <code>pierd doctor</code> says what to fix; <code>pierd setup --address HOST</code> makes a link
+    with another address. On a Mac with the firewall on (System Settings → Network → Firewall), allow incoming
+    connections for pierd.</p>
+    <p><strong>Away from home:</strong> run a relay on any server with a public address and point the box at it. The app
+    then reaches the box from anywhere; the relay only carries the end-to-end encryption, it cannot read anything.</p>
+<pre>pierd relay install              # on the server: prints the line below
+pierd relay use HOST --token …   # on the Mac or the server at home</pre>
   </details>
   <details>
     <summary>The pairing link doesn't work</summary>
@@ -122,9 +126,13 @@
   <details>
     <summary>O app não alcança a box</summary>
     <p>O aparelho precisa chegar ao endereço do link de pareamento: o endereço público de um servidor, ou a mesma rede
-    de um Mac ou de um servidor em casa (de fora, encaminhe a porta 7444 ou use uma VPN como o Tailscale).
-    <code>pierd doctor</code> diz o que corrigir; <code>pierd setup --address HOST</code> gera um link com outro endereço.
-    Num Mac com o firewall ligado (Ajustes do Sistema → Rede → Firewall), permita conexões de entrada para o pierd.</p>
+    de um Mac ou de um servidor em casa. <code>pierd doctor</code> diz o que corrigir; <code>pierd setup --address HOST</code>
+    gera um link com outro endereço. Num Mac com o firewall ligado (Ajustes do Sistema → Rede → Firewall), permita
+    conexões de entrada para o pierd.</p>
+    <p><strong>Fora de casa:</strong> rode um relay em qualquer servidor com endereço público e aponte a box para ele. O app
+    passa a alcançar a box de qualquer lugar; o relay só carrega a criptografia de ponta a ponta e não consegue ler nada.</p>
+<pre>pierd relay install              # no servidor: mostra a linha abaixo
+pierd relay use HOST --token …   # no Mac ou no servidor de casa</pre>
   </details>
   <details>
     <summary>O link de pareamento não funciona</summary>

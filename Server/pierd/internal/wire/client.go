@@ -15,6 +15,7 @@ import (
 
 	"pier/pierd/internal/identity"
 	"pier/pierd/internal/pairing"
+	"pier/pierd/internal/relay"
 	"pier/pierd/internal/trust"
 )
 
@@ -24,6 +25,10 @@ import (
 // (scripts/smoke.sh) and in tests.
 
 const dialTimeout = 15 * time.Second
+
+// directTimeout is how long the box's own address gets when a relay can
+// stand in for it.
+const directTimeout = 4 * time.Second
 
 // ErrPairingRefused means the box answered and refused the code: used,
 // expired, or never issued by it.
@@ -44,7 +49,7 @@ var ErrUntrusted = errors.New("box no longer trusts this client; pair again")
 func Pair(ctx context.Context, id *identity.Identity, tok pairing.Token, clientName string) (string, error) {
 	cfg := clientConfig(id, tok.Fingerprint)
 	cfg.NextProtos = []string{"http/1.1"}
-	conn, err := dialTLS(ctx, cfg, tok.Address)
+	conn, err := dialTLS(ctx, cfg, tok.Address, tok.Relay, tok.Fingerprint)
 	if err != nil {
 		return "", err
 	}
@@ -86,10 +91,10 @@ func exchange(ctx context.Context, conn *tls.Conn, address, path string, body []
 	return http.ReadResponse(bufio.NewReader(conn), req)
 }
 
-func dialTLS(ctx context.Context, cfg *tls.Config, address string) (*tls.Conn, error) {
-	ctx, cancel := context.WithTimeout(ctx, dialTimeout)
+func dialTLS(ctx context.Context, cfg *tls.Config, address, relayAddr string, fp identity.Fingerprint) (*tls.Conn, error) {
+	ctx, cancel := context.WithTimeout(ctx, dialTimeout+directTimeout)
 	defer cancel()
-	raw, err := (&net.Dialer{Timeout: dialTimeout}).DialContext(ctx, "tcp", address)
+	raw, err := dialBox(ctx, address, relayAddr, fp)
 	if err != nil {
 		return nil, err
 	}
@@ -101,6 +106,24 @@ func dialTLS(ctx context.Context, cfg *tls.Config, address string) (*tls.Conn, e
 	}
 	tc.SetDeadline(time.Time{})
 	return tc, nil
+}
+
+// dialBox connects to the box at address or, when that does not answer and the
+// box has a relay, through the relay. Either way the caller then runs the same
+// TLS, pinned to the box's key: the relay only carries it.
+func dialBox(ctx context.Context, address, relayAddr string, fp identity.Fingerprint) (net.Conn, error) {
+	if relayAddr == "" {
+		return (&net.Dialer{Timeout: dialTimeout, KeepAlive: 30 * time.Second}).DialContext(ctx, "tcp", address)
+	}
+	raw, err := (&net.Dialer{Timeout: directTimeout, KeepAlive: 30 * time.Second}).DialContext(ctx, "tcp", address)
+	if err == nil {
+		return raw, nil
+	}
+	rc, rerr := relay.Dial(ctx, relayAddr, fp)
+	if rerr != nil {
+		return nil, fmt.Errorf("%v; through the relay %s: %w", err, relayAddr, rerr)
+	}
+	return rc, nil
 }
 
 // Client talks to one paired box over a pooled HTTP/2 connection.
@@ -115,9 +138,11 @@ func NewClient(id *identity.Identity, box trust.Peer) *Client {
 	protocols := new(http.Protocols)
 	protocols.SetHTTP2(true)
 	return &Client{box: box, transport: &http.Transport{
-		TLSClientConfig:       clientConfig(id, box.Fingerprint),
-		Protocols:             protocols,
-		DialContext:           (&net.Dialer{Timeout: dialTimeout, KeepAlive: 30 * time.Second}).DialContext,
+		TLSClientConfig: clientConfig(id, box.Fingerprint),
+		Protocols:       protocols,
+		DialContext: func(ctx context.Context, _, addr string) (net.Conn, error) {
+			return dialBox(ctx, addr, box.Relay, box.Fingerprint)
+		},
 		TLSHandshakeTimeout:   dialTimeout,
 		ResponseHeaderTimeout: 3 * time.Minute,
 		IdleConnTimeout:       5 * time.Minute,

@@ -31,6 +31,8 @@ type Invites struct {
 	// Address is the address the link names: where pierd pair would
 	// advertise.
 	Address func() string
+	// Relay, when set, names the relay the box keeps a connection to.
+	Relay func() string
 	// TTL is how long a code lasts; ten minutes when zero.
 	TTL time.Duration
 	Now func() time.Time
@@ -124,8 +126,12 @@ func (b *Box) invite(s *wire.Server, w http.ResponseWriter, r *http.Request) err
 	if err != nil {
 		return httpError{http.StatusInternalServerError, "could not store the pairing code: " + err.Error()}
 	}
+	tok := pairing.Token{Address: address, Fingerprint: s.Identity.Fingerprint(), Code: code}
+	if b.Invites.Relay != nil {
+		tok.Relay = b.Invites.Relay()
+	}
 	out := PairInvite{
-		Link:    pairing.Token{Address: address, Fingerprint: s.Identity.Fingerprint(), Code: code}.String(),
+		Link:    tok.String(),
 		Expires: now.Add(ttl).UTC().Truncate(time.Second),
 	}
 	// Never the link: events reach hooks and every paired client.

@@ -55,6 +55,11 @@ docs/
 
 ## Key decisions
 - **Transport**: swift-nio-ssl (BoringSSL) because pierd uses TLS 1.3 + Ed25519 mutual TLS; Apple's TLS stack can't.
+- **Reach**: a box's address, or, for a box behind NAT, its relay (`BoxRecord.relay`, from the pairing link or
+  `GET /v1/info`; `pierd relay` on a server the person runs). `H2Connection.dial` races the two (`Race.first`: the
+  address first, the relay 1.2 s later or at once when the address fails; the last winner goes first next time); the
+  relay only carries the same pinned TLS (docs/PROTOCOL.md §10). `AppModel.relayChanged` keeps the record in step with
+  what the box says and reconnects it; Ajustes shows the relay under the address.
 - **Concurrency**: Swift 6 strict; PierKit types Sendable; UI state via `@Observable` on the main actor.
 - **Multi-box**: everything keyed by box name; Home, Inbox and the board merge boxes.
 - **Persistence**: Keychain for the identity key and the pairings (shared with the widget extension); JSON files in

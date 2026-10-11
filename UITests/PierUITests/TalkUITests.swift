@@ -198,6 +198,31 @@ final class TalkUITests: XCTestCase {
         _ = decisionCard()
     }
 
+    /// Nova tarefa's mic: what is said goes into the prompt, after what was typed, live; tapping again stops.
+    func testComposeMicDictatesIntoThePrompt() {
+        launch(["-talkTranscript", transcript])
+        // Personalizar, Falar and Nova tarefa, in that order, Nova tarefa at the edge.
+        let customize = element("home-customize"), talk = element("talk-button"), plus = element("new-task-button")
+        XCTAssertTrue(customize.exists && talk.exists && plus.exists)
+        XCTAssertLessThan(customize.frame.minX, talk.frame.minX)
+        XCTAssertLessThan(talk.frame.minX, plus.frame.minX)
+        plus.tap()
+        let prompt = element("compose-prompt")
+        XCTAssertTrue(prompt.waitForExistence(timeout: 8), "Nova tarefa did not open")
+        prompt.tap()
+        prompt.typeText("Antes:")
+        let mic = element("compose-mic")
+        XCTAssertTrue(mic.exists, "no mic beside the prompt")
+        mic.tap()
+        XCTAssertTrue(element("compose-listening").waitForExistence(timeout: 3), "no sign it is listening")
+        let deadline = Date().addingTimeInterval(6)
+        while !value(prompt).contains("negativos"), Date() < deadline { usleep(150_000) }
+        shot("compose-listening")
+        mic.tap()
+        XCTAssertEqual(value(prompt), "Antes: " + transcript, "the prompt does not have what was said")
+        XCTAssertFalse(element("compose-listening").exists)
+    }
+
     /// iPad / Mac: "> request" in the palette (Return) and ⇧⌘Space hand the text to Falar.
     func testPaletteHandsARequestToTalk() throws {
         launch()

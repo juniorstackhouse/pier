@@ -289,22 +289,40 @@ final class AppModel {
     func reloadBoxes() throws {
         let records = try boxStore.list()
         var next: [BoxConnection] = []
+        var made: [BoxConnection] = []
         for rec in records {
             if let existing = boxes.first(where: { $0.record == rec }) { next.append(existing); continue }
             guard let identity else { continue }
-            let made = ClientFactory.make(box: rec, identity: identity)
-            let conn = BoxConnection(record: rec, client: made.api, raw: made.raw)
+            let client = ClientFactory.make(box: rec, identity: identity)
+            let conn = BoxConnection(record: rec, client: client.api, raw: client.raw)
             conn.onTransition = { [weak self] c, s, _, to in self?.transition(c, s, to) }
             conn.onChange = { [weak self] _ in self?.sessionsChanged() }
+            conn.onRelay = { [weak self] c, relay in self?.relayChanged(c, relay) }
             next.append(conn)
-            if isActive { activate(conn) }
+            made.append(conn)
         }
         // The demo's box is not in the keychain.
         if DemoMode.isOn, let demo = demoBox { next.append(demo) }
+        // Streams are by box name: stop the ones going away before a box of the same name (its record changed:
+        // another address, a relay) starts its own.
         for gone in boxes where !next.contains(where: { $0 === gone }) { hub.stop(gone.name) }
+        if isActive { for conn in made { activate(conn) } }
         boxes = next
         sessionsChanged()
         push.boxesChanged()
+    }
+
+    /// The box uses another relay than its record says (or none now): kept, and the box reconnected with it.
+    private func relayChanged(_ c: BoxConnection, _ relay: String?) {
+        guard !(c.raw is MockBox) else { return }
+        var rec = c.record
+        rec.relay = relay
+        do {
+            try boxStore.update(rec)
+            try reloadBoxes()
+        } catch {
+            loadError = error.localizedDescription
+        }
     }
 
     // MARK: widgets & Live Activities
@@ -369,7 +387,10 @@ final class AppModel {
     private func activate(_ conn: BoxConnection, reset: Bool = false) {
         Task {
             if reset { await conn.raw.reset() }
-            await conn.connect(); hub.start(conn)
+            await conn.connect()
+            // Not when the box was replaced meanwhile (its relay changed on this very connect): the new one streams.
+            guard boxes.contains(where: { $0 === conn }) else { return }
+            hub.start(conn)
         }
     }
 

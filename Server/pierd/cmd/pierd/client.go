@@ -147,7 +147,7 @@ func clientPair(args []string, out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	peer := trust.Peer{Name: boxName, Address: tok.Address, Fingerprint: tok.Fingerprint, PairedAt: time.Now().UTC()}
+	peer := trust.Peer{Name: boxName, Address: tok.Address, Fingerprint: tok.Fingerprint, PairedAt: time.Now().UTC(), Relay: tok.Relay}
 	// The pairing is real once the box takes this key on a connection of its
 	// own, as the app's next one will be.
 	c := wire.NewClient(id, peer)
