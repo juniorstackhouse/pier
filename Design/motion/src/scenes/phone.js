@@ -5,8 +5,10 @@ import { css, text } from '../dom.js';
 import { CUE, BEAT } from '../time.js';
 import { clamp, lerp, ease, prog, spring, springTrack } from '../anim.js';
 import { createPhone, SW, SH, ISLAND } from '../ui/iphone.js';
+import { FORMAT } from '../format.js';
 
-const BASE = 1000 / 892;      // the device 1000 px tall at zoom 1
+const V = FORMAT.vertical;
+const BASE = (V ? 1250 : 1000) / 892;      // the device's height at zoom 1 (vertical: the lower two thirds, the words above)
 const T = CUE;
 
 function camAt(t, keys) {
@@ -26,10 +28,10 @@ export function createPhoneScene(layer) {
   const bannerH = () => ph.banner.offsetHeight || 88;
   let menuTop = 0;
 
-  const full = { fx: SW / 2, fy: SH / 2, sx: 1250, sy: 540, z: 1 };
-  const islandClose = { fx: SW / 2, fy: 120, sx: 1210, sy: 390, z: 2.05 };
-  const bannerClose = { fx: SW / 2, fy: 225, sx: 1215, sy: 455, z: 1.72 };
-  const cardClose = { fx: SW / 2, fy: 585, sx: 1215, sy: 560, z: 1.62 };
+  const full = V ? { fx: SW / 2, fy: SH / 2, sx: 540, sy: 1240, z: 1 } : { fx: SW / 2, fy: SH / 2, sx: 1250, sy: 540, z: 1 };
+  const islandClose = V ? { fx: SW / 2, fy: 95, sx: 540, sy: 800, z: 1.9 } : { fx: SW / 2, fy: 120, sx: 1210, sy: 390, z: 2.05 };
+  const bannerClose = V ? { fx: SW / 2, fy: 230, sx: 540, sy: 1020, z: 1.72 } : { fx: SW / 2, fy: 225, sx: 1215, sy: 455, z: 1.72 };
+  const cardClose = V ? { fx: SW / 2, fy: SH / 2, sx: 540, sy: 1169, z: 1.2 } : { fx: SW / 2, fy: 585, sx: 1215, sy: 560, z: 1.62 };
   const keys = [
     { t: 0, ...full },
     { t: T.islandPress - BEAT, ...full, z: 1.04, ease: ease.inOutSine },
@@ -39,8 +41,8 @@ export function createPhoneScene(layer) {
     { t: T.answered + BEAT, ...bannerClose, z: 1.76, ease: ease.inOutSine },
     { t: T.lockCard + 0.2, ...full, z: 1.06, ease: ease.cinematic },
     { t: T.lockCard + BEAT * 1.4, ...cardClose, ease: ease.cinematic },
-    { t: T.phoneOut, ...cardClose, z: 1.68, ease: ease.inOutSine },
-    { t: T.phoneOut + 0.9, ...full, z: 0.82, sy: 560, ease: ease.cinematic },
+    { t: T.phoneOut, ...cardClose, z: V ? 1.23 : 1.68, ease: ease.inOutSine },
+    { t: T.phoneOut + 0.9, ...full, z: 0.82, sy: V ? 1240 : 560, ease: ease.cinematic },
   ];
 
   // the island's three shapes

@@ -181,7 +181,7 @@ function foamMaterial(opacity) {
 }
 
 // `manual`: no loop of its own; the caller renders the moment it wants with renderAt(t) (the launch film, frame by frame).
-export function start(stage, { manual = false, asks = true } = {}) {
+export function start(stage, { manual = false, asks = true, portrait: forcePortrait } = {}) {
   const motion = manual || !matchMedia('(prefers-reduced-motion: reduce)').matches;
   // the stylesheet's narrow layout (the words on top, the scene in a band of --band pixels under them)
   const narrow = matchMedia('(max-width: 900px)');
@@ -436,7 +436,7 @@ export function start(stage, { manual = false, asks = true } = {}) {
     if (!w || !h) return;
     renderer.setSize(w, h, false);
     const aspect = w / h;
-    portrait = narrow.matches;
+    portrait = forcePortrait ?? narrow.matches;
     band = Math.min(parseFloat(getComputedStyle(stage).getPropertyValue('--band')) || 400, h * 0.7);
     camera.aspect = aspect;
     camera.fov = portrait ? 32 : 26;
