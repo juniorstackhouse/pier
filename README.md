@@ -5,9 +5,9 @@ coding agents (Claude Code, Codex) running on your development boxes — and **p
 
 Agents ask; you answer in a tap or a keystroke, from anywhere. No agent sits waiting.
 
-**[docktopier.com](https://docktopier.com/)** · [Privacy](https://docktopier.com/privacy.html) ·
-[Support](https://docktopier.com/support.html). No box yet? The app's first screen has a demo with sample
-projects and agents.
+**[docktopier.com](https://docktopier.com/)** · [The film (0:52)](https://docktopier.com/#film) ·
+[Privacy](https://docktopier.com/privacy.html) · [Support](https://docktopier.com/support.html). No box yet? The app's
+first screen has a demo with sample projects and agents.
 
 <p align="center">
   <img src="docs/images/iphone-home-dark.png" width="230" alt="Home: every agent across your boxes">

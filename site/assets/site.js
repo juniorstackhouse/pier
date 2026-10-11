@@ -19,6 +19,21 @@
   var stage = document.querySelector('[data-hero-stage]');
   if (stage) setTimeout(function () { if (!stage.classList.contains('is-ready')) stage.classList.add('is-fallback'); }, 5000);
 
+  // the film: plays (with sound) from its button or from "Watch the film", which also scrolls to it
+  var film = document.getElementById('film-video');
+  if (film) {
+    var frame = film.parentNode;
+    var playFilm = function () {
+      frame.classList.add('is-playing');
+      film.controls = true;
+      var p = film.play();
+      if (p && p.catch) p.catch(function () {});
+    };
+    frame.querySelector('.film-play').addEventListener('click', playFilm);
+    document.querySelectorAll('[data-play-film]').forEach(function (a) { a.addEventListener('click', playFilm); });
+    film.addEventListener('ended', function () { film.controls = false; frame.classList.remove('is-playing'); film.currentTime = 0; });
+  }
+
   var risers = document.querySelectorAll('.rise');
   if (still || !('IntersectionObserver' in window)) {
     risers.forEach(function (e) { e.classList.add('in'); });
