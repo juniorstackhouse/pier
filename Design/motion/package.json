@@ -1,0 +1,19 @@
+{
+  "name": "pier-motion",
+  "private": true,
+  "description": "Pier's launch film: the Mac's edge tab and the iPhone's Dynamic Island, animated in the browser frame by frame, its music and sound synthesized from the same timeline.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/main.js --bundle --format=esm --target=es2020 --outfile=dist/motion.js",
+    "stills": "npm run build && node render.mjs stills",
+    "audio": "npm run build && node render.mjs audio",
+    "video": "npm run build && node render.mjs video"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "ffmpeg-static": "5.2.0",
+    "playwright": "1.63.0",
+    "three": "0.186.1"
+  }
+}

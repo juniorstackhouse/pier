@@ -25,7 +25,7 @@ mutual TLS.
 | `Vendor/swift-nio-ssl` | Vendored with a TLS-exporter patch needed for pairing (see `Vendor/README.md`) | Swift |
 | `UITests/PierUITests` | XCUITest against the in-memory mock box | Swift |
 | `Config/` | `Base.xcconfig` (identifiers), `Signing.example.xcconfig`, build-number script | |
-| `Design/` | The app icon's mascot (`render-mascot.swift`, SceneKit) and the site's 3D hero (`hero/`, the same mascot in three.js: `npm ci && npm run build` there writes `site/assets/hero.js`) | Swift, JS |
+| `Design/` | The app icon's mascot (`render-mascot.swift`, SceneKit), the site's 3D hero (`hero/`, the same mascot in three.js: `npm ci && npm run build` there writes `site/assets/hero.js`) and the launch film (`motion/`, rendered frame by frame in the browser, its sound synthesized from the same clock; see its README) | Swift, JS |
 | `site/` | docktopier.com (GitHub Pages, `.github/workflows/pages.yml`): the landing page, privacy, support and `install.sh`; fonts and scripts are self-hosted | HTML, CSS |
 | `docs/` | `ARCHITECTURE.md` (read this first), `PROTOCOL.md` (transport, pairing), `API.md` (endpoints), `PUSH.md` | |
 

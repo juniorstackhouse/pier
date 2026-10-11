@@ -180,13 +180,14 @@ function foamMaterial(opacity) {
   });
 }
 
-function start(stage) {
-  const motion = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+// `manual`: no loop of its own; the caller renders the moment it wants with renderAt(t) (the launch film, frame by frame).
+export function start(stage, { manual = false, asks = true } = {}) {
+  const motion = manual || !matchMedia('(prefers-reduced-motion: reduce)').matches;
   // the stylesheet's narrow layout (the words on top, the scene in a band of --band pixels under them)
   const narrow = matchMedia('(max-width: 900px)');
   const small = Math.min(innerWidth, innerHeight) < 600;
 
-  const renderer = new WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+  const renderer = new WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance', preserveDrawingBuffer: manual });
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, small ? 1.6 : 2));
   renderer.toneMapping = NeutralToneMapping;
   renderer.outputColorSpace = SRGBColorSpace;
@@ -477,7 +478,7 @@ function start(stage) {
 
   // the bubble: an agent asks, and it answers itself after a moment (or when you tap Allow)
   const bubble = stage.querySelector('[data-hero-bubble]');
-  let asking = null, nextAsk = motion ? 2.2 : Infinity, askIndex = 0;
+  let asking = null, nextAsk = motion && asks ? 2.2 : Infinity, askIndex = 0;
   function ask(now) {
     const shown = boxes.filter((x) => x.group.visible);
     const b = shown[[1, 2, 0][askIndex % 3] % shown.length];
@@ -674,6 +675,23 @@ function start(stage) {
     else if (raf) { cancelAnimationFrame(raf); raf = 0; }
   }
 
+  if (manual) {
+    applyPalette();
+    frame();
+    ready = true;
+    stage.classList.add('is-ready');
+    return {
+      renderAt(t) {
+        const dt = MathUtils.clamp(t - clock, 0, 0.05);
+        clock = t;
+        update(dt);
+        renderer.render(scene, camera);
+        placeBubble();
+      },
+      hop(at, power = 1) { hop = { at, power }; flash = at; ripple(m.rig.position.x, m.rig.position.z, 1.4 * power); },
+    };
+  }
+
   new IntersectionObserver((entries) => {
     visible = entries[entries.length - 1].isIntersecting;
     setRunning();
@@ -694,6 +712,6 @@ function start(stage) {
 
 // Last, once everything above is defined.
 const stage = document.querySelector('[data-hero-stage]');
-if (stage) {
+if (stage && !stage.hasAttribute('data-manual')) {
   try { start(stage); } catch (e) { stage.classList.add('is-fallback'); }
 }
