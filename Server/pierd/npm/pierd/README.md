@@ -1,6 +1,6 @@
 # pierd
 
-The server each of your machines runs for [Pier](https://wagnerfnds.github.io/pier/), the app that shows and drives
+The server each of your machines runs for [Pier](https://docktopier.com/), the app that shows and drives
 your coding agents (Claude Code, Codex) from iPhone, iPad and Mac. Open source: [github.com/wagnerfnds/pier](https://github.com/wagnerfnds/pier).
 
 ```sh
@@ -12,5 +12,5 @@ pierd setup
 git repositories it finds in `~/code`, `~/Projects`… as projects, and prints a pairing link with its QR code. On a Mac
 at its own screen the Pier app pairs with it by itself.
 
-Linux and macOS, on x64 and arm64. Other ways to install: `curl -fsSL https://wagnerfnds.github.io/pier/install.sh | sh`
+Linux and macOS, on x64 and arm64. Other ways to install: `curl -fsSL https://docktopier.com/install.sh | sh`
 or `brew install wagnerfnds/tap/pierd`.

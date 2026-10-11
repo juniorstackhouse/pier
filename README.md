@@ -5,8 +5,8 @@ coding agents (Claude Code, Codex) running on your development boxes — and **p
 
 Agents ask; you answer in a tap or a keystroke, from anywhere. No agent sits waiting.
 
-**[wagnerfnds.github.io/pier](https://wagnerfnds.github.io/pier/)** · [Privacy](https://wagnerfnds.github.io/pier/privacy.html) ·
-[Support](https://wagnerfnds.github.io/pier/support.html). No box yet? The app's first screen has a demo with sample
+**[docktopier.com](https://docktopier.com/)** · [Privacy](https://docktopier.com/privacy.html) ·
+[Support](https://docktopier.com/support.html). No box yet? The app's first screen has a demo with sample
 projects and agents.
 
 <p align="center">
@@ -98,7 +98,7 @@ with the subscription that is already there. The app holds no API keys.
 On a server, over SSH, or in Terminal on your Mac, as the user your agents run as:
 
 ```sh
-curl -fsSL https://wagnerfnds.github.io/pier/install.sh | sh
+curl -fsSL https://docktopier.com/install.sh | sh
 ```
 
 Or `npm install -g pierd && pierd setup`, or `brew install wagnerfnds/tap/pierd && pierd setup`. It installs pierd as a

@@ -19,7 +19,7 @@ for target in darwin/arm64 darwin/amd64 linux/arm64 linux/amd64; do
   "name": "$name",
   "version": "$version",
   "description": "pierd for $os/$cpu: the binary the pierd package runs.",
-  "homepage": "https://wagnerfnds.github.io/pier/",
+  "homepage": "https://docktopier.com/",
   "repository": { "type": "git", "url": "git+https://github.com/wagnerfnds/pier.git", "directory": "Server/pierd" },
   "license": "MIT",
   "os": ["$os"],
