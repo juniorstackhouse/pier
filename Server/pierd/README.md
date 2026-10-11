@@ -155,6 +155,15 @@ The wire protocol is described in the repository's `docs/PROTOCOL.md` and `docs/
 proof to the TLS exporter label `EXPORTER-pier-pair-v1` and prefixes it with `pier pair v1`; requests name their
 tool in `X-Pier-Origin`.
 
+## Releasing
+
+Push a tag `pierd-vX.Y.Z` on `main`. `.github/workflows/pierd-release.yml` runs the tests, builds the Linux and macOS
+binaries (amd64, arm64) into a GitHub Release with `checksums.txt` (what `site/install.sh` downloads), and publishes
+the npm packages from `npm/` (`pierd` and `pierd-<os>-<cpu>`) when the repository has an `NPM_TOKEN` secret
+(by hand: `npm/build.sh X.Y.Z <dir with the tarballs> out && npm/publish.sh out`). Then the Homebrew formula, in
+github.com/wagnerfnds/homebrew-tap: `homebrew/formula.sh X.Y.Z > Formula/pierd.rb` there, committed and pushed (its CI
+installs and tests it).
+
 ## Tests
 
 `go test ./...` runs the unit and integration tests (tmux and git needed; the systemd scope test runs with

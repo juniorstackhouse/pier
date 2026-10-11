@@ -1,0 +1,45 @@
+class Pierd < Formula
+  desc "Box server for Pier: run and follow coding agents from iPhone, iPad and Mac"
+  homepage "https://wagnerfnds.github.io/pier/"
+  version "@VERSION@"
+  license "MIT"
+
+  depends_on "tmux"
+
+  on_macos do
+    on_arm do
+      url "https://github.com/wagnerfnds/pier/releases/download/pierd-v@VERSION@/pierd-v@VERSION@-darwin-arm64.tar.gz"
+      sha256 "@DARWIN_ARM64@"
+    end
+    on_intel do
+      url "https://github.com/wagnerfnds/pier/releases/download/pierd-v@VERSION@/pierd-v@VERSION@-darwin-amd64.tar.gz"
+      sha256 "@DARWIN_AMD64@"
+    end
+  end
+
+  on_linux do
+    on_arm do
+      url "https://github.com/wagnerfnds/pier/releases/download/pierd-v@VERSION@/pierd-v@VERSION@-linux-arm64.tar.gz"
+      sha256 "@LINUX_ARM64@"
+    end
+    on_intel do
+      url "https://github.com/wagnerfnds/pier/releases/download/pierd-v@VERSION@/pierd-v@VERSION@-linux-amd64.tar.gz"
+      sha256 "@LINUX_AMD64@"
+    end
+  end
+
+  def install
+    bin.install "pierd"
+  end
+
+  def caveats
+    <<~EOS
+      Set up this machine (a user service, the agents' hooks, your projects) and pair the Pier app:
+        pierd setup
+    EOS
+  end
+
+  test do
+    assert_match "v#{version}", shell_output("#{bin}/pierd version")
+  end
+end
