@@ -75,6 +75,10 @@
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.3-3.4-1.3-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.6 2.4 1.1 3 .8.1-.7.4-1.1.6-1.4-2.2-.3-4.6-1.1-4.6-5 0-1.1.4-2 1-2.7-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.8 1a9.6 9.6 0 0 1 5 0c1.9-1.3 2.8-1 2.8-1 .5 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 3.9-2.3 4.7-4.6 5 .4.3.7.9.7 1.9V21c0 .3.2.6.7.5A10 10 0 0 0 12 2z"/></svg>
         <span lang="en">Open source on GitHub</span><span lang="pt-BR">Código aberto no GitHub</span>
       </a>
+      <a class="watch" href="#film" data-play-film>
+        <span class="play"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg></span>
+        <span lang="en">Watch the film</span><span lang="pt-BR">Assista ao filme</span><span class="len">0:52</span>
+      </a>
     </div>
     <p class="note">
       <span lang="en">No box yet? The app has a demo with sample projects and agents.</span>
@@ -90,6 +94,23 @@
       <img class="tablet" lang="pt-BR" src="assets/shots/pt/ipad-workspace.jpg" alt="">
       <img class="phone" lang="en" src="assets/shots/en/iphone-home.jpg" alt="">
       <img class="phone" lang="pt-BR" src="assets/shots/pt/iphone-home.jpg" alt="">
+    </div>
+  </div>
+</section>
+
+<section id="film" class="film">
+  <div class="wrap">
+    <p class="eyebrow"><span lang="en">The film</span><span lang="pt-BR">O filme</span></p>
+    <h2><span lang="en">See it in motion.</span><span lang="pt-BR">Veja em movimento.</span></h2>
+    <p class="section-lead">
+      <span lang="en">Fifty-two seconds on the Mac’s edge tab and the iPhone’s Dynamic Island. Sound on.</span>
+      <span lang="pt-BR">Cinquenta e dois segundos sobre a aba do Mac e a Dynamic Island do iPhone, em inglês. Com som.</span>
+    </p>
+    <div class="film-frame rise">
+      <video id="film-video" preload="none" playsinline poster="assets/film/poster.jpg" aria-label="Pier, the film: 52 seconds on the Mac's edge tab and the iPhone's Dynamic Island">
+        <source src="assets/film/pier-film.mp4" type="video/mp4">
+      </video>
+      <button class="film-play" type="button"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg><span class="sr"><span lang="en">Play the film</span><span lang="pt-BR">Assistir ao filme</span></span></button>
     </div>
   </div>
 </section>
