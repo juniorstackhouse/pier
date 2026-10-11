@@ -102,8 +102,21 @@ final class DotsAndOnboardingUITests: XCTestCase {
         XCTAssertTrue(element("onboarding-step-2").waitForExistence(timeout: 3))
         app.buttons["onboarding-next"].tap()
         XCTAssertTrue(element("onboarding-step-3").waitForExistence(timeout: 3), "Continuar did not reach pairing")
+        // On a phone the agents run on "my Mac" first: the code its "Levar para o iPhone" shows.
         XCTAssertTrue(app.buttons["onboarding-scan"].exists, "no QR scanner on the iPhone/iPad")
+        XCTAssertFalse(app.buttons["onboarding-install-help"].exists)
         shot("onboarding-3")
+        // On a server: the one command to run there, a copy away, then its QR code.
+        app.segmentedControls["onboarding-place"].buttons["Num servidor"].tap()
+        let copyCommand = app.buttons["command-copy"]
+        XCTAssertTrue(copyCommand.waitForExistence(timeout: 3), "the server's command has no Copiar")
+        copyCommand.tap()
+        let end = Date().addingTimeInterval(3)
+        while Date() < end, (copyCommand.value as? String)?.contains("install.sh | sh") != true { usleep(250_000) }
+        XCTAssertTrue((copyCommand.value as? String)?.contains("install.sh | sh") == true, "the install command was not copied")
+        XCTAssertTrue(app.buttons["onboarding-scan"].exists, "no QR scanner for the server")
+        XCTAssertTrue(app.buttons["onboarding-install-help"].exists, "no other ways to install")
+        shot("onboarding-3-server")
 
         app.buttons["onboarding-paste"].tap()
         let field = app.textViews.firstMatch
@@ -125,7 +138,8 @@ final class DotsAndOnboardingUITests: XCTestCase {
         XCTAssertTrue(dot(Self.waiting).waitForExistence(timeout: 10), "Ir para o início did not show the Home")
     }
 
-    /// "Ainda sem pierd na box?": the prompt for the agent on the box, and the commands, each a copy away.
+    /// "Outros jeitos de instalar": the prompt for the agent on the server, and the commands (the installer, npm, Homebrew),
+    /// each a copy away.
     func testInstallHelpOffersThePromptAndTheCommands() {
         app.launchArguments += ["-uiTestOnboarding", "1"]
         app.launch()
@@ -134,18 +148,21 @@ final class DotsAndOnboardingUITests: XCTestCase {
         XCTAssertTrue(element("onboarding-step-2").waitForExistence(timeout: 3))
         app.buttons["onboarding-next"].tap()
         XCTAssertTrue(element("onboarding-step-3").waitForExistence(timeout: 3))
+        app.segmentedControls["onboarding-place"].buttons["Num servidor"].tap()
         app.buttons["onboarding-install-help"].tap()
         XCTAssertTrue(element("install-help-prompt").waitForExistence(timeout: 5), "the help sheet did not open")
         XCTAssertTrue(app.staticTexts["Peça ao seu agente"].exists)
-        XCTAssertTrue(element("install-help-prompt").label.contains("pierd pair"), "the prompt does not pair the box")
+        XCTAssertTrue(element("install-help-prompt").label.contains("install.sh | sh"), "the prompt does not run the installer")
+        XCTAssertTrue(app.staticTexts["npm install -g pierd && pierd setup"].exists, "no npm command")
+        XCTAssertTrue(app.staticTexts["brew install wagnerfnds/tap/pierd && pierd setup"].exists, "no Homebrew command")
         shot("install-help")
         let copy = app.buttons["install-help-copy-prompt"]
         copy.tap()
         // The button says so, and carries what it copied (the test runner may not read the clipboard).
         XCTAssertTrue(app.staticTexts["Copiado"].waitForExistence(timeout: 3))
         let end = Date().addingTimeInterval(3)
-        while Date() < end, (copy.value as? String)?.contains("pierd install --listen") != true { usleep(250_000) }
-        XCTAssertTrue((copy.value as? String)?.contains("pierd install --listen") == true, "the prompt was not copied")
+        while Date() < end, (copy.value as? String)?.contains("install.sh | sh") != true { usleep(250_000) }
+        XCTAssertTrue((copy.value as? String)?.contains("install.sh | sh") == true, "the prompt was not copied")
         app.buttons["Fechar"].tap()
         XCTAssertTrue(element("onboarding-step-3").waitForExistence(timeout: 3), "closing the help did not return to pairing")
     }

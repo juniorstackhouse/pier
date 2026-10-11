@@ -47,6 +47,10 @@ targets:
           - "$(AppIdentifierPrefix)$(PIER_BUNDLE_ID).shared"
           - "$(AppIdentifierPrefix)$(PIER_BUNDLE_ID)"
         aps-environment: "$(APS_ENVIRONMENT)"
+        # The person's own iCloud: the Mac app tells their iPhone and iPad what needs them (CloudAlerts), no server and no
+        # APNs key needed.
+        com.apple.developer.icloud-container-identifiers: ["iCloud.$(PIER_BUNDLE_ID)"]
+        com.apple.developer.icloud-services: ["CloudKit"]
     settings:
       configs:
         Debug:
@@ -206,8 +210,10 @@ targets:
       - path: Extensions/PierNotificationService
         excludes: ["Info.plist"]
       - path: App/Shared/NotificationChoices.swift
+      - path: App/Shared/CloudAlertPayload.swift
     dependencies:
       - sdk: UserNotifications.framework
+      - sdk: CloudKit.framework
       # Build order only: the widget extension stamps the build number this target then reads (same number everywhere).
       - target: PierWidgets
         embed: false

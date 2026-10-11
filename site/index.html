@@ -154,8 +154,8 @@
       </figure>
     </div>
     <p class="demo-hint">
-      <span lang="en">Push notifications are sent by your box through Apple's service: today with your own APNs key, when you build the app yourself; coming to the App Store app.</span>
-      <span lang="pt-BR">As notificações push saem da sua box pelo serviço da Apple: hoje com a sua própria chave APNs, quando você compila o app; em breve no app da App Store.</span>
+      <span lang="en">Nothing to set up: Pier on your Mac tells your iPhone and iPad what needs you through your own iCloud. A box can also push by itself with your own APNs key, when you build the app yourself.</span>
+      <span lang="pt-BR">Nada para configurar: o Pier no seu Mac avisa o seu iPhone e o seu iPad pelo seu próprio iCloud. A box também pode enviar push sozinha com a sua chave APNs, quando você compila o app.</span>
     </p>
   </div>
 </section>
@@ -207,21 +207,22 @@
     </p>
     <div class="steps">
       <div class="step">
-        <h3><span lang="en">Install pierd on your box</span><span lang="pt-BR">Instale o pierd na sua box</span></h3>
-        <p><span lang="en">A small open-source server for Linux. It runs the agents in tmux and follows them through their hooks: <code>pierd install</code>.</span><span lang="pt-BR">Um servidor pequeno e de código aberto para Linux. Ele roda os agentes no tmux e acompanha cada um pelos hooks: <code>pierd install</code>.</span></p>
+        <h3><span lang="en">Install pierd</span><span lang="pt-BR">Instale o pierd</span></h3>
+        <p><span lang="en">A small open-source server, on a Linux server or on your Mac. It runs the agents in tmux and follows them through their hooks. One command, no VPN needed.</span><span lang="pt-BR">Um servidor pequeno e de código aberto, num servidor Linux ou no seu Mac. Ele roda os agentes no tmux e acompanha cada um pelos hooks. Um comando, sem VPN.</span></p>
       </div>
       <div class="step">
         <h3><span lang="en">Pair once</span><span lang="pt-BR">Pareie uma vez</span></h3>
-        <p><span lang="en">Scan the QR code from <code>pierd pair</code>. The app and the box pin each other's keys.</span><span lang="pt-BR">Escaneie o QR code do <code>pierd pair</code>. O app e a box guardam a chave um do outro.</span></p>
+        <p><span lang="en">Scan the QR code it prints. On your Mac, Pier pairs by itself, then brings your iPhone in with a code. The app and the box pin each other's keys.</span><span lang="pt-BR">Escaneie o QR code que ele mostra. No seu Mac, o Pier pareia sozinho e depois leva o iPhone com um código. O app e a box guardam a chave um do outro.</span></p>
       </div>
       <div class="step">
         <h3><span lang="en">Your agents, anywhere</span><span lang="pt-BR">Seus agentes, em qualquer lugar</span></h3>
         <p><span lang="en">Answer, review and ship from your iPhone, iPad or Mac.</span><span lang="pt-BR">Responda, revise e entregue pelo iPhone, iPad ou Mac.</span></p>
       </div>
     </div>
+    <pre class="install"><code>curl -fsSL https://wagnerfnds.github.io/pier/install.sh | sh</code></pre>
     <p class="demo-hint">
-      <span lang="en">Setting up a box takes a few minutes; the <a href="support.html">support page</a> has the commands.</span>
-      <span lang="pt-BR">Preparar uma box leva poucos minutos; a <a href="support.html">página de suporte</a> tem os comandos.</span>
+      <span lang="en">Or <code>npm install -g pierd</code>, or <code>brew install wagnerfnds/tap/pierd</code>, then <code>pierd setup</code>. More on the <a href="support.html">support page</a>.</span>
+      <span lang="pt-BR">Ou <code>npm install -g pierd</code>, ou <code>brew install wagnerfnds/tap/pierd</code>, e depois <code>pierd setup</code>. Mais na <a href="support.html">página de suporte</a>.</span>
     </p>
   </div>
 </section>
@@ -247,7 +248,7 @@
         <ul>
           <li><span lang="en">The app and pierd, all of it, on GitHub</span><span lang="pt-BR">O app e o pierd, inteiros, no GitHub</span></li>
           <li><span lang="en">Build it with Xcode and your own Apple developer account</span><span lang="pt-BR">Compile com o Xcode e sua própria conta de desenvolvedor da Apple</span></li>
-          <li><span lang="en">Push notifications through your own APNs key</span><span lang="pt-BR">Notificações push pela sua própria chave APNs</span></li>
+          <li><span lang="en">Push straight from your box with your own APNs key</span><span lang="pt-BR">Push direto da sua box com a sua própria chave APNs</span></li>
         </ul>
         <a class="btn secondary" href="https://github.com/wagnerfnds/pier"><span lang="en">View on GitHub</span><span lang="pt-BR">Ver no GitHub</span></a>
       </div>

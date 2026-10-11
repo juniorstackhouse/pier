@@ -1,7 +1,7 @@
 # pierd
 
-pierd is the box server of **Pier**: it runs on a development box (a Linux server with git, tmux and the agent
-CLIs) and serves the Pier app over the network. It keeps the box's locations (repositories) and their git
+pierd is the box server of **Pier**: it runs on a development box (a Linux server or a Mac with git, tmux and the
+agent CLIs) and serves the Pier app over the network. It keeps the box's locations (repositories) and their git
 worktrees, runs coding agents (Claude Code, Codex) and plain shells in tmux sessions, knows what each agent is
 doing turn by turn through the agents' own hooks, reads their conversations, runs the worktrees' dev servers,
 and sends push notifications to the paired phones.
@@ -27,19 +27,42 @@ scripts/smoke.sh                                              # end to end, see 
 
 ## Install on a box
 
-Copy the binary to the box (e.g. `~/.local/bin/pierd`), then, as the user the agents run as:
+On the machine that runs the agents (a Linux server or a Mac), as the user the agents run as:
 
 ```sh
-pierd install --listen 192.0.2.10:7444   # writes and starts ~/.config/systemd/user/pierd.service,
-                                           # then installs the agents' hooks (see Agent hooks)
-sudo loginctl enable-linger $USER          # once, so pierd keeps running after you log out
-pierd pair                                 # prints a single-use pier:// link (10 minutes) and its QR code; scan it or paste the link in the app
-pierd doctor                               # what works and what to fix
+curl -fsSL https://wagnerfnds.github.io/pier/install.sh | sh
+# or: npm install -g pierd && pierd setup
+# or: brew install wagnerfnds/tap/pierd && pierd setup
 ```
 
-Without `--listen`, pierd listens on the box's tailnet address (100.64.0.0/10) only; it never picks an address
-on every interface by itself. `pierd uninstall` removes the service (state stays). The unit is a plain user
-unit: `systemctl --user status pierd`, logs in `~/.config/pier/box/pierd.log`.
+The script downloads the release for this system from GitHub (`pierd-v*` tags, checked against their SHA-256), puts
+it in `~/.local/bin` and runs `pierd setup`, which:
+
+- runs pierd as a user service on every interface, port 7444 (`~/.config/systemd/user/pierd.service`; a launchd agent
+  on a Mac) and installs the agents' hooks (see Agent hooks);
+- adds the git repositories in the usual folders (`~/code`, `~/Projects`, `~/src`, `~/Developer`, …; `--repos DIR`
+  for others) as locations;
+- prints a single-use `pier://` link (10 minutes) and its QR code: scan it with the app, or paste the link. On a Mac,
+  at its own screen, it hands the link to the Pier app, which pairs with that Mac by itself.
+
+On Linux, run `sudo loginctl enable-linger $USER` once so pierd keeps running after you log out. `pierd doctor` says
+what works and what to fix, `pierd pair` prints a new link any time, and running `pierd setup` again keeps what was
+chosen before.
+
+The link names the address the app should dial: the box's public IPv4 address when it has one, else (a Mac) its
+Bonjour name `<name>.local`, else a tailnet address, else a LAN one; `--address HOST[:PORT]` says otherwise. pierd
+answers only paired devices (mutual TLS with pinned keys) and pairing needs the single-use link, so a server with a
+public address needs no VPN; behind NAT, forward the port or use a VPN such as Tailscale. `--listen ADDR:PORT` limits
+pierd to one address. The other flags: `--name`, `--ports` (below), `--no-projects`, `--no-integrations`, `--no-open`,
+and `--no-service` when pierd already runs under a supervisor of your own (a container): setup only adds the projects
+and pairs.
+
+Underneath, `pierd install [--listen ADDR:PORT]` writes and starts the service and installs the hooks;
+`pierd uninstall` removes the service (state stays). The unit is a plain user unit: `systemctl --user status pierd`,
+logs in `~/.config/pier/box/pierd.log`.
+
+To build it yourself instead: `GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -o pierd ./cmd/pierd`, copy
+the binary to `~/.local/bin` on the box, then `pierd setup`.
 
 ### One box, several people
 
@@ -48,17 +71,11 @@ pairings and push setup, kept apart by the system's permissions. Give each pierd
 and a range of worktree ports no one else's pierd hands out:
 
 ```sh
-pierd install --listen 192.0.2.10:7445 --name pier-maria --ports 42000-42999
+pierd setup --listen 192.0.2.10:7445 --name pier-maria --ports 42000-42999
 ```
 
 `--name` and `--ports` are kept in `~/.config/pier/box/name` and `ports` for later installs (default: the hostname,
-and 41000-48999).
-
-Then add the repositories the app should see:
-
-```sh
-pierd location add shop ~/code/shop
-```
+and 41000-48999). A repository setup did not find: `pierd location add shop ~/code/shop`.
 
 A paired device can also invite another one: `POST /v1/pair/invite` answers a fresh `pier://` link (single
 use, 10 minutes) for the app to show as a QR code. `pierd clients` lists paired devices, `pierd revoke NAME`
@@ -125,7 +142,7 @@ contract in the app's `docs/PUSH.md`.
 
 ## Commands
 
-`pierd help` lists them all: `serve`, `install`, `uninstall`, `pair`, `clients`, `revoke`, `id`,
+`pierd help` lists them all: `setup`, `serve`, `install`, `uninstall`, `pair`, `clients`, `revoke`, `id`,
 `doctor`, `version`, `hook`, `integrations`, `client` (a paired client for scripts: `pierd client pair LINK`,
 then `pierd client GET /v1/sessions`), and the box commands over the local socket: `locations`,
 `location add|rm|config`, `worktree new|rm`, `services`, `service list|start|stop|restart`, `sessions`,

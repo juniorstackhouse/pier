@@ -10,6 +10,10 @@ This document is the contract between the two: the routes, the payloads, and wha
 registers the same categories for its own local notifications; a push only has to name the same category and carry
 the same custom keys.
 
+A box with no APNs key (every box `pierd setup` makes, and any box used with the App Store app, whose key only Pier's
+developer holds) still reaches the person's iPhone and iPad: a Mac running Pier relays its alerts through the
+person's own iCloud (section 8).
+
 ## 1. Setting it up on a box
 
 Push is on when `$PIER_HOME/push.json` exists (default `~/.config/pier/push.json`):
@@ -273,3 +277,34 @@ background refresh (iOS decides, typically every 15 minutes or more). Requires t
 bundle is chosen at launch, because the builders have no availability `if`/`else`); the token goes to the App Group
 (`push-state.json`) and to every box as `widget_token` (the extension also registers on its own). On a widgets push
 the timeline provider reloads and fetches live from the boxes. Not testable on the simulator.
+
+## 8. Without an APNs key: alerts a Mac relays through iCloud
+
+When a box's pierd sends no push, the Mac app does it for the person's other devices, with nothing to set up: no key,
+no server, only their iCloud. Code: `App/Core/CloudAlerts.swift` (both sides), `App/Shared/CloudAlertPayload.swift`
+(the record's fields as notification content, shared with the service extension).
+
+* **On the Mac** (Mac Catalyst): for every box it follows, each transition its event stream shows to waiting or
+  finished, with the same switches as pierd's alerts (the notification events in Ajustes, kept in `push-state.json`)
+  and the Mac's own "Avisar o iPhone e o iPad pelo iCloud" (on by default). It first asks the box whether it pushes
+  to this app itself (`GET /v1/push/info` answers with this app's bundle id, checked every 10 minutes); if it does,
+  nothing is relayed (the phone would ring twice). Otherwise it saves a `PierAlert` record in the person's private database of the container
+  `iCloud.<PIER_BUNDLE_ID>`: `title` and `body` (the same words as a local notification), `box`, `session`,
+  `location`, `category` (4.1) and, for a question, `options` (the choices, 4.3). The record's name is
+  `alert-` + the first 16 bytes of SHA-256(box ␟ session ␟ state ␟ state_since) in hex, so two Macs following one box
+  save it once (the second save fails with `serverRecordChanged`) and the phone rings once. Each Mac deletes the
+  records it saved after an hour.
+* **On the iPhone and iPad**: a `CKQuerySubscription` (`pier-alerts-v1`) on the creation of `PierAlert` records, saved
+  on the first foreground with an iCloud account (tried again on each foreground until it works). Its notification:
+  title and body from the record's fields (`%1$@` localization keys with the fields as arguments), the default sound,
+  `mutable-content`, and every field as desired keys. The notification service extension turns it into the content a
+  pierd push has: `box`, `session`, `location` and `options` in the userInfo, one thread per session, the category,
+  the choices as buttons; a tap opens the session and an answer goes to the box like any other.
+* CloudKit does not notify the device that saved a record: the Mac shows its own local notifications as before.
+* **Limits**: Pier has to be open on a Mac that is on (Ajustes → "Abrir o Pier quando o Mac ligar"; the onboarding's
+  "Neste Mac" turns it on). Only alerts: Live Activities and widgets are updated by the app's own event stream while
+  it runs. CloudKit delivers within seconds, usually.
+* **A build of your own**: the app needs the iCloud capability with the container `iCloud.<PIER_BUNDLE_ID>` (the
+  entitlements already name it). A Debug build writes to CloudKit's development environment, which creates the
+  `PierAlert` type the first time a Mac saves one; TestFlight and App Store builds use production, where the schema
+  has to be deployed once from the CloudKit Console (Schema → Deploy Schema Changes).

@@ -1,0 +1,33 @@
+# pierd's tests on Linux for every change to it (the release runs them too, before it builds), and a syntax check of
+# the install script that downloads it.
+name: pierd
+
+on:
+  pull_request:
+    paths: ["Server/pierd/**", "site/install.sh", ".github/workflows/pierd*.yml"]
+  push:
+    branches: [main]
+    paths: ["Server/pierd/**", "site/install.sh", ".github/workflows/pierd*.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: Server/pierd/go.mod
+
+      - name: Test
+        working-directory: Server/pierd
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq tmux
+          go vet ./...
+          go test ./...
+
+      - name: Install script
+        run: sh -n site/install.sh

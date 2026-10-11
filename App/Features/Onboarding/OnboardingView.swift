@@ -2,9 +2,12 @@ import SwiftUI
 import PierKit
 
 /// First run in three short steps: 1 "Oi, é o Pier" (what it does), 2 "Como funciona" (box runs the agents · the app shows
-/// who needs you · answer from anywhere), 3 pair (scan the QR / paste the link; the Mac only pastes). The pairing sheet
-/// (RootView, `router.pendingPair`) closes by itself when it works and the flow ends on "Tudo pronto!": what is connected,
-/// notifications, the first task. From Ajustes ("Adicionar box", `embedded`) only the pairing step shows.
+/// who needs you · answer from anywhere), 3 pair, by where the agents run (`PairPlace`): on this Mac, the install
+/// command for Terminal, after which pierd opens its link here and the app pairs by itself; on a server, its command and
+/// then its link (scanned, or pasted on the Mac); on the phone, the code "Levar para o iPhone" shows on the Mac. The
+/// pairing sheet (RootView, `router.pendingPair`) closes by itself when it works and the flow ends on "Tudo pronto!":
+/// what is connected, notifications, the phone (Mac), the first task. From Ajustes ("Adicionar box", `embedded`) only
+/// the pairing step shows.
 struct OnboardingView: View {
     @Environment(AppModel.self) private var model
     @Environment(Router.self) private var router
@@ -16,6 +19,11 @@ struct OnboardingView: View {
     @State private var showScanner = false
     @State private var showPaste = false
     @State private var showInstallHelp = false
+    @State private var place = PairPlace.default
+    #if targetEnvironment(macCatalyst)
+    /// "Neste Mac": Pier opens when the Mac starts (LoginItem), turned on once the box here pairs.
+    @AppStorage("onboarding.openAtLogin") private var openAtLogin = true
+    #endif
 
     enum Step: Int, CaseIterable { case hello, how, pair, done }
 
@@ -26,7 +34,7 @@ struct OnboardingView: View {
                 switch embedded ? .pair : step {
                 case .hello: OnboardingHello().transition(slide)
                 case .how: OnboardingHow().transition(slide)
-                case .pair: OnboardingPair(embedded: embedded).transition(slide)
+                case .pair: OnboardingPair(embedded: embedded, place: $place).transition(slide)
                 case .done: OnboardingDone(finish: finish, newTask: firstTask).transition(slide)
                 }
             }
@@ -62,6 +70,9 @@ struct OnboardingView: View {
             go(.pair)
         }
         .onChange(of: model.hasBoxes) { _, has in
+            #if targetEnvironment(macCatalyst)
+            if has, place == .thisMac, openAtLogin { LoginItem.set(true) }
+            #endif
             if has, !embedded, router.onboardingFinishing { go(.done) }
         }
     }
@@ -91,23 +102,7 @@ struct OnboardingView: View {
                     .accessibilityIdentifier("onboarding-next")
                 if step == .hello && !embedded { demoButton }
             case .pair:
-                // The Mac pairs by pasting the link (or opening it: the app handles pier://); no camera to scan with.
-                #if targetEnvironment(macCatalyst)
-                Button { showPaste = true } label: { Label("Colar link", systemImage: "doc.on.clipboard") }
-                    .buttonStyle(PrimaryButtonStyle())
-                    .accessibilityIdentifier("onboarding-paste")
-                #else
-                Button { showScanner = true } label: { Label("Escanear QR code", systemImage: "qrcode.viewfinder") }
-                    .buttonStyle(PrimaryButtonStyle())
-                    .accessibilityIdentifier("onboarding-scan")
-                Button { showPaste = true } label: { Label("Colar link", systemImage: "doc.on.clipboard") }
-                    .buttonStyle(SecondaryButtonStyle())
-                    .accessibilityIdentifier("onboarding-paste")
-                #endif
-                // A box with no pierd yet: the agent there can set it up, or the commands are a copy away.
-                Button { showInstallHelp = true } label: { Text("Ainda sem pierd na box?") }
-                    .font(.subheadline.weight(.medium)).foregroundStyle(Theme.accent)
-                    .accessibilityIdentifier("onboarding-install-help")
+                pairButtons
                 if !embedded { demoButton }
             case .done:
                 EmptyView()
@@ -121,6 +116,48 @@ struct OnboardingView: View {
             }
         }
         .animation(.snappy, value: step)
+    }
+
+    /// What pairing asks for where the agents run: on this Mac, the command to paste in Terminal (pierd pairs the app by
+    /// itself); with a server, the command for it and then its link (pasted on the Mac, scanned on the phone); with "my
+    /// Mac", the code the Mac's "Levar para o iPhone" shows.
+    @ViewBuilder private var pairButtons: some View {
+        switch place {
+        case .thisMac:
+            CopyCommandButton(command: PierLinks.installCommand, primary: true)
+            #if targetEnvironment(macCatalyst)
+            Toggle("Abrir o Pier quando o Mac ligar", isOn: $openAtLogin)
+                .font(.subheadline).foregroundStyle(Theme.textDim)
+                .accessibilityIdentifier("onboarding-open-at-login")
+            #endif
+            Button { showPaste = true } label: { Text("Já tenho um link pier://") }
+                .font(.subheadline.weight(.medium)).foregroundStyle(Theme.accent)
+                .accessibilityIdentifier("onboarding-paste")
+        case .server:
+            #if targetEnvironment(macCatalyst)
+            Button { showPaste = true } label: { Label("Colar link", systemImage: "doc.on.clipboard") }
+                .buttonStyle(PrimaryButtonStyle())
+                .accessibilityIdentifier("onboarding-paste")
+            #else
+            Button { showScanner = true } label: { Label("Escanear QR code", systemImage: "qrcode.viewfinder") }
+                .buttonStyle(PrimaryButtonStyle())
+                .accessibilityIdentifier("onboarding-scan")
+            Button { showPaste = true } label: { Label("Colar link", systemImage: "doc.on.clipboard") }
+                .buttonStyle(SecondaryButtonStyle())
+                .accessibilityIdentifier("onboarding-paste")
+            #endif
+            // A box with no pierd yet: the agent there can set it up, or the commands are a copy away.
+            Button { showInstallHelp = true } label: { Text("Outros jeitos de instalar") }
+                .font(.subheadline.weight(.medium)).foregroundStyle(Theme.accent)
+                .accessibilityIdentifier("onboarding-install-help")
+        case .myMac:
+            Button { showScanner = true } label: { Label("Escanear QR code", systemImage: "qrcode.viewfinder") }
+                .buttonStyle(PrimaryButtonStyle())
+                .accessibilityIdentifier("onboarding-scan")
+            Button { showPaste = true } label: { Label("Colar link", systemImage: "doc.on.clipboard") }
+                .buttonStyle(SecondaryButtonStyle())
+                .accessibilityIdentifier("onboarding-paste")
+        }
     }
 
     /// No box yet: look around on the demo's made-up box first (`DemoMode`).
@@ -282,32 +319,85 @@ private struct OnboardingHow: View {
 
 // MARK: - step 3: pair
 
+/// Where the person's agents run, which sets how pairing goes.
+enum PairPlace: String, CaseIterable, Identifiable {
+    /// pierd on this Mac: the install command in Terminal, and the app pairs by itself.
+    case thisMac
+    /// pierd on a server (or another machine), reached over SSH: its command, then its link.
+    case server
+    /// On the phone: the Mac that runs the agents brings it in ("Levar para o iPhone").
+    case myMac
+
+    var id: String { rawValue }
+
+    static var choices: [PairPlace] { Platform.isMac ? [.thisMac, .server] : [.myMac, .server] }
+    static var `default`: PairPlace { Platform.isMac ? .thisMac : .myMac }
+
+    var title: LocalizedStringKey {
+        switch self {
+        case .thisMac: "Neste Mac"
+        case .server: "Num servidor"
+        case .myMac: "No meu Mac"
+        }
+    }
+}
+
 private struct OnboardingPair: View {
     let embedded: Bool
+    @Binding var place: PairPlace
 
     var body: some View {
-        VStack(spacing: 22) {
-            Spacer(minLength: 12)
-            Image(systemName: "qrcode.viewfinder").font(.system(size: 54, weight: .light)).foregroundStyle(Theme.accent)
-                .frame(width: 104, height: 104)
-                .background(Theme.card, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).strokeBorder(Theme.stroke))
+        VStack(spacing: 20) {
+            Spacer(minLength: 8)
+            Image(systemName: symbol).font(.system(size: 50, weight: .light)).foregroundStyle(Theme.accent)
+                .frame(width: 96, height: 96)
+                .background(Theme.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Theme.stroke))
                 .accessibilityHidden(true)
-            Text(embedded ? "Adicionar box" : "Conecte sua box").font(.system(size: 28, weight: .bold, design: .rounded)).foregroundStyle(Theme.text)
+            Text(embedded ? "Adicionar box" : "Onde seus agentes rodam?").font(.system(size: 26, weight: .bold, design: .rounded))
+                .foregroundStyle(Theme.text).multilineTextAlignment(.center)
                 .accessibilityAddTraits(.isHeader)
+            Picker("Onde seus agentes rodam?", selection: $place) {
+                ForEach(PairPlace.choices) { Text($0.title).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .frame(maxWidth: 360)
+            .accessibilityIdentifier("onboarding-place")
             VStack(alignment: .leading, spacing: 14) {
-                Step(n: 1, text: "Na box, rode  pierd pair  (ou abra “Levar para o iPhone” nos Ajustes de um aparelho já pareado).")
-                #if targetEnvironment(macCatalyst)
-                Step(n: 2, text: "Copie o link pier:// que aparece e cole aqui.")
-                #else
-                Step(n: 2, text: "Escaneie o QR code ou cole o link pier:// aqui.")
-                #endif
+                switch place {
+                case .thisMac:
+                    Step(n: 1, text: "Abra o Terminal e cole este comando:")
+                    CommandBox(command: PierLinks.installCommand)
+                    Step(n: 2, text: "O pierd se instala, encontra seus projetos e o Pier pareia sozinho.")
+                    Step(n: 3, text: "Depois, para o iPhone: Ajustes → Levar para o iPhone.")
+                case .server:
+                    Step(n: 1, text: "No servidor, por SSH, rode:")
+                    CommandBox(command: PierLinks.installCommand)
+                    #if targetEnvironment(macCatalyst)
+                    Step(n: 2, text: "Ele mostra um link pier://. Copie e cole aqui.")
+                    #else
+                    Step(n: 2, text: "Ele mostra um QR code. Escaneie aqui.")
+                    #endif
+                case .myMac:
+                    Step(n: 1, text: "No Mac, instale o Pier e escolha “Neste Mac”: os agentes rodam lá.")
+                    Step(n: 2, text: "No Pier do Mac: Ajustes → Levar para o iPhone.")
+                    Step(n: 3, text: "Escaneie aqui o código que aparecer.")
+                }
             }
             .padding(.horizontal, 24)
-            Spacer(minLength: 12)
+            .animation(.snappy(duration: 0.2), value: place)
+            Spacer(minLength: 8)
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("onboarding-step-3")
+    }
+
+    private var symbol: String {
+        switch place {
+        case .thisMac: "laptopcomputer"
+        case .server: "server.rack"
+        case .myMac: "laptopcomputer.and.iphone"
+        }
     }
 
     private struct Step: View {
@@ -324,6 +414,63 @@ private struct OnboardingPair: View {
     }
 }
 
+/// A command to run, selectable, with Copiar beside it.
+struct CommandBox: View {
+    let command: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(command).font(.mono(12)).foregroundStyle(Theme.text).textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            CopyCommandButton(command: command, primary: false)
+        }
+        .padding(.leading, 12).padding(.trailing, 6).padding(.vertical, 8)
+        // A card on the page's gray, like the rest of the onboarding (the code gray would vanish into it).
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Theme.stroke))
+        .padding(.leading, 36)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("onboarding-command")
+    }
+}
+
+/// Copies a command; "Copiado" for a moment after.
+struct CopyCommandButton: View {
+    let command: String
+    let primary: Bool
+    @State private var copied = false
+
+    var body: some View {
+        Button {
+            UIPasteboard.general.string = command
+            Haptic.impact(.light)
+            withAnimation(.snappy) { copied = true }
+            Task { try? await Task.sleep(for: .seconds(1.6)); withAnimation(.snappy) { copied = false } }
+        } label: {
+            if primary {
+                Label(copied ? "Copiado" : "Copiar o comando", systemImage: copied ? "checkmark" : "doc.on.doc")
+            } else {
+                Label(copied ? "Copiado" : "Copiar", systemImage: copied ? "checkmark" : "doc.on.doc")
+                    .font(.footnote.weight(.semibold)).foregroundStyle(copied ? Theme.green : Theme.accent)
+                    .padding(.horizontal, 10).padding(.vertical, 6)
+                    .background((copied ? Theme.green : Theme.accent).opacity(0.13), in: Capsule())
+            }
+        }
+        .modifier(PrimaryIf(primary))
+        .accessibilityValue(copied ? command : "")
+        .accessibilityIdentifier(primary ? "onboarding-copy-command" : "command-copy")
+    }
+
+    private struct PrimaryIf: ViewModifier {
+        let on: Bool
+        init(_ on: Bool) { self.on = on }
+        func body(content: Content) -> some View {
+            if on { content.buttonStyle(PrimaryButtonStyle()) } else { content.buttonStyle(.plain) }
+        }
+    }
+}
+
 // MARK: - all set
 
 private struct OnboardingDone: View {
@@ -332,6 +479,7 @@ private struct OnboardingDone: View {
     @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var pop = false
+    @State private var invite = false
 
     var body: some View {
         VStack(spacing: 24) {
@@ -349,6 +497,16 @@ private struct OnboardingDone: View {
                 }
                 notificationsRow
                 Divider().overlay(Theme.stroke)
+                #if targetEnvironment(macCatalyst)
+                // The phone next: the box here shows a code for it ("Levar para o iPhone").
+                Button { invite = true } label: {
+                    item(symbol: "iphone.gen3", color: Theme.accent, title: S("Levar para o iPhone"),
+                         detail: S("Escaneie um código com o iPhone ou o iPad"), chevron: true)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("onboarding-invite")
+                Divider().overlay(Theme.stroke)
+                #endif
                 Button(action: newTask) {
                     item(symbol: "plus.bubble.fill", color: Theme.accent, title: S("Criar a primeira tarefa"), detail: S("Diga a um agente o que fazer"),
                          chevron: true)
@@ -370,6 +528,14 @@ private struct OnboardingDone: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("onboarding-done")
+        .sheet(isPresented: $invite) {
+            NavigationStack {
+                InviteDeviceScreen()
+                    .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Fechar") { invite = false } } }
+            }
+            // Tall enough for the whole code without scrolling (a Mac sheet is small by default).
+            .frame(minWidth: 460, idealWidth: 540, minHeight: 600, idealHeight: 740)
+        }
         .task {
             Haptic.success()
             withAnimation(.spring(response: 0.45, dampingFraction: 0.6).delay(0.1)) { pop = true }

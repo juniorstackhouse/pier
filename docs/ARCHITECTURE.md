@@ -19,8 +19,9 @@ code calls which route.
 7. Projects: user-defined **sections** (stored on the device), each ordered by hand, by name or by recent activity, renames,
    hide; worktrees per project; the agents board. On the iPad and the Mac a project opens its **workspace**: the file
    tree and an editor that saves to the box, the changes beside their patches, the git history.
-8. Notifications: push from pierd (APNs), local notifications from the event stream as a fallback; Live Activities and
-   widgets; App Shortcuts; "Falar" (talk to the agents).
+8. Notifications: push from pierd (APNs) or, for a box without a key, relayed by a Mac running Pier through the
+   person's iCloud (`CloudAlerts`, docs/PUSH.md 8); local notifications from the event stream as a fallback; Live
+   Activities and widgets; App Shortcuts; "Falar" (talk to the agents).
 
 ## Repo layout
 ```
@@ -60,8 +61,8 @@ docs/
   Application Support / the App Group for sections, renames, hidden projects, prompt drafts and caches.
 - **Live updates**: one event stream per box while the app is active (`/v1/events?since=` NDJSON, resume by seq); refresh
   affected resources on events; the transcript polls ~1.5 s while a conversation is open.
-- **Background**: push from pierd; BGAppRefreshTask polls `/v1/sessions` and posts local notifications for new
-  `waiting`/`finished` on boxes without push.
+- **Background**: push from pierd, or the Mac's alerts through iCloud (docs/PUSH.md 8); BGAppRefreshTask polls
+  `/v1/sessions` and posts local notifications for new `waiting`/`finished` on boxes without push.
 - **Never** set `open` on task/session requests. Always pass `when` on send (`idle` from the composer, `now` for answers).
 - iOS 17 minimum. Portuguese (pt-BR) UI strings with English via String Catalogs (`App/Resources/Localizable.xcstrings`,
   `App/Features/Dashboard/Home.xcstrings`, `App/Resources/AppShortcuts.xcstrings`).
@@ -314,7 +315,7 @@ follows it); only an exit (`ended`) ends the activity. Debug `-openLink pier://�
 `-pairLink <pier://…>`, `-openSession <name>`, `-openFirstSession 1`, `-openCompose 1 -composeProject <loc>
 -composePrompt <text> -composeNoFocus 1 -composeOptions 1 -composeSheet project|worktree|base -composeSubmit 1`,
 `-startTab inbox|board|projects|settings`, `-seedSections 1`, `-snapshotTo <file.png> [-snapshotAfter <s>]`, `-homeCustomize 1`, `-homeScrollTo <widget>`, `-sessionExpandAll 1`,
-`-sessionDetails 1`, `-sessionTerminal 1`, `-openInstallHelp 1` (the onboarding's "Ainda sem pierd na box?" sheet),
+`-sessionDetails 1`, `-sessionTerminal 1`, `-openInstallHelp 1` (the onboarding's "Outros jeitos de instalar" sheet),
 `-runIntent postNotif|notifAction|notifDelivered …` (App/Intents/DebugIntentRunner.swift), `-openLink <pier://…>`,
 `-debugStartActivity 1`, `-widgetGallery home|lock|activity|island|all`, `-openTalk 1 [-talkText "…" -talkRoute 1]`,
 `-openPalette 1`, `-openFaxina 1`, `-openProject <loc>[/<worktree>] [-workspaceTab files|changes|history|overview]
@@ -445,9 +446,15 @@ Revisar button is tapped by position in that test.
   stays `#if !targetEnvironment(macCatalyst)`. The app writes the snapshot to the App Group on the Mac as on the phone;
   the refresh timing is `WidgetRefreshPolicy` (PierKit). Debug `-widgetGallery home` renders the families in-app.
 - **Onboarding**: three steps, then "Tudo pronto!" (`Router.onboardingFinishing` keeps it up after the box pairs). The
-  pairing step's "Ainda sem pierd na box?" (`InstallHelpSheet`, also under Ajustes → Adicionar box) offers a prompt to
-  paste into the agent already running on the box, which builds, installs and pairs pierd and prints the link, and the
-  same steps as commands with Copiar.
+  pairing step asks where the agents run (`PairPlace`). "Neste Mac" (the Mac's default): the one install command
+  (`PierLinks.installCommand`, `site/install.sh`) to paste in Terminal; it ends with `pierd setup`, which opens its
+  `pier://` link on this Mac, and the app pairs without the confirm phase because the link names this very device
+  (`ThisDevice.isHere`, `LocalHost.isThisDevice` in PierKit); the switch "Abrir o Pier quando o Mac ligar" (on by
+  default) registers the app as a login item once the box pairs (`LoginItem`, `SMAppService.mainApp`; also in Ajustes).
+  "Tudo pronto!" then offers "Levar para o iPhone". "Num servidor": the same command, to run over SSH, then the link
+  (scanned on a phone, pasted on the Mac); "Outros jeitos de instalar" (`InstallHelpSheet`, also under Ajustes →
+  Adicionar box) offers a prompt for the agent already running there and the commands (the script, npm, Homebrew) with
+  Copiar. "No meu Mac" (the phone's default): the code the Mac's "Levar para o iPhone" shows.
   Debug `-uiTestMock 1 -uiTestOnboarding 1` starts with no box; pairing any link "pairs" the mock box.
 - **Demo**: the first step and the pairing step offer "Explorar com dados de exemplo" (`DemoMode`): the mock box with the
   showcase's data (`UITestMock.makeConnection`, compiled into Release builds), one more box for the app — no network,
@@ -458,7 +465,8 @@ Revisar button is tapped by position in that test.
 - **Links from outside**: a `pier://` pairing or join link that reaches the app through `onOpenURL` (a tap in a
   message or a web page) opens the pairing sheet in a confirm phase (`PendingPair.confirm`: address and pinned
   fingerprint, Parear / Cancelar) because pairing hands the box this device's name and push tokens. Links the person
-  scanned or pasted, and the Debug `-pairLink` argument, pair at once.
+  scanned or pasted, links that name this very Mac (pierd setup on it), and the Debug `-pairLink` argument, pair at
+  once.
 - **Levar para o iPhone** (Ajustes): `BoxAPI.pairInvite()` asks `POST /v1/pair/invite` (`{"link","expires"}`); a box
   without it gives `PairInviteError.unsupported` (the screen says to run `pierd pair`). Several boxes become one
   `pier://join` link. Debug `-openInvite 1` (with `-startTab settings`), `-uiTestNoInvite 1`.

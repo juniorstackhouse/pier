@@ -201,7 +201,13 @@ final class Router {
         default: break
         }
         if let link = try? PairingLink.parse(url.absoluteString) {
-            pendingPair = PendingPair(link: link, confirm: !trusted)
+            // A link that names this Mac comes from pierd here (`pierd setup` opens it): it pairs without asking.
+            #if targetEnvironment(macCatalyst)
+            let here = ThisDevice.isHere(link)
+            #else
+            let here = false
+            #endif
+            pendingPair = PendingPair(link: link, confirm: !trusted && !here)
         }
     }
 }

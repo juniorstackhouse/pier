@@ -214,7 +214,8 @@ final class Notifications: NSObject, UNUserNotificationCenterDelegate {
     // wherever the awaited work ends, which crashed the app after a background button).
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
                                             withCompletionHandler completionHandler: @escaping () -> Void) {
-        let info = response.notification.request.content.userInfo
+        // A Mac's iCloud alert carries the same keys once the service extension saw it; read them from the record if not.
+        let info = CloudAlertPayload.userInfo(merging: response.notification.request.content.userInfo)
         guard let box = info["box"] as? String, let session = info["session"] as? String else { completionHandler(); return }
         let location = info["location"] as? String
         let text = (response as? UNTextInputNotificationResponse)?.userText
@@ -239,7 +240,7 @@ final class Notifications: NSObject, UNUserNotificationCenterDelegate {
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
         // A banner while the app is open (the in-app banner covers normal transitions; this covers anything delivered by the system).
         // A remote push for a box the open app is already following would only repeat that banner (and the haptic).
-        let info = notification.request.content.userInfo
+        let info = CloudAlertPayload.userInfo(merging: notification.request.content.userInfo)
         if notification.request.trigger is UNPushNotificationTrigger, let box = info["box"] as? String {
             let covered = await MainActor.run { self.isCovered?(box) ?? false }
             if covered { return [.list] }

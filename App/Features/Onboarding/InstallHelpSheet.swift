@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// "Ainda sem pierd na box?": the two ways to put pierd on a box before pairing. The quick one hands the job to the agent
-/// already running there (the prompt is copied and pasted into Claude Code or Codex on the box, which builds, installs
-/// and pairs pierd and prints the pier:// link); the other lists the commands, each with Copiar. Reached from the pairing
-/// step of the onboarding and from "Adicionar box" in Ajustes.
+/// "Outros jeitos de instalar": the ways to put pierd on a machine before pairing. The quick one hands the job to the
+/// agent already running there (the prompt is copied and pasted into Claude Code or Codex, which runs the installer and
+/// prints the pier:// link); the other lists the commands (the installer, npm, Homebrew), each with Copiar. Reached from
+/// the pairing step of the onboarding and from "Adicionar box" in Ajustes.
 struct InstallHelpSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var copied: String?
@@ -11,17 +11,15 @@ struct InstallHelpSheet: View {
     /// What the agent on the box is asked to do (in English, the language every agent reads best). `pierd doctor` at the
     /// end so what is still missing shows up at once.
     static let agentPrompt = """
-    Set up Pier's server, pierd, on this machine so my phone can follow the coding agents running here. Its source is \
-    in the Pier repository under Server/pierd (Go 1.25, standard library only; clone the repository first if it is not \
-    on this machine). Do everything as my user; the only sudo allowed is step 3.
-    1. In Server/pierd run: GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -o pierd ./cmd/pierd, then put \
-    the binary in ~/.local/bin (make sure that folder is on the PATH).
-    2. Run: pierd install --listen <this machine's Tailscale or LAN address>:7444 (installs a user service and the \
-    agents' hooks).
-    3. Run: sudo loginctl enable-linger $USER, so pierd keeps running after I log out.
-    4. For each repository I work in on this machine run: pierd location add <name> <path>.
-    5. Run: pierd pair, and show me the pier:// link it prints (I will scan or paste it on my phone).
-    Finally run pierd doctor and tell me what it reports.
+    Set up Pier's server, pierd, on this machine so my phone and my Mac can follow the coding agents running here. \
+    Do everything as my user.
+    1. Run: \(PierLinks.installCommand)
+    It installs pierd from github.com/wagnerfnds/pier, runs it as a user service, installs the agents' hooks, adds the \
+    git repositories it finds as projects and prints a pier:// pairing link with its QR code. If it cannot run here, \
+    use \(PierLinks.npmCommand) instead.
+    2. On Linux, run: sudo loginctl enable-linger $USER, so pierd keeps running after I log out (ask me first).
+    3. If a repository I work in is missing, add it with: pierd location add <name> <path>.
+    4. Show me the pier:// link (I will scan or paste it), then run pierd doctor and tell me what it reports.
     """
 
     private struct Command: Identifiable {
@@ -31,26 +29,21 @@ struct InstallHelpSheet: View {
     }
 
     private let commands: [Command] = [
-        Command(id: "build", title: "Compile o pierd (na pasta Server/pierd do repositório)",
-                command: "GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -o pierd ./cmd/pierd"),
-        Command(id: "install", title: "Na box, instale o serviço e os hooks dos agentes",
-                command: "pierd install --listen <endereço-da-box>:7444"),
-        Command(id: "linger", title: "Deixe o pierd rodando depois do logout",
-                command: "sudo loginctl enable-linger $USER"),
-        Command(id: "location", title: "Aponte os repositórios que o app deve ver",
-                command: "pierd location add <nome> <caminho>"),
-        Command(id: "pair", title: "Gere o link de pareamento (um QR code aparece)",
-                command: "pierd pair"),
+        Command(id: "install", title: "Instale e pareie (um QR code aparece)", command: PierLinks.installCommand),
+        Command(id: "npm", title: "Ou pelo npm", command: PierLinks.npmCommand),
+        Command(id: "brew", title: "Ou pelo Homebrew", command: PierLinks.brewCommand),
+        Command(id: "linger", title: "No Linux, deixe o pierd rodando depois do logout", command: "sudo loginctl enable-linger $USER"),
+        Command(id: "pair", title: "Um link de pareamento novo, quando precisar", command: "pierd pair"),
     ]
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
-                    Text("O pierd é o pequeno servidor que cada box roda. Dois jeitos de colocá-lo lá.")
+                    Text("O pierd é o pequeno servidor que roda os agentes: num servidor ou no seu Mac. Dois jeitos de instalar.")
                         .font(.subheadline).foregroundStyle(Theme.textDim)
                     section(title: "Peça ao seu agente", symbol: "sparkles") {
-                        Text("Já roda o Claude Code ou o Codex nessa box? Cole este pedido lá: ele compila, instala e pareia o pierd, e mostra o link pier:// para você escanear.")
+                        Text("Já roda o Claude Code ou o Codex nessa máquina? Cole este pedido lá: ele instala e pareia o pierd, e mostra o link pier:// para você escanear.")
                             .font(.subheadline).foregroundStyle(Theme.textDim)
                         Text(Self.agentPrompt).font(.mono(11.5)).foregroundStyle(Theme.text)
                             .textSelection(.enabled)
@@ -60,7 +53,7 @@ struct InstallHelpSheet: View {
                         copyButton(id: "prompt", text: Self.agentPrompt, label: "Copiar o pedido")
                             .accessibilityIdentifier("install-help-copy-prompt")
                     }
-                    section(title: "Ou faça na mão", symbol: "terminal") {
+                    section(title: "Ou rode você mesmo", symbol: "terminal") {
                         ForEach(commands) { c in
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(c.title).font(.footnote).foregroundStyle(Theme.textDim)
@@ -79,7 +72,7 @@ struct InstallHelpSheet: View {
                 .padding(20)
             }
             .pierBackground()
-            .navigationTitle("Pôr o pierd na box")
+            .navigationTitle("Instalar o pierd")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Fechar") { dismiss() } } }
         }
