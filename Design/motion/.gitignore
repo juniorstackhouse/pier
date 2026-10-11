@@ -1,0 +1,4 @@
+dist/
+out/
+# Apple's SF Symbols, exported locally by symbols.swift: not ours to publish
+assets/symbols/
