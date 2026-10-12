@@ -6,6 +6,7 @@ import { CUE, BEAT } from '../time.js';
 import { clamp, lerp, ease, prog, spring, springTrack } from '../anim.js';
 import { createPhone, SW, SH, ISLAND } from '../ui/iphone.js';
 import { FORMAT } from '../format.js';
+import { say } from '../lang.js';
 
 const V = FORMAT.vertical;
 const BASE = (V ? 1250 : 1000) / 892;      // the device's height at zoom 1 (vertical: the lower two thirds, the words above)
@@ -136,15 +137,15 @@ export function createPhoneScene(layer) {
     css(card.el, { display: t >= T.lockCard - 0.05 ? 'block' : 'none', opacity: clamp(cardIn * 1.6), transform: `translate(0, ${cardY.toFixed(2)}px) scale(${lerp(0.94, 1, clamp(cardIn)).toFixed(4)})` });
     const phase = t < T.working ? 'needs' : t < T.yourTurn ? 'working' : 'done';
     const color = phase === 'needs' ? '#F5A35C' : phase === 'working' ? '#4A99FA' : '#4CC38A';
-    text(card.badgeText, phase === 'needs' ? 'Needs you' : phase === 'working' ? 'Working' : 'Your turn');
+    text(card.badgeText, phase === 'needs' ? say('Needs you', 'Precisa de você') : phase === 'working' ? say('Working', 'Trabalhando') : say('Your turn', 'Sua vez'));
     css(card.badge, { color, background: `color-mix(in srgb, ${color} 16%, transparent)` });
     for (const [k, icon] of Object.entries(card.badgeIcon)) css(icon, { display: k === phase ? 'inline-block' : 'none' });
     const phaseStart = phase === 'needs' ? T.lockCard - 8 : phase === 'working' ? T.working : T.yourTurn;
     text(card.timer, mmss(Math.max(0, t - phaseStart)));
     css(card.timer, { color, opacity: phase === 'done' ? 0 : 1 });
     if (phase === 'needs') { text(card.detail, 'Bash  npm install stripe'); card.detail.className = 'lc-detail mono'; }
-    else if (phase === 'working') { text(card.detail, 'Running npm install stripe…'); card.detail.className = 'lc-detail'; css(card.detail, { color: '#8B9199' }); }
-    else { text(card.detail, 'Added Stripe checkout to the pricing page. The tests pass.'); card.detail.className = 'lc-detail'; css(card.detail, { color: '#E6E8EB', fontSize: '13.5px' }); }
+    else if (phase === 'working') { text(card.detail, say('Running npm install stripe…', 'Rodando npm install stripe…')); card.detail.className = 'lc-detail'; css(card.detail, { color: '#8B9199' }); }
+    else { text(card.detail, say('Added Stripe checkout to the pricing page. The tests pass.', 'Adicionei o checkout do Stripe à página de preços. Os testes passam.')); card.detail.className = 'lc-detail'; css(card.detail, { color: '#E6E8EB', fontSize: '13.5px' }); }
     const swap = (at) => (t >= at && t < at + 0.3 ? 1 - Math.sin(prog(t, at, at + 0.3) * Math.PI) * 0.75 : 1);
     css(card.detail, { opacity: Math.min(swap(T.working), swap(T.yourTurn)) });
     const btnK = 1 - ease.inOutCubic(prog(t, T.working, T.working + 0.32));

@@ -6,6 +6,7 @@ import { clamp, lerp, ease, prog, spring, springTrack, cubicPoint, tween, bezier
 import { createMac, MAC_W, MAC_H, MENU_H, TAB_CENTER } from '../ui/mac.js';
 import { CW, column } from '../ui/edgeTab.js';
 import { FORMAT } from '../format.js';
+import { say } from '../lang.js';
 
 const V = FORMAT.vertical, FW = FORMAT.w, FH = FORMAT.h;
 const BASE = FW / MAC_W;             // display points → frame pixels at zoom 1 (the display's width fills the frame's)
@@ -159,7 +160,7 @@ export function createMacScene(layer) {
 
     // hover: the Inbox, then the tools down the tab
     let hover = -1, hoverAmt = 0, labelText = '', labelSlot = 0, labelOpacity = 0;
-    const tools = [[T.toolNew, N + 1, 'New task'], [T.toolTalk, N + 2, 'Talk'], [T.toolPoint, N + 3, 'Point']];
+    const tools = [[T.toolNew, N + 1, say('New task', 'Nova tarefa')], [T.toolTalk, N + 2, say('Talk', 'Falar')], [T.toolPoint, N + 3, say('Point', 'Apontar')]];
     if (t >= T.inboxHover - 0.08 && t < T.toolNew - 0.3) {
       hover = 0; hoverAmt = ease.outCubic(prog(t, T.inboxHover - 0.08, T.inboxHover + 0.12));
       labelText = 'Inbox'; labelSlot = 0;

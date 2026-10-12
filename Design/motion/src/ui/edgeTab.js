@@ -3,6 +3,7 @@
 // Units are points; the element is `CW` wide, its right side on the screen edge.
 import { h, s, css, attr, sym, text } from '../dom.js';
 import { clamp, lerp } from '../anim.js';
+import { say } from '../lang.js';
 
 // EdgeMetrics.metrics(.medium)
 const M = { tabWidth: 23, expandedWidth: 30, indicator: 12, indicatorGap: 5, inboxButton: 28, button: 26, buttonGap: 3, glyph: 14,
@@ -46,11 +47,11 @@ function outline(w, H) {
 }
 
 const TOOLS = [
-  { name: 'tray.fill', size: 15, title: 'Inbox' },
-  { name: 'plus', size: 15, title: 'New task' },
-  { name: 'bubble.left.and.text.bubble.right.fill', size: 13, title: 'Talk' },
-  { name: 'camera.fill', size: 14, title: 'Point' },
-  { name: 'ellipsis', size: 12, title: 'More' },
+  { name: 'tray.fill', size: 15, title: say('Inbox', 'Inbox') },
+  { name: 'plus', size: 15, title: say('New task', 'Nova tarefa') },
+  { name: 'bubble.left.and.text.bubble.right.fill', size: 13, title: say('Talk', 'Falar') },
+  { name: 'camera.fill', size: 14, title: say('Point', 'Apontar') },
+  { name: 'ellipsis', size: 12, title: say('More', 'Mais') },
 ];
 
 export function createEdgeTab(n) {

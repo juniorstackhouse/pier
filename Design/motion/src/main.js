@@ -9,6 +9,7 @@ import { createMacScene } from './scenes/mac.js';
 import { createPhoneScene } from './scenes/phone.js';
 import { createOutroScene } from './scenes/outro.js';
 import { FORMAT } from './format.js';
+import { say } from './lang.js';
 import { renderAudio } from './audio.js';
 
 registerSymbols(sizes);
@@ -34,27 +35,27 @@ const W = (wide, vert) => (V ? vert : wide);
 const left = (y, size) => ({ x: LEFT, y, size });
 const centre = (x, y, size) => ({ x, y, size, align: 'center' });
 const updateCaptions = createCaptions(layers.captions, [
-  { t0: T.introLine, t1: T.pullBack - 0.15, lines: ['Your agents', 'are at work.'], ...W(left(540, 92), centre(540, 1540, 92)) },
-  { t0: T.macLine, t1: T.pushIn + BEAT * 0.5, lines: W(['One tab. Every agent.'], ['One tab.', 'Every agent.']), ...W(left(968, 76), { x: 80, y: 1330, size: 100 }) },
-  { t0: T.needsLine, t1: W(T.keyLine - 0.2, T.inboxClick - 0.15), outDur: W(0.38, 0.18), lines: ['When one', '*needs you*,'], ...W(left(520, 96), { x: 70, y: 560, size: 104 }) },
-  { t0: T.keyLine, t1: T.editorLine - 0.5, lines: ['answer in', 'a keystroke.'], ...W(left(520, 96), centre(540, 1290, 96)) },
-  { t0: T.editorLine, t1: T.toolNew - 0.5, lines: ['Never leave', 'your editor.'], ...W(left(520, 96), centre(540, 1360, 96)) },
-  { t0: T.toolNew, t1: T.cursorOut, lines: ['Start a *task*.'], ...W(left(420, 84), { x: 70, y: 400, size: 92 }), accent: 'var(--cream)' },
-  { t0: T.toolTalk, t1: T.cursorOut, lines: ['*Talk* to it.'], ...W(left(520, 84), { x: 70, y: 520, size: 92 }), accent: 'var(--cream)' },
-  { t0: T.toolPoint, t1: T.cursorOut, lines: ['*Point* at it.'], ...W(left(620, 84), { x: 70, y: 640, size: 92 }), accent: 'var(--cream)' },
-  { t0: T.stepLine, t1: T.phoneUp - 0.2, lines: ['Step away.'], ...W(centre(960, 540, 150), centre(540, 960, 150)) },
-  { t0: T.followLine, t1: T.islandLine - 0.3, lines: ['They come', 'with you.'], ...W(left(540, 96), centre(540, 290, 96)) },
-  { t0: T.islandLine, t1: T.askLine - 0.45, lines: ['Live, in the', '*Dynamic Island.*'], ...W(left(540, 96), centre(540, 290, 96)), accent: 'var(--blue)' },
-  { t0: T.askLine, t1: T.menuLine - 0.3, lines: ['Every *question*', 'finds you.'], ...W(left(540, 96), centre(540, 290, 96)) },
-  { t0: T.menuLine, t1: T.tapLine - 0.3, lines: ['Answer it from', 'the notification.'], ...W(left(540, 88), centre(540, 290, 88)) },
-  { t0: T.tapLine, t1: T.lockCard - 0.2, lines: ['One tap.', 'Back to *work.*'], ...W(left(540, 96), centre(540, 290, 96)), accent: 'var(--blue)' },
-  { t0: T.lockLine, t1: T.turnLine - 0.35, lines: ['Even from the', 'Lock Screen.'], ...W(left(540, 96), centre(540, 290, 96)) },
-  { t0: T.turnLine, t1: T.phoneOut + 0.2, lines: ['*Your turn.*', 'Review when', 'you’re ready.'], ...W(left(540, 88), centre(540, 240, 84)), accent: 'var(--green)' },
-  { t0: T.every1, t1: T.every2 - 0.1, outDur: 0.1, stagger: 0.05, lines: ['Every agent.'], ...W(left(540, 112), centre(540, 330, 112)) },
-  { t0: T.every2, t1: T.every3 - 0.1, outDur: 0.1, stagger: 0.05, lines: ['Every box.'], ...W(left(540, 112), centre(540, 330, 112)) },
-  { t0: T.every3, t1: T.secure - 0.2, outDur: 0.2, stagger: 0.05, lines: ['Anywhere.'], ...W(left(540, 112), centre(540, 330, 112)) },
-  { t0: T.secure + 0.15, t1: T.endIn - 0.6, lines: W(['End-to-end encrypted.'], ['End-to-end', 'encrypted.']), ...W(centre(960, 250, 88), centre(540, 560, 92)) },
-  { t0: T.keys, t1: T.endIn - 0.6, lines: W(['Your machines. *Your keys.*'], ['Your machines.', '*Your keys.*']), ...W(centre(960, 845, 64), centre(540, 1440, 76)), accent: '#7FE3DC' },
+  { t0: T.introLine, t1: T.pullBack - 0.15, lines: say(['Your agents', 'are at work.'], ['Seus agentes', 'trabalhando.']), ...W(left(540, 92), centre(540, 1540, 92)) },
+  { t0: T.macLine, t1: T.pushIn + BEAT * 0.5, lines: say(W(['One tab. Every agent.'], ['One tab.', 'Every agent.']), W(['Uma aba. Todos os agentes.'], ['Uma aba.', 'Todos os agentes.'])), ...W(left(968, 76), { x: 80, y: 1330, size: 100 }) },
+  { t0: T.needsLine, t1: W(T.keyLine - 0.2, T.inboxClick - 0.15), outDur: W(0.38, 0.18), lines: say(['When one', '*needs you*,'], ['Quando um', '*precisa de você*,']), ...W(left(520, 96), { x: 70, y: 560, size: 104 }) },
+  { t0: T.keyLine, t1: T.editorLine - 0.5, lines: say(['answer in', 'a keystroke.'], ['responda com', 'uma tecla.']), ...W(left(520, 96), centre(540, 1290, 96)) },
+  { t0: T.editorLine, t1: T.toolNew - 0.5, lines: say(['Never leave', 'your editor.'], ['Sem sair', 'do editor.']), ...W(left(520, 96), centre(540, 1360, 96)) },
+  { t0: T.toolNew, t1: T.cursorOut, lines: say(['Start a *task*.'], ['Comece uma *tarefa*.']), ...W(left(420, 84), { x: 70, y: 400, size: 92 }), accent: 'var(--cream)' },
+  { t0: T.toolTalk, t1: T.cursorOut, lines: say(['*Talk* to it.'], ['*Fale* com ele.']), ...W(left(520, 84), { x: 70, y: 520, size: 92 }), accent: 'var(--cream)' },
+  { t0: T.toolPoint, t1: T.cursorOut, lines: say(['*Point* at it.'], ['*Aponte* na tela.']), ...W(left(620, 84), { x: 70, y: 640, size: 92 }), accent: 'var(--cream)' },
+  { t0: T.stepLine, t1: T.phoneUp - 0.2, lines: say(['Step away.'], ['Saia da mesa.']), ...W(centre(960, 540, 150), centre(540, 960, 150)) },
+  { t0: T.followLine, t1: T.islandLine - 0.3, lines: say(['They come', 'with you.'], ['Eles vão', 'com você.']), ...W(left(540, 96), centre(540, 290, 96)) },
+  { t0: T.islandLine, t1: T.askLine - 0.45, lines: say(['Live, in the', '*Dynamic Island.*'], ['Ao vivo, na', '*Dynamic Island.*']), ...W(left(540, 80), centre(540, 290, 96)), accent: 'var(--blue)' },
+  { t0: T.askLine, t1: T.menuLine - 0.3, lines: say(['Every *question*', 'finds you.'], ['Toda *pergunta*', 'chega até você.']), ...W(left(540, 96), centre(540, 290, 96)) },
+  { t0: T.menuLine, t1: T.tapLine - 0.3, lines: say(['Answer it from', 'the notification.'], ['Responda pela', 'notificação.']), ...W(left(540, 88), centre(540, 290, 88)) },
+  { t0: T.tapLine, t1: T.lockCard - 0.2, lines: say(['One tap.', 'Back to *work.*'], ['Um toque', 'e *pronto.*']), ...W(left(540, 96), centre(540, 290, 96)), accent: 'var(--blue)' },
+  { t0: T.lockLine, t1: T.turnLine - 0.35, lines: say(['Even from the', 'Lock Screen.'], ['Até na', 'tela bloqueada.']), ...W(left(540, 96), centre(540, 290, 96)) },
+  { t0: T.turnLine, t1: T.phoneOut + 0.2, lines: say(['*Your turn.*', 'Review when', 'you’re ready.'], ['*Sua vez.*', 'Revise quando', 'quiser.']), ...W(left(540, 88), centre(540, 240, 84)), accent: 'var(--green)' },
+  { t0: T.every1, t1: T.every2 - 0.1, outDur: 0.1, stagger: 0.05, lines: say(['Every agent.'], ['Todo agente.']), ...W(left(540, 112), centre(540, 330, 112)) },
+  { t0: T.every2, t1: T.every3 - 0.1, outDur: 0.1, stagger: 0.05, lines: say(['Every box.'], ['Toda box.']), ...W(left(540, 112), centre(540, 330, 112)) },
+  { t0: T.every3, t1: T.secure - 0.2, outDur: 0.2, stagger: 0.05, lines: say(['Anywhere.'], ['Onde estiver.']), ...W(left(540, 112), centre(540, 330, 112)) },
+  { t0: T.secure + 0.15, t1: T.endIn - 0.6, lines: say(W(['End-to-end encrypted.'], ['End-to-end', 'encrypted.']), W(['Cifrado de ponta a ponta.'], ['Cifrado de', 'ponta a ponta.'])), ...W(centre(960, 250, 88), centre(540, 560, 92)) },
+  { t0: T.keys, t1: T.endIn - 0.6, lines: say(W(['Your machines. *Your keys.*'], ['Your machines.', '*Your keys.*']), W(['Suas máquinas. *Suas chaves.*'], ['Suas máquinas.', '*Suas chaves.*'])), ...W(centre(960, 845, 64), centre(540, 1440, 76)), accent: '#7FE3DC' },
 ]);
 
 // "1": a Mac key pressed on the beat, under "answer in a keystroke."

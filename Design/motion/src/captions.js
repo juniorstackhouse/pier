@@ -3,7 +3,7 @@ import { h, css } from './dom.js';
 import { clamp, ease, prog, lerp } from './anim.js';
 
 /**
- * spec: { t0, t1, lines: ["text", …] (words in *asterisks* take `accent`), x, y, size, align: 'left'|'center',
+ * spec: { t0, t1, lines: ["text", …] (words between *asterisks* take `accent`), x, y, size, align: 'left'|'center',
  *         accent, stagger, weight }
  */
 export function createCaptions(layer, specs) {
@@ -12,8 +12,12 @@ export function createCaptions(layer, specs) {
     const words = [];
     for (const line of sp.lines) {
       const ln = h('div', { class: 'cap-line' });
+      let open = false;
       for (const raw of line.split(' ')) {
-        const accent = raw.startsWith('*');
+        // an accent runs from the word that opens it (*) to the word that closes it: "*needs you*," colours both
+        const starts = raw.startsWith('*');
+        const accent = open || starts;
+        open = accent && !raw.slice(starts ? 1 : 0).includes('*');
         const word = raw.replace(/\*/g, '');
         const inner = h('span', { class: 'cap-word-in', style: accent ? { color: sp.accent || 'var(--amber)' } : {} }, word);
         const outer = h('span', { class: 'cap-word' }, inner);

@@ -3,6 +3,7 @@
 // with the Live Activity's card (Allow / Deny → Working → Your turn). Layouts follow App/Shared/Views/SessionActivityViews.
 import { h, css, sym, text } from '../dom.js';
 import { clamp, lerp, ease, prog } from '../anim.js';
+import { say } from '../lang.js';
 
 export const SW = 402, SH = 874, BEZEL = 9;
 export const ISLAND = { w: 126.67, h: 37.33, top: 11 };
@@ -21,16 +22,16 @@ function statusBar() {
 
 function homeScreen() {
   const apps = [
-    ['FaceTime', '#2ECC71', 'iphone'], ['Calendar', '#FFFFFF', null, '11'], ['Photos', '#FFB347', 'sparkles'], ['Camera', '#8E8E93', 'camera.fill'],
-    ['Mail', '#3D8BFD', 'tray.fill'], ['Notes', '#FFD60A', 'list.number'], ['Reminders', '#FF6B5E', 'checkmark.circle.fill'], ['Clock', '#1C1C1E', 'bell.fill'],
-    ['Weather', '#4FA3F7', 'sparkles'], ['Maps', '#46C46E', 'arrow.up.forward.square'], ['Terminal', '#2B2B30', 'terminal.fill'], ['Pier', null],
-    ['Settings', '#8E8E93', 'switch.2'], ['Wallet', '#1C1C1E', 'server.rack'], ['Music', '#FF4F6E', 'mic.fill'], ['GitHub', '#24292F', 'arrow.up.circle.fill'],
+    ['FaceTime', '#2ECC71', 'iphone'], [say('Calendar', 'Calendário'), '#FFFFFF', null, '11'], [say('Photos', 'Fotos'), '#FFB347', 'sparkles'], [say('Camera', 'Câmera'), '#8E8E93', 'camera.fill'],
+    ['Mail', '#3D8BFD', 'tray.fill'], [say('Notes', 'Notas'), '#FFD60A', 'list.number'], [say('Reminders', 'Lembretes'), '#FF6B5E', 'checkmark.circle.fill'], [say('Clock', 'Relógio'), '#1C1C1E', 'bell.fill'],
+    [say('Weather', 'Tempo'), '#4FA3F7', 'sparkles'], [say('Maps', 'Mapas'), '#46C46E', 'arrow.up.forward.square'], ['Terminal', '#2B2B30', 'terminal.fill'], ['Pier', null],
+    [say('Settings', 'Ajustes'), '#8E8E93', 'switch.2'], [say('Wallet', 'Carteira'), '#1C1C1E', 'server.rack'], [say('Music', 'Música'), '#FF4F6E', 'mic.fill'], ['GitHub', '#24292F', 'arrow.up.circle.fill'],
   ];
   const grid = h('div', { class: 'ios-grid' }, ...apps.map(([name, color, symbol, day]) => h('div', { class: 'ios-app' },
     name === 'Pier'
       ? h('img', { class: 'ios-icon', src: '/site/assets/icon.png' })
       : h('div', { class: 'ios-icon', style: { background: color === '#FFFFFF' ? '#fff' : `linear-gradient(160deg, color-mix(in srgb, ${color} 80%, white), ${color})` } },
-          day ? h('div', { class: 'ios-cal' }, h('b', {}, 'SUN'), h('span', {}, day)) : sym(symbol, 30, 'rgba(255,255,255,0.95)')),
+          day ? h('div', { class: 'ios-cal' }, h('b', {}, say('SUN', 'DOM')), h('span', {}, day)) : sym(symbol, 30, 'rgba(255,255,255,0.95)')),
     h('span', {}, name))));
   const dock = h('div', { class: 'ios-dock' }, ...[['#2ECC71', 'iphone'], ['#3D8BFD', 'magnifyingglass'], ['#FF9F0A', 'bubble.left.and.text.bubble.right.fill'], ['#8E8E93', 'camera.fill']]
     .map(([c, s_]) => h('div', { class: 'ios-icon', style: { background: `linear-gradient(160deg, color-mix(in srgb, ${c} 80%, white), ${c})` } }, sym(s_, 30, '#fff'))));
@@ -39,7 +40,7 @@ function homeScreen() {
 
 function lockScreen() {
   return h('div', { class: 'ios-lock' },
-    h('div', { class: 'ios-lock-date' }, 'Sunday, October 11'),
+    h('div', { class: 'ios-lock-date' }, say('Sunday, October 11', 'domingo, 11 de outubro')),
     h('div', { class: 'ios-lock-time' }, '9:41'),
     h('div', { class: 'ios-lock-btn left' }, sym('flashlight.off.fill', 20, '#fff')),
     h('div', { class: 'ios-lock-btn right' }, sym('camera.fill', 20, '#fff')));
@@ -54,11 +55,11 @@ function island() {
   const ask = h('span', { class: 'isl-ask' }, sym('questionmark.bubble.fill', 15, COLORS.needs), h('b', {}, '3'));
   cTrail.append(timer, ask);
   const compact = h('div', { class: 'isl-compact' }, cLead, cTrail);
-  const xTitle = h('div', { class: 'isl-x-title' }, 'Fix webhook retries');
+  const xTitle = h('div', { class: 'isl-x-title' }, say('Fix webhook retries', 'Corrigir retries do webhook'));
   const xProject = h('div', { class: 'isl-x-project' }, 'billing-api · webhook-retries');
-  const xPhase = h('div', { class: 'isl-x-phase' }, 'Working');
+  const xPhase = h('div', { class: 'isl-x-phase' }, say('Working', 'Trabalhando'));
   const xTimer = h('div', { class: 'isl-x-timer' }, '12:43');
-  const xStep = h('div', { class: 'isl-x-step' }, 'Running pnpm test…');
+  const xStep = h('div', { class: 'isl-x-step' }, say('Running pnpm test…', 'Rodando pnpm test…'));
   const expanded = h('div', { class: 'isl-expanded' },
     h('div', { class: 'isl-x-top' }, glyph(34), h('div', { class: 'isl-x-right' }, xPhase, xTimer)),
     h('div', { class: 'isl-x-center' }, xTitle, xProject),
@@ -71,12 +72,14 @@ function banner() {
   return h('div', { class: 'ios-banner' },
     h('img', { class: 'ios-banner-icon', src: '/site/assets/icon.png' }),
     h('div', { class: 'ios-banner-text' },
-      h('div', { class: 'ios-banner-head' }, h('b', {}, 'Claude needs you'), h('span', {}, 'now')),
-      h('div', { class: 'ios-banner-body' }, 'Build the pricing page — Which layout for the pricing page? · devbox')));
+      h('div', { class: 'ios-banner-head' }, h('b', {}, say('Claude needs you', 'Claude precisa de você')), h('span', {}, say('now', 'agora'))),
+      h('div', { class: 'ios-banner-body' }, say('Build the pricing page — Which layout for the pricing page? · devbox',
+        'Criar a página de preços — Qual layout para a página de preços? · devbox'))));
 }
 
 function actionMenu() {
-  const items = [['1.circle', 'Three tiers'], ['2.circle', 'One plan'], ['3.circle', 'A table'], ['arrow.up.forward.square', 'Open']];
+  const items = [['1.circle', say('Three tiers', 'Três planos')], ['2.circle', say('One plan', 'Um plano')], ['3.circle', say('A table', 'Uma tabela')],
+    ['arrow.up.forward.square', say('Open', 'Abrir')]];
   const rows = items.map(([s_, label]) => h('div', { class: 'ios-menu-row' }, sym(s_, 22, '#111'), h('span', {}, label)));
   return { el: h('div', { class: 'ios-menu' }, ...rows), rows };
 }
@@ -89,15 +92,15 @@ function lockCard() {
   badge.append(badgeIcon.needs, badgeIcon.working, badgeIcon.done, badgeText);
   const timer = h('div', { class: 'lc-timer' }, '0:08');
   const detail = h('div', { class: 'lc-detail' });
-  const deny = h('div', { class: 'lc-btn deny' }, sym('xmark', 13, COLORS.red), 'Deny');
-  const allow = h('div', { class: 'lc-btn allow' }, sym('checkmark', 13, '#16181B'), 'Allow');
+  const deny = h('div', { class: 'lc-btn deny' }, sym('xmark', 13, COLORS.red), say('Deny', 'Negar'));
+  const allow = h('div', { class: 'lc-btn allow' }, sym('checkmark', 13, '#16181B'), say('Allow', 'Permitir'));
   const buttons = h('div', { class: 'lc-buttons' }, deny, allow);
   const diff = h('div', { class: 'lc-diff' }, h('span', { class: 'add' }, '+128'), h('span', { class: 'del' }, '−34'));
-  const review = h('div', { class: 'lc-review' }, sym('doc.text.magnifyingglass', 13, '#16181B'), 'Review');
+  const review = h('div', { class: 'lc-review' }, sym('doc.text.magnifyingglass', 13, '#16181B'), say('Review', 'Revisar'));
   const doneRow = h('div', { class: 'lc-done' }, diff, review);
   const el = h('div', { class: 'lock-card' },
     h('div', { class: 'lc-top' }, glyph(34),
-      h('div', { class: 'lc-titles' }, h('div', { class: 'lc-title' }, 'Add Stripe checkout'), h('div', { class: 'lc-project' }, 'storefront · stripe-checkout')),
+      h('div', { class: 'lc-titles' }, h('div', { class: 'lc-title' }, say('Add Stripe checkout', 'Checkout do Stripe')), h('div', { class: 'lc-project' }, 'storefront · stripe-checkout')),
       h('div', { class: 'lc-right' }, badge, timer)),
     detail, buttons, doneRow);
   return { el, badge, badgeText, badgeIcon, timer, detail, buttons, deny, allow, doneRow };
