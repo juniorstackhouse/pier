@@ -3,6 +3,7 @@
 import { h, s, css, sym } from '../dom.js';
 import { createEdgeTab, CW } from './edgeTab.js';
 import { createInboxPanel, PANEL_W } from './inboxPanel.js';
+import { say } from '../lang.js';
 
 export const MAC_W = 1512, MAC_H = 850, MENU_H = 25;
 export const TAB_CENTER = 0.36;            // the tab's centre, as a share of the area under the menu bar
@@ -42,9 +43,10 @@ function editor() {
 
 function menuBar() {
   const left = h('div', { class: 'mb-left' }, sym('apple.logo', 14, '#fff'), h('b', {}, 'Code'),
-    ...['File', 'Edit', 'Selection', 'View', 'Go', 'Run', 'Terminal', 'Window', 'Help'].map((m) => h('span', {}, m)));
+    ...say(['File', 'Edit', 'Selection', 'View', 'Go', 'Run', 'Terminal', 'Window', 'Help'],
+      ['Arquivo', 'Editar', 'Seleção', 'Exibir', 'Ir', 'Executar', 'Terminal', 'Janela', 'Ajuda']).map((m) => h('span', {}, m)));
   const right = h('div', { class: 'mb-right' }, sym('battery.100percent', 12, '#fff'), sym('wifi', 12, '#fff'), sym('magnifyingglass', 12, '#fff'),
-    sym('switch.2', 12, '#fff'), h('span', {}, 'Sun Oct 11'), h('span', {}, '9:41 AM'));
+    sym('switch.2', 12, '#fff'), h('span', {}, say('Sun Oct 11', 'dom. 11 de out.')), h('span', {}, say('9:41 AM', '09:41')));
   return h('div', { class: 'menubar' }, left, right);
 }
 

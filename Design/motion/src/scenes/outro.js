@@ -5,6 +5,7 @@ import { CUE, BEAT, BAR, DURATION } from '../time.js';
 import { clamp, lerp, ease, prog, spring } from '../anim.js';
 import { start as startHero } from '../../../hero/hero.js';
 import { FORMAT } from '../format.js';
+import { LANG, say } from '../lang.js';
 
 const T = CUE;
 const V = FORMAT.vertical;
@@ -15,16 +16,17 @@ function shot(src, kind) {
 
 export function createOutroScene(montageLayer, endLayer) {
   // every device, on the beat
-  const phone = shot('/site/assets/shots/en/iphone-inbox.jpg', 'phone');
-  const mac = shot('/site/assets/shots/en/mac-workspace.jpg', 'mac');
-  const ipad = shot('/site/assets/shots/en/ipad-workspace.jpg', 'ipad');
+  // the site's screenshots, in the film's language
+  const phone = shot(`/site/assets/shots/${LANG}/iphone-inbox.jpg`, 'phone');
+  const mac = shot(`/site/assets/shots/${LANG}/mac-workspace.jpg`, 'mac');
+  const ipad = shot(`/site/assets/shots/${LANG}/ipad-workspace.jpg`, 'ipad');
   const stage = h('div', { class: 'm-stage' }, mac, ipad, phone);
   // the tunnel: your box ⇄ your devices, the encryption end to end
   const dots = Array.from({ length: 9 }, () => h('i', { class: 't-dot' }));
   const tunnel = h('div', { class: 'm-tunnel' },
-    h('div', { class: 't-node' }, h('div', { class: 't-icon' }, sym('server.rack', 46, '#E6E8EB')), h('span', {}, 'Your box')),
-    h('div', { class: 't-line' }, ...dots, h('div', { class: 't-lock' }, sym('lock.fill', 18, '#4FC2BB'), h('span', {}, 'Mutual TLS'))),
-    h('div', { class: 't-node' }, h('div', { class: 't-icon' }, sym('iphone', 40, '#E6E8EB'), sym('laptopcomputer', 44, '#E6E8EB')), h('span', {}, 'Your devices')));
+    h('div', { class: 't-node' }, h('div', { class: 't-icon' }, sym('server.rack', 46, '#E6E8EB')), h('span', {}, say('Your box', 'Sua box'))),
+    h('div', { class: 't-line' }, ...dots, h('div', { class: 't-lock' }, sym('lock.fill', 18, '#4FC2BB'), h('span', {}, say('Mutual TLS', 'TLS mútuo')))),
+    h('div', { class: 't-node' }, h('div', { class: 't-icon' }, sym('iphone', 40, '#E6E8EB'), sym('laptopcomputer', 44, '#E6E8EB')), h('span', {}, say('Your devices', 'Seus aparelhos'))));
   montageLayer.append(stage, tunnel);
 
   // the end: the night harbour, the name
@@ -34,8 +36,9 @@ export function createOutroScene(montageLayer, endLayer) {
   const hero = startHero(heroStage, { manual: true, asks: false, portrait: V });
   const icon = h('img', { class: 'end-icon', src: '/site/assets/icon.png' });
   const word = h('div', { class: 'end-word' }, icon, h('span', {}, 'Pier'));
-  const tag = h('div', { class: 'end-tag' }, 'Your coding agents,', h('br'), h('em', {}, 'in your pocket.'));
-  const details = h('div', { class: 'end-details' }, h('span', { class: 'dots' }, h('i'), h('i'), h('i')), 'Open source · iPhone, iPad & Mac · Claude Code & Codex');
+  const tag = h('div', { class: 'end-tag' }, say('Your coding agents,', 'Seus agentes de código,'), h('br'), h('em', {}, say('in your pocket.', 'no seu bolso.')));
+  const details = h('div', { class: 'end-details' }, h('span', { class: 'dots' }, h('i'), h('i'), h('i')),
+    say('Open source · iPhone, iPad & Mac · Claude Code & Codex', 'Código aberto · iPhone, iPad e Mac · Claude Code e Codex'));
   const url = h('div', { class: 'end-url' }, 'docktopier.com');
   const veil = h('div', { class: 'end-veil' });
   const copy = h('div', { class: 'end-copy' }, word, tag, details, url);

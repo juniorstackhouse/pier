@@ -55,9 +55,11 @@ if (cmd === 'page') {
   await browser.close(); server.close();
 }
 
-// --format vertical: the 1080 × 1920 cut (the same story and sound, framed for phones)
-const vertical = flag('format', 'wide') === 'vertical';
-const FW = vertical ? 1080 : 1920, FH = vertical ? 1920 : 1080, PAGE = vertical ? 'index.html?format=vertical' : 'index.html';
+// --format vertical: the 1080 × 1920 cut (the same story and sound, framed for phones); --lang pt: the words in Portuguese
+const vertical = flag('format', 'wide') === 'vertical', lang = flag('lang', 'en');
+const FW = vertical ? 1080 : 1920, FH = vertical ? 1920 : 1080;
+const query = new URLSearchParams({ ...(vertical && { format: 'vertical' }), ...(lang !== 'en' && { lang }) }).toString();
+const PAGE = 'index.html' + (query ? '?' + query : '');
 
 if (cmd === 'stills') {
   const times = args[0].split(',').map(Number);
