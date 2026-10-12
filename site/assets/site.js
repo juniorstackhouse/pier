@@ -23,20 +23,25 @@
   var film = document.getElementById('film-video');
   if (film) {
     var frame = film.parentNode;
-    // a phone held upright gets the 9:16 cut (its file, its poster, the frame's shape), everything else the 16:9 one;
-    // picked again when the phone turns, until the film starts (preload="none": nothing is downloaded before play)
+    // a phone held upright gets the 9:16 cut (its file, its poster, the frame's shape), everything else the 16:9 one, and
+    // a page in Portuguese the film in Portuguese; picked again when the phone turns or the language changes, until the
+    // film starts (preload="none": nothing is downloaded before play)
     var upright = window.matchMedia && matchMedia('(max-width: 700px) and (orientation: portrait)');
+    var label = film.getAttribute('aria-label');
     var cut = null;
     var shape = function () {
-      var v = !!(upright && upright.matches);
-      if (v === cut || frame.classList.contains('is-playing')) return;
-      cut = v;
+      var v = !!(upright && upright.matches), pt = /^pt/i.test(document.documentElement.lang);
+      var name = (pt ? '-pt' : '') + (v ? '-vertical' : '');
+      if (name === cut || frame.classList.contains('is-playing')) return;
+      cut = name;
       frame.classList.toggle('is-vertical', v);
-      film.poster = 'assets/film/' + (v ? 'poster-vertical.jpg' : 'poster.jpg');
-      film.src = 'assets/film/' + (v ? 'pier-film-vertical.mp4' : 'pier-film.mp4');
+      film.poster = 'assets/film/poster' + name + '.jpg';
+      film.src = 'assets/film/pier-film' + name + '.mp4';
+      film.setAttribute('aria-label', pt ? film.getAttribute('data-label-pt') : label);
     };
     shape();
     if (upright && upright.addEventListener) upright.addEventListener('change', shape);
+    if (window.MutationObserver) new MutationObserver(shape).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
     var playFilm = function () {
       frame.classList.add('is-playing');
       film.controls = true;

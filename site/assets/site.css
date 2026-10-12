@@ -285,6 +285,10 @@ h2 { font-size: clamp(34px, 4.4vw, 56px); line-height: 1.04; letter-spacing: -0.
 /* a phone held upright gets the vertical cut (site.js), the whole frame on the screen, the button between the words and the mascot */
 .film-frame.is-vertical { aspect-ratio: 9 / 16; width: min(100%, 460px, 47vh); width: min(100%, 460px, 47svh); background-image: url("film/poster-vertical.jpg"); }
 .film-frame.is-vertical .film-play { top: 44%; }
+html[lang|="pt"] .film-frame { background-image: url("film/poster-pt.jpg"); }
+html[lang|="pt"] .film-frame.is-vertical { background-image: url("film/poster-pt-vertical.jpg"); }
+/* the Portuguese line reaches the middle of the 16:9 poster: the button goes under it, on the water */
+html[lang|="pt"] .film-frame:not(.is-vertical) .film-play { top: 80%; }
 
 /* features */
 
@@ -504,5 +508,11 @@ footer .fine { flex-basis: 100%; font-size: 13px; }
   .film { padding-top: 80px; }
   .film-frame { border-radius: 18px; }
   .film-play { width: 58px; height: 58px; margin: -29px 0 0 -29px; top: 74%; box-shadow: 0 0 0 6px rgba(244, 236, 223, 0.16), 0 14px 30px rgba(0, 0, 0, 0.45); }
+  .film-play svg { width: 22px; height: 22px; margin-left: 3px; }
+}
+
+/* a phone on its side: the film's frame is short, so is its button */
+@media (max-height: 500px) {
+  .film-play { width: 58px; height: 58px; margin: -29px 0 0 -29px; box-shadow: 0 0 0 6px rgba(244, 236, 223, 0.16), 0 14px 30px rgba(0, 0, 0, 0.45); }
   .film-play svg { width: 22px; height: 22px; margin-left: 3px; }
 }
