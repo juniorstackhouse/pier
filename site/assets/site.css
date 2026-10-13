@@ -455,6 +455,20 @@ footer .fine { flex-basis: 100%; font-size: 13px; }
 .doc details { background: var(--surface); border: 1px solid var(--stroke); border-radius: 14px; padding: 14px 18px; margin: 10px 0; }
 .doc summary { cursor: pointer; font-weight: 600; color: var(--text); }
 .doc details p { margin: 10px 0 2px; }
+.doc h2[id] { scroll-margin-top: 84px; }
+.doc h3 { font-size: 18px; letter-spacing: -0.01em; margin: 26px 0 6px; }
+.doc ol { padding-left: 22px; }
+.doc ol li { margin: 8px 0; }
+.doc table { width: 100%; border-collapse: collapse; margin: 12px 0 18px; font-size: 15px; }
+.doc th, .doc td { text-align: left; vertical-align: top; padding: 9px 10px; border-bottom: 1px solid var(--stroke); color: var(--text-dim); }
+.doc th { color: var(--text); background: var(--surface); }
+.doc .toc { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 4px 18px; margin: 0 0 28px; padding: 16px 18px; background: var(--surface); border: 1px solid var(--stroke); border-radius: 14px; }
+.doc .toc a { color: var(--text-dim); text-decoration: none; }
+.doc .toc a:hover { color: var(--text); }
+.doc .callout { background: var(--surface); border-left: 3px solid var(--teal); border-radius: 10px; padding: 12px 16px; margin: 14px 0; }
+.doc .callout.warn { border-left-color: var(--red); }
+.doc .callout p { margin: 4px 0; }
+.doc .pdf { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 24px; padding: 9px 16px; border-radius: 999px; background: var(--btn); color: var(--btn-ink); text-decoration: none; font-weight: 600; font-size: 15px; }
 
 /* narrow screens */
 
