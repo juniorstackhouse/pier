@@ -42,13 +42,14 @@ struct UserBubble: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .contextMenu { CopyButton(text: item.text ?? "") }
                 if item.pending == true {
-                    Text("Enviado · \(agent) lê no próximo passo").font(.caption2).foregroundStyle(Theme.textFaint)
+                    Text("Enviado · \(agent) lê no próximo passo").font(.caption2).foregroundStyle(Theme.textDim)
                 }
             }
             .opacity(item.pending == true ? 0.7 : 1)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Você: \(item.text ?? "")")
+        .accessibilityIdentifier("user-message")
     }
 }
 
@@ -57,7 +58,7 @@ struct AssistantText: View {
     let text: String
     var folded = false
     var body: some View {
-        MarkdownView(text: text)
+        MarkdownView(text: text, touchSelection: false)
             .opacity(folded ? 0.85 : 1)
             .contextMenu { CopyButton(text: text) }
     }
