@@ -52,6 +52,8 @@ import Testing
             "github_repos.json": d(GitHubRepos.self), "clone_started.json": d(ProjectClone.self), "clones.json": d([ProjectClone].self),
             "location_disk.json": d(ProjectDisk.self), "location_purged.json": d(ProjectPurge.self), "location_unsaved.json": d(BoxError.self),
             "services_detail.json": d([WorktreeServiceDetail].self),
+            "settings.json": d(BoxSettings.self), "settings_unset.json": d(BoxSettings.self),
+            "environment.json": d(EnvironmentView.self), "environment_none.json": d(EnvironmentView.self), "space_not_empty.json": d(BoxError.self),
         ]
     }()
 

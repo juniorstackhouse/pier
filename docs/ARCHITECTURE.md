@@ -251,6 +251,12 @@ screen, its menu in Projetos, the main checkout's Visão geral) reads `GET …/d
 commits no remote has, stashes, sessions) and needs "Descartar este trabalho" for anything that would be lost; the
 project stays on GitHub, to download again from the list.
 
+**Projects folder, spaces, environments** (Ajustes › Projetos, per box with the `environments` capability): the folder
+every project lives under and the spaces in it (`BoxProjectsSettingsScreen`; the clone sheets pick a space,
+`SpacesStore`). A project's **Ambiente** (`ProjectEnvironmentScreen`, from the project, its Visão geral and a worktree's
+Detalhes) picks its language version and its databases. pierd runs them in Docker with launchers first on the
+worktrees' PATH, never in the project (docs/API.md 2.9); rows and cards show the space and an "isolated" mark.
+
 ## Layouts: tabs (compact) and sidebar (regular width, Mac)
 
 `MainLayout` (RootView) picks by horizontal size class: the iPhone's TabView, or `MainSplit` (iPad, Mac Catalyst): a
@@ -356,7 +362,8 @@ It answers like pierd for the endpoints the app uses and is stateful for send, a
 have files and a history (`App/Debug/UITestMockWorkspace.swift`: the file routes with sha checks, `GitLog` and
 `FileSearch` commands), and saves stick for the run. Its projects come and go too (`App/Debug/UITestMockProjects.swift`:
 a GitHub account's repositories, clones that are ready after about 3 s, disk use and removal, with `sandbox` holding
-unsaved work, and each worktree's `dev` service, which can be stopped and started). On the Mac a mock run shares the installed app's container and App
+unsaved work, and each worktree's `dev` service, which can be stopped and started), and so do its projects folder (a
+space "clientes" once one is set), spaces and environments (each "building" for 2 s, then ready). On the Mac a mock run shares the installed app's container and App
 Group: its sidebar prefs go to `prefs-mock.json`, and it never writes the widgets' copy of names and hidden projects
 (the app rewrites that copy at launch). `-uiTestExtras 1`,
 `-uiTestChats 1`, `-uiTestPRs 1`, `-uiTestAsk 1` (an agent asking a question with three choices) and `-uiTestHealth 1`

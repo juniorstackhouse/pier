@@ -238,6 +238,16 @@ struct WorktreeDetailsView: View {
             if let ports = Projects.portBlock(store.status?.port ?? wt?.port) { row("network", "Portas", ports) }
             if let p = wt?.path { row("folder", "Pasta", p) }
             if let setup = project?.scripts?.setup, !setup.isEmpty { row("hammer", "Setup", setup) }
+            if project?.repo == true, conn?.info?.has("environments") == true {
+                NavigationLink(value: ProjectEnvironmentRoute(box: box, location: location)) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "shippingbox.and.arrow.backward").font(.caption).foregroundStyle(Theme.textFaint).frame(width: 16)
+                        Text("Ambiente isolado").font(.subheadline).foregroundStyle(Theme.textDim)
+                        Spacer(minLength: 8)
+                        Text(project?.isolated == true ? "configurado" : "não").font(.mono(12)).foregroundStyle(Theme.text)
+                    }
+                }
+            }
             row("terminal", "Sessões", "\(sessions.count)")
             if model.boxes.count > 1 { row("shippingbox", "Box", box) }
         } header: { Text("Ambiente") }

@@ -84,6 +84,12 @@ struct OverviewPane: View {
                 .buttonStyle(.borderedProminent)
             Button(action: onNewWorktree) { Label("Nova worktree", systemImage: "arrow.triangle.branch") }
                 .buttonStyle(.bordered)
+            if project.repo, model.connection(for: ref.box)?.info?.has("environments") == true {
+                NavigationLink(value: ProjectEnvironmentRoute(box: ref.box, location: project.name)) {
+                    Label("Ambiente", systemImage: "shippingbox.and.arrow.backward")
+                }
+                .buttonStyle(.bordered)
+            }
             if worktree.main != true {
                 Button(role: .destructive, action: onRemove) { Label("Remover worktree", systemImage: "archivebox") }
                     .buttonStyle(.bordered)

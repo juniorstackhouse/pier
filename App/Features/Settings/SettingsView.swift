@@ -46,6 +46,20 @@ struct SettingsView: View {
                     .listRowBackground(Theme.card)
                 }
             }
+            if model.boxes.contains(where: { $0.info?.has("environments") == true }) {
+                Section {
+                    ForEach(model.boxes.filter { $0.info?.has("environments") == true }) { conn in
+                        NavigationLink { BoxProjectsSettingsScreen(box: conn.name) } label: {
+                            Label(model.boxes.count > 1 ? String(localized: "Pasta dos projetos em \(conn.name)") : String(localized: "Pasta dos projetos e espaços"),
+                                  systemImage: "folder.badge.gearshape")
+                        }
+                        .accessibilityIdentifier("settings-projects-\(conn.name)")
+                        .listRowBackground(Theme.card)
+                    }
+                } header: { Text("Projetos") } footer: {
+                    Text("Onde os projetos ficam na box, os espaços que os separam e os ambientes isolados.")
+                }
+            }
             Section("Aparência") {
                 Picker("Aparência", selection: $appearance) {
                     ForEach(Appearance.allCases) { a in Text(a.title).tag(a) }

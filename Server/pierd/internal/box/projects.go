@@ -125,9 +125,12 @@ type CloneRequest struct {
 	Repo string `json:"repo"`
 	// Name is the location's name; the repository's by default.
 	Name string `json:"name,omitempty"`
-	// Dir is the folder to clone into; by default the one the box's other
-	// projects share, else ~/code.
+	// Dir is the folder to clone into; by default the projects folder (in
+	// Space, when given), else the one the box's other projects share, else
+	// ~/code.
 	Dir string `json:"dir,omitempty"`
+	// Space is the space of the projects folder to clone into, made if new.
+	Space string `json:"space,omitempty"`
 	// Setup makes the project ready: the repository's own config is
 	// trusted, or one is worked out (detectSetup); then setup runs on the
 	// main checkout and its services start.
@@ -222,11 +225,25 @@ func (b *Box) addClone(w http.ResponseWriter, r *http.Request) error {
 	}
 	name = locationName(name, taken)
 	parent := req.Dir
-	if parent == "" {
+	root := b.Locations.Settings().ProjectsRoot
+	switch {
+	case req.Space != "":
+		if parent, err = b.Locations.spaceDir(req.Space, false); err != nil && root != "" && trust.ValidName(req.Space) {
+			parent, err = filepath.Join(root, req.Space), nil
+		}
+		if err != nil {
+			return err
+		}
+	case parent == "" && root != "":
+		parent = root
+	case parent == "":
 		parent = projectsParent(locs)
 	}
 	parent, err = filepath.Abs(expandHome(parent))
 	if err != nil {
+		return err
+	}
+	if err := b.Locations.checkInRoot(parent); err != nil {
 		return err
 	}
 	// The folder: the repository's name, or name-2… when that is taken
@@ -545,6 +562,14 @@ func (b *Box) purgeable(ctx context.Context, loc Location) (bool, string) {
 	if clean == "/" || clean == filepath.Clean(home) || strings.HasPrefix(filepath.Clean(home)+"/", clean+"/") {
 		return false, clean + " is the home folder or holds it"
 	}
+	if root := b.Locations.Settings().ProjectsRoot; root != "" {
+		if !under(clean, root) {
+			return false, clean + " is outside the box's projects folder (" + root + ")"
+		}
+		if space, _ := placeOf(clean, root); clean == filepath.Clean(root) || space != "" && clean == filepath.Join(root, space) {
+			return false, clean + " is the projects folder or one of its spaces"
+		}
+	}
 	paths := []string{clean}
 	for _, wt := range loc.Worktrees {
 		paths = append(paths, filepath.Clean(wt.Path))
@@ -593,6 +618,17 @@ func (b *Box) purgeLocation(w http.ResponseWriter, r *http.Request) error {
 	if err := b.before(r, "location.remove", map[string]any{"location": name, "path": loc.Path, "purge": true}); err != nil {
 		return err
 	}
+	if err := b.purge(r, loc, d); err != nil {
+		return err
+	}
+	writeJSON(w, map[string]any{"removed": name, "freed": d.Bytes})
+	return nil
+}
+
+// purge takes a project off the box: its services, sessions, ports and
+// environment, the location, then its folders.
+func (b *Box) purge(r *http.Request, loc Location, d DiskUse) error {
+	name := loc.Name
 	from := origin(r)
 	for _, wt := range loc.Worktrees {
 		b.own(wt.Path)
@@ -600,6 +636,7 @@ func (b *Box) purgeLocation(w http.ResponseWriter, r *http.Request) error {
 		b.stopSessionsIn(from, wt.Path)
 		b.Locations.Ports.Release(wt.Path)
 	}
+	b.dropEnvironment(name, true)
 	// Forgotten first: a location whose folder is half gone is worse than
 	// a folder nothing points at.
 	if err := b.Locations.Remove(name); err != nil {
@@ -624,7 +661,6 @@ func (b *Box) purgeLocation(w http.ResponseWriter, r *http.Request) error {
 	if len(failed) > 0 {
 		return fmt.Errorf("%s was forgotten, but some files could not be deleted: %s", name, strings.Join(failed, "; "))
 	}
-	writeJSON(w, map[string]any{"removed": name, "freed": d.Bytes})
 	return nil
 }
 

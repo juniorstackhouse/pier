@@ -39,3 +39,36 @@ extension BoxAPI {
         try await get("/v1/locations/\(Self.seg(location))/worktrees/\(Self.seg(worktree))/services")
     }
 }
+
+// The box's projects folder, its spaces and the projects' environments (capability `environments`, docs/API.md §2.9).
+
+extension BoxAPI {
+    public func settings() async throws -> BoxSettings { try await get("/v1/settings") }
+
+    /// Set the folder every project lives under ("" clears it: anywhere again).
+    public func setProjectsRoot(_ path: String) async throws -> BoxSettings {
+        struct Body: Encodable { let projects_root: String }
+        return try decode(try await call(.put, "/v1/settings", body: Body(projects_root: path)).data)
+    }
+
+    public func addSpace(name: String) async throws -> ProjectSpace {
+        struct Body: Encodable { let name: String }
+        return try decode(try await call(.post, "/v1/spaces", body: Body(name: name)).data)
+    }
+
+    /// Delete a space. With projects in it the box refuses (409 `space_not_empty`) unless `purge`, which removes them from
+    /// the disk with it (409 `unsaved_work` for work no remote has, unless `force`). Its projects never move out of it.
+    public func removeSpace(name: String, purge: Bool, force: Bool) async throws -> ProjectPurge {
+        let path = Self.url("/v1/spaces/\(Self.seg(name))", [("purge", purge ? "1" : nil), ("force", force ? "1" : nil)])
+        return try decode(try await call(.delete, path).data)
+    }
+
+    public func environment(location: String) async throws -> EnvironmentView {
+        try await get("/v1/locations/\(Self.seg(location))/environment")
+    }
+
+    /// Save a project's environment; the box builds and starts it in the background (`status.state` "building").
+    public func setEnvironment(location: String, _ env: ProjectEnvironment) async throws -> EnvironmentView {
+        try decode(try await call(.put, "/v1/locations/\(Self.seg(location))/environment", body: env).data)
+    }
+}

@@ -95,4 +95,47 @@ final class ProjectsUITests: XCTestCase {
         app.buttons["Parar dev"].tap()
         XCTAssertTrue(text("parado").waitForExistence(timeout: 10), "stopping the service did not show")
     }
+
+    func testProjectsFolderSpacesAndEnvironment() throws {
+        app.launchArguments = ["-uiTestMock", "1", "-startTab", "settings", "-AppleLanguages", "(pt-BR)", "-AppleLocale", "pt_BR"]
+        app.launch()
+        if element("sidebar-home").exists { throw XCTSkip("regular width: covered on the iPhone") }
+        let link = app.buttons["Pasta dos projetos e espaços"]
+        XCTAssertTrue(link.waitForExistence(timeout: 15), "no projects folder in Ajustes")
+        link.tap()
+        let field = element("projects-root-field")
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        field.tap()
+        field.typeText("~/code")
+        element("projects-root-save").tap()
+        XCTAssertTrue(element("space-clientes").waitForExistence(timeout: 10), "the spaces did not show once the folder was set")
+        XCTAssertTrue(text("Docker 27.3.1").exists, "Docker's state is not shown")
+        element("space-add").tap()
+        app.textFields["nome"].typeText("pessoal")
+        app.buttons["Criar"].tap()
+        XCTAssertTrue(element("space-pessoal").waitForExistence(timeout: 10), "the new space is not listed")
+        shot("projects-folder")
+
+        // A project's environment: PHP 8.4 and MySQL 8.0.
+        app.tabBars.buttons["Projetos"].tap()
+        let project = app.staticTexts["sandbox"].firstMatch
+        XCTAssertTrue(project.waitForExistence(timeout: 10))
+        project.tap()
+        let env = element("project-environment")
+        XCTAssertTrue(env.waitForExistence(timeout: 10), "no Ambiente on the project")
+        env.tap()
+        XCTAssertTrue(element("env-state-none").waitForExistence(timeout: 10), "the environment did not load")
+        element("env-runtime-mode").tap()
+        app.buttons["Versão escolhida"].tap()
+        element("env-add-container").tap()
+        app.buttons["MySQL"].tap()
+        app.buttons["MySQL 8.0"].tap()
+        XCTAssertTrue(element("env-container-mysql").waitForExistence(timeout: 5), "the container was not added")
+        element("env-apply").tap()
+        XCTAssertTrue(element("env-state-ready").waitForExistence(timeout: 15), "the environment did not get ready")
+        XCTAssertTrue(text("PHP 8.4 · MySQL 8.0").exists, "the summary is wrong")
+        app.swipeUp()
+        XCTAssertTrue(text("DB_HOST").waitForExistence(timeout: 5), "the worktrees' variables are not shown")
+        shot("project-environment")
+    }
 }

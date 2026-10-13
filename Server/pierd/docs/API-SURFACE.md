@@ -35,6 +35,9 @@ by the box's own user over the Unix socket `$PIER_HOME/box/pierd.sock` (the `pie
 | `DELETE /v1/locations/{name}` (`purge=1[&force=1]`: delete it from the disk; 409 `unsaved_work`) | `api.go` `removeLocation`, `projects.go` `purgeLocation` | `pierd location rm`; App `purgeProject()`: RemoveProjectSheet |
 | `GET /v1/locations/{name}/disk` | `projects.go` `locationDisk` | App `projectDisk()`: RemoveProjectSheet |
 | `GET`/`POST /v1/clones`, `DELETE /v1/clones/{id}` | `projects.go` `listClones`/`addClone`/`forgetClone` (clone, setup, autostart) | App `clone()`/`clones()`/`forgetClone()`: ClonesStore (GitHubReposScreen, CloneLinkSheet) |
+| `GET`/`PUT /v1/settings` | `settings.go` `getSettings`/`putSettings` (projects folder, spaces, Docker) | App `settings()`/`setProjectsRoot()`: BoxProjectsSettingsScreen, SpacesStore |
+| `POST /v1/spaces`, `DELETE /v1/spaces/{name}` (`purge`, `force`) | `settings.go` `addSpace`/`removeSpace` | App `addSpace()`/`removeSpace()`: BoxProjectsSettingsScreen, RemoveSpaceSheet |
+| `GET`/`PUT /v1/locations/{name}/environment` | `environment.go` `getEnvironment`/`putEnvironment` (launchers, containers as units) | App `environment()`/`setEnvironment()`: ProjectEnvironmentScreen |
 | `GET /v1/github/repos[?owner=]` | `github.go` `listGitHubRepos` (the box's gh) | App `gitHubRepos()`: GitHubReposScreen |
 | `GET /v1/locations/{name}/branches` | `helpers.go` `listBranches` | App `branches()`: ComposeModel, WorktreeParts |
 | `GET`/`PUT /v1/locations/{name}/config` | `repoconfig.go` `getConfig`/`putConfig` | `pierd location config [--set FILE]` |
@@ -102,6 +105,7 @@ Event types pierd publishes, and what the app does with them:
 | `task.created` | sessions and locations refresh |
 | `worktree.created`, `worktree.removed`, `worktree.{setup,archive}.{started,finished,failed}` | locations refresh; ReviewScreen reloads; local notification on `*.failed` |
 | `location.added`, `location.removed`, `config.changed` | locations refresh |
+| `settings.changed`, `space.added`, `space.removed`, `environment.*` | none yet: the screens read the box again after their own changes; ProjectEnvironmentScreen polls while building |
 | `clone.started`, `clone.finished`, `clone.failed` | none yet: ClonesStore polls `GET /v1/clones` while a clone runs |
 | `service.started`, `service.stopped`, `service.failed` | HomeStore refreshes services; local notification on `service.failed` |
 | `exec.finished`, `client.paired`, `client.revoked`, `pairing.invited`, `agents.found`, `file.written` | none (informational) |

@@ -93,7 +93,7 @@ func runScript(ctx context.Context, script, repo, dir, name, logPath string, tim
 	if shell == "" {
 		shell = "/bin/sh"
 	}
-	cmd := groups.CommandContext(ctx, shell, "-lc", script)
+	cmd := groups.CommandContext(ctx, shell, "-lc", envBinFirst+script)
 	cmd.Dir = dir
 	cmd.Env = append(os.Environ(),
 		"PIER_ROOT_PATH="+repo, "PIER_WORKTREE_PATH="+dir, "PIER_WORKTREE_NAME="+name,

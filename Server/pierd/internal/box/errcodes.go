@@ -26,6 +26,8 @@ import (
 //	file_changed     a save's file changed (or went) on the box since it was read
 //	file_exists      a new file's path is taken
 //	unsaved_work     removing a project would lose work no remote has
+//	space_not_empty  a space still holds projects
+//	docker_missing   docker is not available on the box
 //	gh_missing       gh (GitHub CLI) is not installed on the box
 //	gh_auth          gh is not signed in on the box
 //	bad_request      the request itself was wrong
@@ -45,6 +47,8 @@ const (
 	CodeFileExists    = "file_exists"
 	CodeUnsavedWork   = "unsaved_work"
 	CodeGHMissing     = "gh_missing"
+	CodeSpaceNotEmpty = "space_not_empty"
+	CodeDockerMissing = "docker_missing"
 	CodeGHAuth        = "gh_auth"
 	CodeBadRequest    = "bad_request"
 	CodeInternal      = "internal"
@@ -74,6 +78,8 @@ func codeFor(err error) string {
 		return CodeFileExists
 	case errors.Is(err, ErrUnsavedWork):
 		return CodeUnsavedWork
+	case errors.Is(err, ErrSpaceNotEmpty):
+		return CodeSpaceNotEmpty
 	case errors.Is(err, ErrUnknownLocation), errors.Is(err, ErrUnknownWorktree), errors.Is(err, ErrUnknownSession), errors.Is(err, ErrUnknownUnit):
 		return CodeNotFound
 	case errors.As(err, &he):
@@ -82,6 +88,9 @@ func codeFor(err error) string {
 			return CodeGHMissing
 		case errGHAuth.Error():
 			return CodeGHAuth
+		}
+		if strings.HasPrefix(he.msg, errDocker.Error()) {
+			return CodeDockerMissing
 		}
 		if strings.Contains(he.msg, "is waiting for someone to answer it") || strings.Contains(he.msg, "is asking whether to trust this folder") {
 			return CodeAgentWaiting

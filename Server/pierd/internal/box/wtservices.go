@@ -88,7 +88,7 @@ func (b *Box) StartService(ctx context.Context, location, worktree, name string)
 		k, v, _ := strings.Cut(kv, "=")
 		envMap[k] = v
 	}
-	program, args := loginShell(), []string{"-lc", "cd " + shellQuote(wt.Path) + " && " + svc.Run}
+	program, args := loginShell(), []string{"-lc", envBinFirst + "cd " + shellQuote(wt.Path) + " && " + svc.Run}
 	// A unit gets the service manager's groups, from before a group the
 	// user joined since; sg gives it them.
 	if argv := groups.Wrap(append([]string{program}, args...)); argv[0] != program {

@@ -336,6 +336,7 @@ func serve(b boxHome, args []string) error {
 		Watcher:      watcher,
 		DaemonChecks: func() []doctor.Check { return append(daemonChecks(b, ln.Addr().String()), relayChecks(rl)...) },
 		LogDir:       filepath.Join(b.dir, "logs"),
+		StateDir:     b.dir,
 		Units:        &box.Units{Dir: filepath.Join(b.dir, "units")},
 		Turns:        turns,
 		Hooks:        hookRunner,

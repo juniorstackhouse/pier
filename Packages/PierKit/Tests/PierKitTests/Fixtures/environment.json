@@ -1,0 +1,6 @@
+{"environment":{"runtime":{"preset":"php:8.4"},"containers":[{"name":"mysql","image":"mysql:8.0"},{"name":"redis","image":"redis:7"}]},
+ "status":{"state":"ready","image":"pier-env-shop:latest","commands":["php","composer"],
+   "containers":[{"name":"mysql","image":"mysql:8.0","host_port":41030,"state":"running","unit":"ctr-shop-mysql"},{"name":"redis","image":"redis:7","host_port":41040,"state":"running","unit":"ctr-shop-redis"}],
+   "variables":["DATABASE_URL","DB_CONNECTION","DB_DATABASE","DB_HOST","DB_PASSWORD","DB_PORT","DB_USERNAME","PIER_ENV_BIN","PIER_MYSQL_HOST","PIER_MYSQL_PORT","PIER_REDIS_HOST","PIER_REDIS_PORT","REDIS_HOST","REDIS_PORT","REDIS_URL"],
+   "log":"/home/octocat/.pier/box/env/shop/apply.log"},
+ "project":{"dockerfile":false,"compose":true},"docker":{"available":true,"version":"27.3.1"}}

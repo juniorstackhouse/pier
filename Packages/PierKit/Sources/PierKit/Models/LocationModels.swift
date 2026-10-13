@@ -91,8 +91,17 @@ public struct Location: Codable, Sendable, Hashable, Identifiable {
     public let checkFrom: String?
     public let agents: [AgentPreset]?
     public let scripts: Scripts?
+    /// The space of the box's projects folder it is in (nil: right under it, or no folder set).
+    public let space: String?
+    /// Outside the box's projects folder (one set after it was added).
+    public let outsideRoot: Bool
+    /// It has an isolated environment of its own (`GET …/environment`).
+    public let isolated: Bool
 
-    public init(name: String, path: String = "", repo: Bool = false, worktrees: [Worktree]? = nil, remote: String? = nil, slug: String? = nil, defaultBranch: String? = nil, repoTrust: String? = nil, check: String? = nil, checkFrom: String? = nil, agents: [AgentPreset]? = nil, scripts: Scripts? = nil) {
+    public init(name: String, path: String = "", repo: Bool = false, worktrees: [Worktree]? = nil, remote: String? = nil, slug: String? = nil, defaultBranch: String? = nil, repoTrust: String? = nil, check: String? = nil, checkFrom: String? = nil, agents: [AgentPreset]? = nil, scripts: Scripts? = nil, space: String? = nil, outsideRoot: Bool = false, isolated: Bool = false) {
+        self.space = space
+        self.outsideRoot = outsideRoot
+        self.isolated = isolated
         self.name = name
         self.path = path
         self.repo = repo
@@ -120,6 +129,9 @@ public struct Location: Codable, Sendable, Hashable, Identifiable {
         case checkFrom = "check_from"
         case agents
         case scripts
+        case space
+        case outsideRoot = "outside_root"
+        case isolated
     }
 
     public init(from decoder: Decoder) throws {
@@ -136,6 +148,9 @@ public struct Location: Codable, Sendable, Hashable, Identifiable {
         self.checkFrom = try c.decodeIfPresent(String.self, forKey: .checkFrom)
         self.agents = try c.decodeIfPresent([AgentPreset].self, forKey: .agents)
         self.scripts = try c.decodeIfPresent(Scripts.self, forKey: .scripts)
+        self.space = try c.decodeIfPresent(String.self, forKey: .space)
+        self.outsideRoot = try c.decodeIfPresent(Bool.self, forKey: .outsideRoot) ?? false
+        self.isolated = try c.decodeIfPresent(Bool.self, forKey: .isolated) ?? false
     }
 
     public var id: String { name }

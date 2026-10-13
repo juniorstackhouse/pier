@@ -27,6 +27,16 @@ struct ProjectScreenPlaceholder: View {
                         Label("Nova tarefa aqui", systemImage: "plus.bubble.fill").font(.body.weight(.semibold))
                     }
                     Button { newWorktree = true } label: { Label("Nova worktree", systemImage: "arrow.triangle.branch") }
+                    if loc.repo, conn?.info?.has("environments") == true {
+                        NavigationLink(value: ProjectEnvironmentRoute(box: route.box, location: route.location)) {
+                            HStack {
+                                Label("Ambiente", systemImage: "shippingbox.and.arrow.backward")
+                                Spacer()
+                                Text(loc.isolated ? "isolado" : "da box").font(.caption).foregroundStyle(loc.isolated ? Theme.green : Theme.textDim)
+                            }
+                        }
+                        .accessibilityIdentifier("project-environment")
+                    }
                     if let main = loc.worktrees?.first(where: { $0.main == true }) {
                         NavigationLink(value: WorktreeDetailsRoute(box: route.box, location: route.location, worktree: main.name)) {
                             Label("Detalhes: serviços e visualização", systemImage: "server.rack")
@@ -118,6 +128,8 @@ struct ProjectScreenPlaceholder: View {
             if let remote = loc.remote { infoLine("link", remote) }
             if let d = loc.defaultBranch { infoLine("arrow.triangle.branch", String(localized: "branch padrão: \(d)")) }
             infoLine("folder", loc.path)
+            if let space = loc.space { infoLine("square.stack.3d.up", String(localized: "espaço: \(space)")) }
+            if loc.outsideRoot { infoLine("exclamationmark.triangle", String(localized: "fora da pasta dos projetos")) }
             if route.box.isEmpty == false, model.boxes.count > 1 { infoLine("shippingbox", route.box) }
             CountPills(counts: conn?.agentCounts(location: loc.name) ?? [:])
         }

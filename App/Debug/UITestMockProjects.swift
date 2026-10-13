@@ -13,8 +13,17 @@ struct MockProjects {
         let slug: String?
         let name: String
         let started: Date
+        var space: String? = nil
         var forgotten = false
+        var path: String { "\(MockProjects.base)/\(space.map { "\($0)/" } ?? "")\(name)" }
     }
+
+    static let base = "/home/ubuntu/code"
+    /// The projects folder (`PUT /v1/settings`): the mock's projects already live in it.
+    private var root: String? = nil
+    private var spaces: [String] = ["clientes"]
+    /// Environments by location, and when each was applied (it reads "building" for 2 s).
+    private var environments: [String: (env: JSON, at: Date)] = [:]
 
     private var clones: [CloneJob] = []
     private var removed: Set<String> = []
@@ -39,10 +48,18 @@ struct MockProjects {
         var all = ((try? JSONSerialization.jsonObject(with: Data(fixture.utf8))) as? [JSON]) ?? []
         all.removeAll { removed.contains(($0["name"] as? String) ?? "") }
         for c in clones where state(c) == "ready" && !removed.contains(c.name) {
-            let path = "/home/ubuntu/code/\(c.name)"
+            let path = c.path
             all.append(["name": c.name, "path": path, "repo": true, "remote": "https://github.com/\(c.slug ?? "octocat/\(c.name)").git",
                         "slug": c.slug ?? "octocat/\(c.name)", "default_branch": "main", "repo_trust": "none", "scripts": ["setup": "npm ci", "from": "box"],
                         "worktrees": [["name": c.name, "path": path, "branch": "main", "head": "0a1b2c3d4e", "main": true, "port": 41200]]])
+        }
+        for i in all.indices {
+            let name = (all[i]["name"] as? String) ?? ""
+            if environments[name] != nil { all[i]["isolated"] = true }
+            if let root, let path = all[i]["path"] as? String, path.hasPrefix(root + "/") {
+                let parts = path.dropFirst(root.count + 1).split(separator: "/")
+                if parts.count >= 2 { all[i]["space"] = String(parts[0]) }
+            }
         }
         return Self.json(all)
     }
@@ -60,7 +77,32 @@ struct MockProjects {
     // MARK: routes
 
     mutating func route(_ method: BoxClient.Method, _ p: [String], _ query: [String: String], _ body: Data?, locations fixture: String) -> (Int, Data)? {
+        let req = (body.flatMap { try? JSONSerialization.jsonObject(with: $0) } as? JSON) ?? [:]
         switch (method, p.count, p[1]) {
+        case (.get, 2, "settings"): return (200, settingsJSON(fixture))
+        case (.put, 2, "settings"):
+            let r = ((req["projects_root"] as? String) ?? "").trimmingCharacters(in: .whitespaces)
+            root = r.isEmpty ? nil : r.replacingOccurrences(of: "~", with: "/home/ubuntu")
+            return (200, settingsJSON(fixture))
+        case (.post, 2, "spaces"):
+            guard root != nil else { return (400, Self.json(["error": "set the box's projects folder before using spaces", "code": "bad_request"])) }
+            let n = (req["name"] as? String) ?? ""
+            guard Environments.isValidSpace(n) else { return (400, Self.json(["error": "invalid space name \"\(n)\"", "code": "bad_request"])) }
+            if !spaces.contains(n) { spaces.append(n) }
+            return (200, Self.json(["name": n, "path": "\(root ?? "")/\(n)", "projects": 0]))
+        case (.delete, 3, "spaces"):
+            let inside = clones.filter { $0.space == p[2] && state($0) == "ready" && !removed.contains($0.name) }
+            if !inside.isEmpty && query["purge"] != "1" {
+                return (409, Self.json(["error": "the space still holds projects: \(inside.map(\.name).joined(separator: ", ")) (remove them with it with purge=1)", "code": "space_not_empty"]))
+            }
+            for c in inside { removed.insert(c.name) }
+            spaces.removeAll { $0 == p[2] }
+            return (200, Self.json(["removed": p[2], "freed": inside.count * 182_452_224]))
+        case (.get, 4, "locations") where p[3] == "environment": return (200, environmentJSON(p[2]))
+        case (.put, 4, "locations") where p[3] == "environment":
+            let empty = (req["runtime"] == nil) && ((req["containers"] as? [Any])?.isEmpty ?? true) && (req["compose"] as? Bool) != true
+            environments[p[2]] = empty ? nil : (req, Date())
+            return (202, environmentJSON(p[2]))
         case (.get, 3, "github") where p[2] == "repos": return (200, repos(owner: query["owner"], fixture: fixture))
         case (.get, 2, "clones"): return (200, Self.json(clones.filter { !$0.forgotten }.reversed().map(cloneJSON)))
         case (.post, 2, "clones"): return clone(body, fixture: fixture)
@@ -77,6 +119,42 @@ struct MockProjects {
             return (200, Self.json(serviceJSON(p[2], p[4], name: p[6])))
         default: return nil
         }
+    }
+
+    private func settingsJSON(_ fixture: String) -> Data {
+        var out: JSON = ["home": "/home/ubuntu", "docker": ["available": true, "version": "27.3.1"]]
+        if let root {
+            out["projects_root"] = root
+            out["spaces"] = spaces.map { s in
+                ["name": s, "path": "\(root)/\(s)", "projects": clones.filter { $0.space == s && state($0) == "ready" && !removed.contains($0.name) }.count] as JSON
+            }
+        } else { out["spaces"] = [] as [Any] }
+        return Self.json(out)
+    }
+
+    private func environmentJSON(_ location: String) -> Data {
+        let saved = environments[location]
+        let env = saved?.env ?? [:]
+        let building = saved.map { Date().timeIntervalSince($0.at) < 2 } ?? false
+        var containers: [JSON] = []
+        var vars: [String] = []
+        for (i, c) in ((env["containers"] as? [JSON]) ?? []).enumerated() {
+            let name = (c["name"] as? String) ?? "db"
+            containers.append(["name": name, "image": c["image"] ?? "", "host_port": 41300 + i * 10, "state": building ? "stopped" : "running", "unit": "ctr-\(location)-\(name)"])
+            vars += ["PIER_\(name.uppercased().replacingOccurrences(of: "-", with: "_"))_PORT"]
+            if ((c["image"] as? String) ?? "").hasPrefix("mysql") || ((c["image"] as? String) ?? "").hasPrefix("postgres") { vars += ["DATABASE_URL", "DB_HOST", "DB_PORT"] }
+        }
+        var status: JSON = ["state": saved == nil ? "none" : building ? "building" : "ready", "containers": containers]
+        if let rt = env["runtime"] as? JSON {
+            vars.append("PIER_ENV_BIN")
+            if !building, let preset = rt["preset"] as? String {
+                status["image"] = preset.hasPrefix("php") ? "pier-env-\(location):latest" : preset
+                status["commands"] = Environments.parsePreset(preset)?.language.commands ?? []
+            }
+        }
+        status["variables"] = Array(Set(vars)).sorted()
+        return Self.json(["environment": env, "status": status, "project": ["dockerfile": location == "sandbox", "compose": location == "acme-site"],
+                          "docker": ["available": true, "version": "27.3.1"]])
     }
 
     private func repos(owner: String?, fixture: String) -> Data {
@@ -107,7 +185,11 @@ struct MockProjects {
         if let l = existing.first(where: { $0.slug?.lowercased() == slug?.lowercased() && slug != nil }) {
             return (409, Self.json(["error": "\(repo) is already on this box as \(l.name)", "code": "bad_request"]))
         }
-        let job = CloneJob(id: String(UUID().uuidString.prefix(12)).lowercased(), repo: repo, slug: slug, name: name, started: Date())
+        var job = CloneJob(id: String(UUID().uuidString.prefix(12)).lowercased(), repo: repo, slug: slug, name: name, started: Date())
+        if let s = req["space"] as? String, !s.isEmpty, root != nil {
+            job.space = s
+            if !spaces.contains(s) { spaces.append(s) }
+        }
         removed.remove(name)
         clones.append(job)
         return (202, Self.json(cloneJSON(job)))
@@ -121,7 +203,7 @@ struct MockProjects {
 
     private func cloneJSON(_ c: CloneJob) -> JSON {
         let st = state(c)
-        var j: JSON = ["id": c.id, "repo": c.repo, "location": c.name, "path": "/home/ubuntu/code/\(c.name)", "state": st,
+        var j: JSON = ["id": c.id, "repo": c.repo, "location": c.name, "path": c.path, "state": st,
                        "started": ISO8601DateFormatter().string(from: c.started)]
         if let s = c.slug { j["slug"] = s }
         if st == "ready" { j["setup"] = "detected"; j["services"] = ["dev"] }
