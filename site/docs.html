@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en" data-title-en="Docs — Pier" data-title-pt="Documentação — Pier">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Docs — Pier</title>
+  <meta name="description" content="Install Pier from scratch: the server, pierd, Claude Code and Codex accounts, the box's variables, the iPhone and the Mac, and what each feature does.">
+  <link rel="icon" href="assets/favicon.png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="assets/site.css">
+  <script src="assets/lang.js"></script>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="./"><img src="assets/icon.png" alt="">Pier</a>
+    <div class="lang" role="group" aria-label="Language">
+      <button type="button" data-lang="en" aria-pressed="true">EN</button>
+      <button type="button" data-lang="pt-BR" aria-pressed="false">PT</button>
+    </div>
+  </div>
+</header>
+
+<main class="doc">
+
+<div lang="en">
+  <h1>Docs</h1>
+  <p class="updated">A first install, step by step: from an empty server to your first agent followed from your iPhone.</p>
+  <a class="pdf" href="assets/pier-manual-pt.pdf" download>⤓ Install manual (PDF, Portuguese)</a>
+
+  <nav class="toc">
+    <a href="#how">How Pier works</a><a href="#need">What you need</a><a href="#server">Prepare the server</a>
+    <a href="#agents">Install the agents</a><a href="#pierd">Install pierd</a><a href="#iphone">Connect the iPhone and iPad</a>
+    <a href="#mac">Connect the Mac</a><a href="#accounts">Claude and Codex accounts</a><a href="#root">Projects folder and spaces</a>
+    <a href="#env">The box's variables and skills</a><a href="#projects">Bring in projects</a><a href="#isolated">Isolated environments</a>
+    <a href="#notifications">Notifications</a><a href="#daily">Day to day</a><a href="#links">Public links</a>
+    <a href="#commands">Useful commands</a><a href="#problems">Common problems</a>
+  </nav>
+
+  <h2 id="how">How Pier works</h2>
+  <p>Your agents (Claude Code, Codex) keep running on your own development machine, which Pier calls a <strong>box</strong>:
+  a Linux server or your Mac. It runs <strong>pierd</strong>, a small open-source server, and the Pier app on your iPhone,
+  iPad and Mac talks to it directly. There is no cloud and no Pier account: the app pairs with each box once (a QR code or
+  a <code>pier://</code> link), then uses mutual TLS with pinned keys. Away from the box's network, the app goes through
+  the Pier tunnel, which only carries the end-to-end encryption.</p>
+
+  <h2 id="need">What you need</h2>
+  <table>
+    <tr><th>Box</th><td>A Linux server (Ubuntu 20.04+ or Debian 10+, x86-64 or arm64, with systemd) or a Mac (macOS 13+), 4 GB of RAM or more.</td></tr>
+    <tr><th>On the box</th><td><code>git</code>, <code>tmux</code>, <code>curl</code>. Optional: <code>gh</code> (pull requests, your GitHub repositories) and Docker (isolated environments).</td></tr>
+    <tr><th>Agents</th><td>Claude Code with a Pro, Max, Team or Enterprise plan, and/or Codex with a ChatGPT account or an API key.</td></tr>
+    <tr><th>Devices</th><td>An iPhone or iPad on iOS 17 or later, and/or a Mac.</td></tr>
+  </table>
+  <p>No box yet? Open the app and tap <strong>Explore with sample data</strong>.</p>
+
+  <h2 id="server">1. Prepare the server</h2>
+  <p>Skip this on a Mac. On a fresh Ubuntu or Debian server, over SSH, as the user your agents will run as (not root):</p>
+<pre>sudo apt update && sudo apt install -y git tmux curl gh
+gh auth login                       # GitHub.com › HTTPS › sign in with a browser
+git config --global user.name  "Your Name"
+git config --global user.email "you@example.com"</pre>
+  <p>For isolated environments, install Docker from docs.docker.com/engine/install, then
+  <code>sudo usermod -aG docker $USER</code> and log in again. A server with a public address needs no VPN (pierd only answers
+  paired devices; open port 7444 if a firewall is on). A server at home or behind NAT needs nothing either: the app reaches it
+  through the tunnel.</p>
+
+  <h2 id="agents">2. Install the agents</h2>
+<pre>curl -fsSL https://claude.ai/install.sh | bash     # Claude Code
+npm install -g @openai/codex                        # Codex</pre>
+  <p>Signing in can wait: the app does it per account (step 6).</p>
+
+  <h2 id="pierd">3. Install pierd</h2>
+<pre>curl -fsSL https://docktopier.com/install.sh | sh
+# or: npm install -g pierd && pierd setup
+# or: brew install wagnerfnds/tap/pierd && pierd setup</pre>
+  <p><code>pierd setup</code> runs pierd as a user service on port 7444, installs the agents' hooks, adds the git
+  repositories it finds (<code>~/code</code>, <code>~/Projects</code>, …), connects the box to the tunnel and prints a QR code
+  and a <code>pier://</code> link (single use, 10 minutes). On Linux, run <code>sudo loginctl enable-linger $USER</code> once so
+  pierd keeps running after you log out. Then <code>pierd doctor</code> should say “All good.”, and <code>pierd pair</code> makes a
+  new link any time.</p>
+
+  <h2 id="iphone">4. Connect the iPhone and iPad</h2>
+  <ol>
+    <li>Install Pier from the App Store.</li>
+    <li>Tap <strong>Scan QR code</strong> and point it at the code in the terminal (after the first box: Settings › Add box).
+      Or open the <code>pier://</code> link on the device.</li>
+    <li>The box shows up with its projects and sessions; the app switches between the direct connection and the tunnel by itself.</li>
+  </ol>
+
+  <h2 id="mac">5. Connect the Mac</h2>
+  <ul>
+    <li><strong>The box is a server</strong>: in Pier on the Mac, <strong>Paste link</strong> and paste a <code>pier://</code> link.</li>
+    <li><strong>The box is the Mac itself</strong>: run the installer in Terminal; <code>pierd setup</code> hands the link to Pier, which pairs by itself.</li>
+    <li><strong>Take it to iPhone</strong> (Settings on the Mac) shows a QR code that brings the phone into the same boxes.</li>
+  </ul>
+
+  <h2 id="accounts">6. Claude and Codex accounts</h2>
+  <p>Several subscriptions on one box (personal and work, two Max plans…): each account is a folder of the agent's own
+  (<code>CLAUDE_CONFIG_DIR</code>, <code>CODEX_HOME</code>), with its own login, settings and history, as Claude Code's documentation
+  recommends for several accounts.</p>
+  <ol>
+    <li><strong>Settings › Projects › Claude and Codex accounts</strong>: the agents' own accounts are listed already.</li>
+    <li><strong>Sign in</strong>, or <strong>Add account</strong> and name it: a terminal of the box opens in the app for the agent's sign-in.</li>
+    <li>Each project picks its account (the project's screen, <strong>Agents' account</strong>, or a worktree's Details);
+      <strong>Make default</strong> sets it for everything else.</li>
+    <li>The Home's <strong>Usage limits</strong> card shows each account's 5-hour and weekly use; tap
+      <strong>Turn on reading the limits</strong> once for Claude. A tap on an account makes it the default.</li>
+  </ol>
+
+  <h2 id="root">7. Projects folder and spaces</h2>
+  <p><strong>Settings › Projects › Projects folder and spaces</strong>: every project lives under the folder you pick (such as
+  <code>~/code</code>): clones go there, nothing outside it is added or deleted. <strong>Spaces</strong> are folders in it that keep
+  groups of projects apart (one per client, say); deleting a space deletes its projects with it, after the same checks as
+  removing one, and never moves them out.</p>
+
+  <h2 id="env">8. The box's variables and skills</h2>
+  <p><strong>Settings › Projects › Variables and skills</strong>: variables every project gets (agents, terminals, services), each
+  with a note on what it is for. Secret-looking values are hidden until revealed; a project's own env wins. Turn on the
+  <strong>Pier box</strong> skill (the variables by name and note, never values; the worktree's ports; the project's
+  environment) and <strong>Pier preview</strong> (run the dev server on the worktree's port) so Claude Code and Codex know them.</p>
+
+  <h2 id="projects">9. Bring in projects</h2>
+  <ul>
+    <li><strong>Projects › + › GitHub repositories</strong>: the account <code>gh</code> is signed in to on the box; a tap downloads one
+      and, with “Set up the environment”, installs its dependencies and starts its dev server.</li>
+    <li><strong>Clone from link</strong>: <code>owner/repo</code>, a GitHub page or a clone URL. Setup starts off here, since it runs the
+      repository's own config: turn it on for repositories you trust.</li>
+    <li><strong>Remove from disk</strong>: shows the space it frees and what would be lost (uncommitted files, unpushed commits,
+      stashes) before deleting anything.</li>
+  </ul>
+
+  <h2 id="isolated">10. Isolated environments</h2>
+  <p>A project's <strong>Environment</strong> picks its language version (PHP, Node.js, Python, Ruby, Go, an image, or its own
+  Dockerfile) and its databases (MySQL, MariaDB, PostgreSQL, Redis, MongoDB), all in Docker on the box and none of it in the
+  project. After <strong>Apply</strong>, <code>php</code>, <code>composer</code>, <code>node</code>… run in the container for everything in
+  the project, agents included, and the worktrees get <code>DB_HOST</code>, <code>DB_PORT</code>, <code>DATABASE_URL</code>,
+  <code>REDIS_URL</code> (user <code>root</code>, password <code>pier</code>, database <code>app</code>).</p>
+
+  <h2 id="notifications">11. Notifications</h2>
+  <p>Nothing to set up: Pier on the Mac tells your iPhone and iPad what needs you through your own iCloud while it is open
+  (Settings › <em>Open Pier when the Mac starts</em>). Buttons in the notification answer the agent directly.</p>
+
+  <h2 id="daily">Day to day</h2>
+  <table>
+    <tr><th>Start a task</th><td><strong>+</strong> on the Home: pick the project and the agent, type or dictate; it gets a worktree of its own.</td></tr>
+    <tr><th>What needs me</th><td><strong>Inbox</strong>: permissions and questions, answered with a tap.</td></tr>
+    <tr><th>Everything at once</th><td><strong>Board</strong>: working, needs you, done.</td></tr>
+    <tr><th>Review</th><td>A session's <strong>Review</strong>: each file's diff, commit, push, pull request.</td></tr>
+    <tr><th>See it running</th><td>A worktree's <strong>Details</strong>: dev servers with their links, services, ports.</td></tr>
+    <tr><th>Clean up</th><td><strong>Cleanup</strong> (Projects › ✦): unused worktrees, services, every project's main.</td></tr>
+  </table>
+
+  <h2 id="links">Public links</h2>
+  <p>A worktree's Details › <strong>Create public link</strong> puts its dev server at <code>https://p-&lt;name&gt;.docktopier.com</code>
+  for 24 hours (7 days at most), for anyone with the link. It goes when it expires, when you take it down, or with its worktree.</p>
+  <div class="callout warn"><p>Never publish a server with a debug console on (Rails' web-console, Django's debug toolbar):
+  anyone with the link reaches it.</p></div>
+
+  <h2 id="commands">Useful commands</h2>
+  <table>
+    <tr><th><code>pierd doctor</code></th><td>What works and how to fix the rest.</td></tr>
+    <tr><th><code>pierd pair</code></th><td>A new pairing link and QR code.</td></tr>
+    <tr><th><code>pierd clients</code> / <code>pierd revoke NAME</code></th><td>Paired devices / remove one.</td></tr>
+    <tr><th><code>pierd relay</code></th><td>The tunnel's state; <code>off</code> / <code>default</code>.</td></tr>
+    <tr><th><code>pierd location add NAME DIR</code></th><td>A repository setup did not find.</td></tr>
+    <tr><th>Update</th><td>Run the install command again (or <code>npm install -g pierd@latest</code>, <code>brew upgrade pierd</code>); running agents keep running.</td></tr>
+  </table>
+
+  <h2 id="problems">Common problems</h2>
+  <details><summary>The app can't reach the box</summary><p><code>pierd doctor</code>; on the same network the device must reach the
+  link's address (<code>pierd setup --address HOST</code>); away from it, <code>pierd relay</code> should say connected. On a Mac with
+  the firewall on, allow incoming connections for pierd.</p></details>
+  <details><summary>An agent stops at its login</summary><p>That project's account is signed out: Settings › Projects › Accounts › Sign in.</p></details>
+  <details><summary>No limits on the Home</summary><p>Turn on reading the limits for Claude and wait for an agent's next reply. Limits
+  exist for claude.ai plans only, not API keys.</p></details>
+  <details><summary>An isolated environment does not apply</summary><p>Check <code>docker version</code> on the box and that your user is
+  in the <code>docker</code> group; the Environment screen shows the error and the log's end.</p></details>
+  <p>More on the <a href="support.html">support page</a>.</p>
+</div>
+
+<div lang="pt-BR">
+  <h1>Documentação</h1>
+  <p class="updated">A primeira instalação, passo a passo: do servidor vazio ao primeiro agente acompanhado pelo iPhone.</p>
+  <a class="pdf" href="assets/pier-manual-pt.pdf" download>⤓ Manual de instalação (PDF)</a>
+
+  <nav class="toc">
+    <a href="#como">Como o Pier funciona</a><a href="#precisa">O que você precisa</a><a href="#servidor">Preparar o servidor</a>
+    <a href="#agentes">Instalar os agentes</a><a href="#instalar">Instalar o pierd</a><a href="#conectar-iphone">Conectar o iPhone e o iPad</a>
+    <a href="#conectar-mac">Conectar o Mac</a><a href="#contas">Contas do Claude e do Codex</a><a href="#pasta">Pasta dos projetos e espaços</a>
+    <a href="#variaveis">Variáveis da box e skills</a><a href="#projetos">Trazer os projetos</a><a href="#ambiente">Ambiente isolado</a>
+    <a href="#notificacoes">Notificações</a><a href="#dia">O dia a dia</a><a href="#publicos">Links públicos</a>
+    <a href="#comandos">Comandos úteis</a><a href="#problemas">Problemas comuns</a>
+  </nav>
+
+  <h2 id="como">Como o Pier funciona</h2>
+  <p>Os seus agentes (Claude Code, Codex) continuam rodando na sua máquina de desenvolvimento, que o Pier chama de
+  <strong>box</strong>: um servidor Linux ou o seu Mac. Nela roda o <strong>pierd</strong>, um servidor pequeno e de código aberto, e o
+  app no iPhone, no iPad e no Mac conversa direto com ele. Não existe nuvem nem conta do Pier: o app pareia com cada box uma
+  vez (um QR code ou um link <code>pier://</code>) e daí usa TLS mútuo com chaves fixadas. Fora da rede da box, o app passa pelo
+  túnel do Pier, que só carrega a criptografia de ponta a ponta.</p>
+
+  <h2 id="precisa">O que você precisa</h2>
+  <table>
+    <tr><th>Box</th><td>Um servidor Linux (Ubuntu 20.04+ ou Debian 10+, x86-64 ou arm64, com systemd) ou um Mac (macOS 13+), com 4 GB de RAM ou mais.</td></tr>
+    <tr><th>Na box</th><td><code>git</code>, <code>tmux</code>, <code>curl</code>. Opcionais: <code>gh</code> (pull requests, seus repositórios do GitHub) e Docker (ambientes isolados).</td></tr>
+    <tr><th>Agentes</th><td>Claude Code com plano Pro, Max, Team ou Enterprise, e/ou Codex com conta ChatGPT ou chave de API.</td></tr>
+    <tr><th>Aparelhos</th><td>iPhone ou iPad com iOS 17 ou mais novo, e/ou um Mac.</td></tr>
+  </table>
+  <p>Ainda sem box? Abra o app e toque em <strong>Explorar com dados de exemplo</strong>.</p>
+
+  <h2 id="servidor">1. Preparar o servidor</h2>
+  <p>Pule no Mac. Num servidor Ubuntu ou Debian novo, por SSH, com o usuário que vai rodar os agentes (não use root):</p>
+<pre>sudo apt update && sudo apt install -y git tmux curl gh
+gh auth login                       # GitHub.com › HTTPS › login pelo navegador
+git config --global user.name  "Seu Nome"
+git config --global user.email "voce@exemplo.com"</pre>
+  <p>Para ambientes isolados, instale o Docker pelo guia oficial (docs.docker.com/engine/install) e depois
+  <code>sudo usermod -aG docker $USER</code>, entrando de novo na sessão. Um servidor com IP público não precisa de VPN (o pierd só
+  atende aparelhos pareados; libere a porta 7444 se houver firewall). Um servidor em casa ou atrás de NAT também não precisa de
+  nada: o app chega pelo túnel.</p>
+
+  <h2 id="agentes">2. Instalar os agentes</h2>
+<pre>curl -fsSL https://claude.ai/install.sh | bash     # Claude Code
+npm install -g @openai/codex                        # Codex</pre>
+  <p>O login pode esperar: o app faz isso conta por conta (passo 6).</p>
+
+  <h2 id="instalar">3. Instalar o pierd</h2>
+<pre>curl -fsSL https://docktopier.com/install.sh | sh
+# ou: npm install -g pierd && pierd setup
+# ou: brew install wagnerfnds/tap/pierd && pierd setup</pre>
+  <p>O <code>pierd setup</code> roda o pierd como serviço do usuário na porta 7444, instala os hooks dos agentes, adiciona os
+  repositórios git que encontrar (<code>~/code</code>, <code>~/Projects</code>, …), conecta a box ao túnel e mostra um QR code e um link
+  <code>pier://</code> (uso único, 10 minutos). No Linux, rode uma vez <code>sudo loginctl enable-linger $USER</code> para o pierd
+  continuar rodando depois do logout. Depois, <code>pierd doctor</code> deve dizer “All good.”, e <code>pierd pair</code> gera um link
+  novo quando precisar.</p>
+
+  <h2 id="conectar-iphone">4. Conectar o iPhone e o iPad</h2>
+  <ol>
+    <li>Instale o Pier pela App Store.</li>
+    <li>Toque em <strong>Escanear QR code</strong> e aponte para o código do terminal (depois da primeira box: Ajustes › Adicionar
+      box). Ou abra o link <code>pier://</code> no aparelho.</li>
+    <li>A box aparece com os projetos e as sessões; o app alterna sozinho entre a conexão direta e o túnel.</li>
+  </ol>
+
+  <h2 id="conectar-mac">5. Conectar o Mac</h2>
+  <ul>
+    <li><strong>A box é um servidor</strong>: no Pier do Mac, <strong>Colar link</strong> e cole um link <code>pier://</code>.</li>
+    <li><strong>A box é o próprio Mac</strong>: rode o instalador no Terminal; o <code>pierd setup</code> entrega o link ao Pier, que pareia sozinho.</li>
+    <li><strong>Levar para o iPhone</strong> (Ajustes, no Mac) mostra um QR code que traz o celular para as mesmas boxes.</li>
+  </ul>
+
+  <h2 id="contas">6. Contas do Claude e do Codex</h2>
+  <p>Várias assinaturas na mesma box (pessoal e trabalho, dois planos Max…): cada conta é uma pasta própria do agente
+  (<code>CLAUDE_CONFIG_DIR</code>, <code>CODEX_HOME</code>), com login, configurações e histórico separados, como a documentação do
+  Claude Code recomenda para várias contas.</p>
+  <ol>
+    <li><strong>Ajustes › Projetos › Contas do Claude e do Codex</strong>: as contas próprias dos agentes já aparecem.</li>
+    <li><strong>Entrar</strong>, ou <strong>Adicionar conta</strong> e dê um nome: abre um terminal da box no app para o login do agente.</li>
+    <li>Cada projeto escolhe a sua conta (tela do projeto, <strong>Conta dos agentes</strong>, ou Detalhes de uma worktree);
+      <strong>Tornar padrão</strong> vale para o resto.</li>
+    <li>O card <strong>Limites de uso</strong> no Início mostra o uso de 5 horas e semanal de cada conta; toque uma vez em
+      <strong>Ativar a leitura dos limites</strong> para o Claude. Um toque numa conta a torna a padrão.</li>
+  </ol>
+
+  <h2 id="pasta">7. Pasta dos projetos e espaços</h2>
+  <p><strong>Ajustes › Projetos › Pasta dos projetos e espaços</strong>: todos os projetos ficam na pasta que você escolher (por
+  exemplo <code>~/code</code>): os clones vão para lá, e nada fora dela é adicionado ou apagado. <strong>Espaços</strong> são pastas
+  dentro dela que separam grupos de projetos (um por cliente, por exemplo); apagar um espaço apaga os projetos dele junto,
+  com as mesmas checagens de remover um projeto, e nunca os move para fora.</p>
+
+  <h2 id="variaveis">8. Variáveis da box e skills</h2>
+  <p><strong>Ajustes › Projetos › Variáveis e skills</strong>: variáveis que todo projeto recebe (agentes, terminais, serviços),
+  cada uma com uma nota do que é. Valores com cara de segredo ficam escondidos até você revelar, e o env do projeto tem
+  prioridade. Ligue a skill <strong>Pier box</strong> (as variáveis por nome e nota, nunca o valor; as portas da worktree; o
+  ambiente do projeto) e a <strong>Pier preview</strong> (subir o servidor de desenvolvimento na porta da worktree) para o Claude
+  Code e o Codex saberem disso.</p>
+
+  <h2 id="projetos">9. Trazer os projetos</h2>
+  <ul>
+    <li><strong>Projetos › + › Repositórios do GitHub</strong>: a conta do <code>gh</code> na box; um toque baixa e, com “Configurar o
+      ambiente”, instala as dependências e sobe o servidor de desenvolvimento.</li>
+    <li><strong>Clonar por link</strong>: <code>dono/repo</code>, a página no GitHub ou a URL de clone. Aqui o setup começa desligado,
+      porque roda a configuração do próprio repositório: ligue para repositórios em que você confia.</li>
+    <li><strong>Remover do disco</strong>: mostra o espaço que libera e o que se perderia (arquivos não commitados, commits sem push,
+      stashes) antes de apagar.</li>
+  </ul>
+
+  <h2 id="ambiente">10. Ambiente isolado</h2>
+  <p>O <strong>Ambiente</strong> de um projeto escolhe a versão da linguagem (PHP, Node.js, Python, Ruby, Go, uma imagem ou o
+  Dockerfile do projeto) e os bancos (MySQL, MariaDB, PostgreSQL, Redis, MongoDB), tudo em Docker na box e nada dentro do projeto.
+  Depois de <strong>Aplicar</strong>, <code>php</code>, <code>composer</code>, <code>node</code>… rodam no container para tudo do projeto,
+  inclusive os agentes, e as worktrees recebem <code>DB_HOST</code>, <code>DB_PORT</code>, <code>DATABASE_URL</code>, <code>REDIS_URL</code>
+  (usuário <code>root</code>, senha <code>pier</code>, banco <code>app</code>).</p>
+
+  <h2 id="notificacoes">11. Notificações</h2>
+  <p>Nada para configurar: o Pier no Mac avisa o iPhone e o iPad pelo seu iCloud, enquanto está aberto (Ajustes › <em>Abrir o
+  Pier quando o Mac ligar</em>). Os botões da notificação respondem direto ao agente.</p>
+
+  <h2 id="dia">O dia a dia</h2>
+  <table>
+    <tr><th>Começar uma tarefa</th><td><strong>+</strong> no Início: projeto, agente, e o pedido digitado ou ditado; ganha uma worktree própria.</td></tr>
+    <tr><th>O que precisa de mim</th><td><strong>Inbox</strong>: permissões e perguntas, respondidas com um toque.</td></tr>
+    <tr><th>Tudo de uma vez</th><td><strong>Quadro</strong>: trabalhando, precisa de você, terminou.</td></tr>
+    <tr><th>Revisar</th><td><strong>Revisar</strong> numa sessão: o diff de cada arquivo, commit, push, pull request.</td></tr>
+    <tr><th>Ver rodando</th><td><strong>Detalhes</strong> da worktree: servidores com os links, serviços, portas.</td></tr>
+    <tr><th>Limpar</th><td><strong>Faxina</strong> (Projetos › ✦): worktrees sem uso, serviços, a main de cada projeto.</td></tr>
+  </table>
+
+  <h2 id="publicos">Links públicos</h2>
+  <p>Em Detalhes da worktree › <strong>Criar link público</strong>, o servidor de desenvolvimento fica em
+  <code>https://p-&lt;nome&gt;.docktopier.com</code> por 24 horas (no máximo 7 dias), para qualquer pessoa com o link. Ele sai do ar
+  quando expira, quando você o remove, ou com a worktree.</p>
+  <div class="callout warn"><p>Nunca publique um servidor com console de depuração ligado (web-console do Rails, debug toolbar
+  do Django): quem tem o link chega a ele.</p></div>
+
+  <h2 id="comandos">Comandos úteis</h2>
+  <table>
+    <tr><th><code>pierd doctor</code></th><td>O que funciona e como corrigir o resto.</td></tr>
+    <tr><th><code>pierd pair</code></th><td>Um novo link de pareamento com QR code.</td></tr>
+    <tr><th><code>pierd clients</code> / <code>pierd revoke NOME</code></th><td>Aparelhos pareados / tirar um.</td></tr>
+    <tr><th><code>pierd relay</code></th><td>O estado do túnel; <code>off</code> / <code>default</code>.</td></tr>
+    <tr><th><code>pierd location add NOME PASTA</code></th><td>Um repositório que o setup não achou.</td></tr>
+    <tr><th>Atualizar</th><td>Rode o comando de instalação de novo (ou <code>npm install -g pierd@latest</code>, <code>brew upgrade pierd</code>); os agentes continuam rodando.</td></tr>
+  </table>
+
+  <h2 id="problemas">Problemas comuns</h2>
+  <details><summary>O app não alcança a box</summary><p><code>pierd doctor</code>; na mesma rede, o aparelho precisa alcançar o endereço
+  do link (<code>pierd setup --address HOST</code>); fora dela, <code>pierd relay</code> deve dizer connected. No Mac com firewall,
+  permita conexões de entrada para o pierd.</p></details>
+  <details><summary>Um agente para pedindo login</summary><p>A conta daquele projeto está sem login: Ajustes › Projetos › Contas › Entrar.</p></details>
+  <details><summary>Sem limites no Início</summary><p>Ative a leitura dos limites para o Claude e espere a próxima resposta de um agente.
+  Os limites existem só nos planos claude.ai, não com chave de API.</p></details>
+  <details><summary>O ambiente isolado não aplica</summary><p>Confira <code>docker version</code> na box e se o seu usuário está no grupo
+  <code>docker</code>; a tela do Ambiente mostra o erro e o fim do log.</p></details>
+  <p>Mais na <a href="support.html">página de suporte</a>.</p>
+</div>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 Pier</span>
+    <div class="links">
+      <a href="./"><span lang="en">Home</span><span lang="pt-BR">Início</span></a>
+      <a href="support.html"><span lang="en">Support</span><span lang="pt-BR">Suporte</span></a>
+      <a href="privacy.html"><span lang="en">Privacy</span><span lang="pt-BR">Privacidade</span></a>
+      <a href="https://github.com/wagnerfnds/pier">GitHub</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
