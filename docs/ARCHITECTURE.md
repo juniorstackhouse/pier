@@ -244,7 +244,8 @@ automation.
 
 Projetos ⟶ + (boxes with the `projects` capability): **Repositórios do GitHub** lists the account the box's gh is signed
 in to, and its organisations (`GET /v1/github/repos`), marking what is already on the box; a tap clones one, **Clonar
-por link** takes any repository link. Both `POST /v1/clones` with `setup` (the box trusts the repository's config or
+por link** takes any repository link (setup off by default there: it runs the repository's own config, so turning it
+on is the person's call; the GitHub list, their own account's, sets up by default). Both `POST /v1/clones` with `setup` (the box trusts the repository's config or
 works one out, runs setup, starts the dev server: docs/API.md 2.8); `ClonesStore` polls `GET /v1/clones` while one runs,
 shows it under "Chegando na box" and reloads the box's projects when it is ready. **Remover do disco** (a project's
 screen, its menu in Projetos, the main checkout's Visão geral) reads `GET …/disk` first (size, uncommitted files,
