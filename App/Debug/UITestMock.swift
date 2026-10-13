@@ -80,6 +80,7 @@ final class MockBox: PierTransport, @unchecked Sendable {
     fileprivate var prs = MockPRs()
     /// The worktrees' files and history (UITestMockWorkspace.swift).
     private var workspace = MockWorkspace()
+    private var projects = MockProjects()
 
     init() {
         // `-uiTestShowcase 1`: the showcase dataset (English, or Portuguese with the app in Portuguese) instead of everything below (UITestShowcase.swift).
@@ -326,16 +327,17 @@ final class MockBox: PierTransport, @unchecked Sendable {
         if let r = talkRoute(method, p, body) { return r }   // Falar's router (block at the end of the file)
         if let r = pairInviteRoute(method, p) { return r }   // "Levar para o iPhone" (block at the end of the file)
         if let r = workspace.route(method, p, query, body) { return r }   // a worktree's files (UITestMockWorkspace.swift)
+        if let r = projects.route(method, p, query, body, locations: MockFixtures.locations) { return r }   // clones, GitHub, removal (UITestMockProjects.swift)
         switch (method, p[1]) {
         case (.get, "info"):
             // pierd with the file routes.
             var info = Self.fixtureObject(MockFixtures.info)
-            info["capabilities"] = ((info["capabilities"] as? [String]) ?? []) + ["files"]
+            info["capabilities"] = ((info["capabilities"] as? [String]) ?? []) + ["files", "projects"]
             return (200, Self.json(info))
         case (.get, "doctor"): return (200, Self.json(doctorChecks()))
         case (.get, "stats"): return (200, Self.fixture(MockFixtures.stats))
         case (.get, "agents"): return (200, Self.fixture(MockFixtures.agents))
-        case (.get, "locations") where p.count == 2: return (200, Self.fixture(MockFixtures.locations))
+        case (.get, "locations") where p.count == 2: return (200, projects.locations(MockFixtures.locations))
         case (.get, "locations") where p.count == 4 && p[3] == "branches": return (200, Self.fixture(MockFixtures.branches))
         case (.get, "locations") where p.count == 7 && p[6] == "touched": return (200, Self.fixture(MockFixtures.touched))
         case (.get, "worktrees"): return (200, worktreeStatuses(location: query["location"]))
@@ -345,7 +347,7 @@ final class MockBox: PierTransport, @unchecked Sendable {
             sessions.removeAll { ($0["location"] as? String) == "\(p[2])/\(p[4])" }
             return (200, Self.json(["removed": p[4]]))
         case (.get, "review"): return (200, Self.fixture(MockFixtures.review))
-        case (.get, "services"): return (200, Data("[]".utf8))
+        case (.get, "services"): return (200, projects.services())
         case (.get, "sessions") where p.count == 2: return (200, Self.json(sessions))
         case (.post, "sessions") where p.count == 2: return startChat(body)
         case (.post, "tasks"): return createTask(body)

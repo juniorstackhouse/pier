@@ -25,6 +25,9 @@ import (
 //	too_many         slow down and try again
 //	file_changed     a save's file changed (or went) on the box since it was read
 //	file_exists      a new file's path is taken
+//	unsaved_work     removing a project would lose work no remote has
+//	gh_missing       gh (GitHub CLI) is not installed on the box
+//	gh_auth          gh is not signed in on the box
 //	bad_request      the request itself was wrong
 //	internal         anything else
 const (
@@ -40,6 +43,9 @@ const (
 	CodeTooMany       = "too_many"
 	CodeFileChanged   = "file_changed"
 	CodeFileExists    = "file_exists"
+	CodeUnsavedWork   = "unsaved_work"
+	CodeGHMissing     = "gh_missing"
+	CodeGHAuth        = "gh_auth"
 	CodeBadRequest    = "bad_request"
 	CodeInternal      = "internal"
 )
@@ -66,9 +72,17 @@ func codeFor(err error) string {
 		return CodeFileChanged
 	case errors.Is(err, ErrFileExists):
 		return CodeFileExists
+	case errors.Is(err, ErrUnsavedWork):
+		return CodeUnsavedWork
 	case errors.Is(err, ErrUnknownLocation), errors.Is(err, ErrUnknownWorktree), errors.Is(err, ErrUnknownSession), errors.Is(err, ErrUnknownUnit):
 		return CodeNotFound
 	case errors.As(err, &he):
+		switch he.msg {
+		case errGHMissing.Error():
+			return CodeGHMissing
+		case errGHAuth.Error():
+			return CodeGHAuth
+		}
 		if strings.Contains(he.msg, "is waiting for someone to answer it") || strings.Contains(he.msg, "is asking whether to trust this folder") {
 			return CodeAgentWaiting
 		}

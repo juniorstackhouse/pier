@@ -32,7 +32,10 @@ by the box's own user over the Unix socket `$PIER_HOME/box/pierd.sock` (the `pie
 |---|---|---|
 | `GET /v1/locations` | `api.go` `listLocations` | App `locations()`: BoxConnection, HeadlessBoxes; `pierd locations` |
 | `POST /v1/locations` | `api.go` `addLocation` | `pierd location add` |
-| `DELETE /v1/locations/{name}` | `api.go` `removeLocation` | `pierd location rm` |
+| `DELETE /v1/locations/{name}` (`purge=1[&force=1]`: delete it from the disk; 409 `unsaved_work`) | `api.go` `removeLocation`, `projects.go` `purgeLocation` | `pierd location rm`; App `purgeProject()`: RemoveProjectSheet |
+| `GET /v1/locations/{name}/disk` | `projects.go` `locationDisk` | App `projectDisk()`: RemoveProjectSheet |
+| `GET`/`POST /v1/clones`, `DELETE /v1/clones/{id}` | `projects.go` `listClones`/`addClone`/`forgetClone` (clone, setup, autostart) | App `clone()`/`clones()`/`forgetClone()`: ClonesStore (GitHubReposScreen, CloneLinkSheet) |
+| `GET /v1/github/repos[?owner=]` | `github.go` `listGitHubRepos` (the box's gh) | App `gitHubRepos()`: GitHubReposScreen |
 | `GET /v1/locations/{name}/branches` | `helpers.go` `listBranches` | App `branches()`: ComposeModel, WorktreeParts |
 | `GET`/`PUT /v1/locations/{name}/config` | `repoconfig.go` `getConfig`/`putConfig` | `pierd location config [--set FILE]` |
 | `POST`/`DELETE /v1/locations/{name}/config/trust` | `repotrust.go` | `pierd location config --trust HASH` / `--untrust` |
@@ -43,10 +46,10 @@ by the box's own user over the Unix socket `$PIER_HOME/box/pierd.sock` (the `pie
 | `GET /v1/locations/{name}/worktrees/{worktree}/files?path=` (one folder, git status per entry) | `files.go` `listFiles` | App `files()`: `App/Features/Workspace` (FileTreeStore) |
 | `GET /v1/locations/{name}/worktrees/{worktree}/file?path=[&stat=1]` | `files.go` `readFile` | App `file()`: `App/Features/Workspace` (EditorStore; `stat=1` to notice an agent's changes) |
 | `PUT /v1/locations/{name}/worktrees/{worktree}/file?path=` (`sha`, `create`, `force`; 409 `file_changed` / `file_exists`; gate `before:file.write` with `file`) | `files.go` `writeFile` | App `writeFile()`: `App/Features/Workspace` (EditorStore) |
-| `GET /v1/locations/{name}/worktrees/{worktree}/services` | `wtservices.go` `listWorktreeServices` | App `worktreeServices()`: Housekeeper; `pierd service list` |
-| `POST /v1/locations/{name}/worktrees/{worktree}/services/{service}/{start\|stop\|restart}` | `wtservices.go` `serviceAction` | App `serviceAction()`: Housekeeper; `pierd service start…` |
+| `GET /v1/locations/{name}/worktrees/{worktree}/services` | `wtservices.go` `listWorktreeServices` | App `worktreeServices()`: Housekeeper; `worktreeServiceDetails()`: WorktreeDetails; `pierd service list` |
+| `POST /v1/locations/{name}/worktrees/{worktree}/services/{service}/{start\|stop\|restart}` | `wtservices.go` `serviceAction` | App `serviceAction()`: Housekeeper, WorktreeDetails; `pierd service start…` |
 | `GET /v1/worktrees[?location=]` | `worktreeops.go` `listWorktreeStatuses` | App `worktreeStatuses()`: EndSessionSheet, Housekeeper, Project/Worktree screens |
-| `GET /v1/services` | `services.go` `handleServices` | App `services()`: HomeStore, Housekeeper; `pierd services` |
+| `GET /v1/services` | `services.go` `handleServices` | App `services()`: HomeStore, Housekeeper, WorktreeDetails; `pierd services` |
 | `GET /v1/review[?all=1]` | `review.go` `review` | App `review()`: ReviewStore, PullRequestStore/Screen/Sheets, SessionSignals; push engine |
 | `POST /v1/exec` | `orchestrate.go` `handleExec` | App `exec()`: GitActions, PRCommands, AIDraft, HomeCommands (PRs, CI, git activity), ReviewStore, DiffScreen, EndSessionSheet, Housekeeper, WorktreeParts |
 
@@ -99,6 +102,7 @@ Event types pierd publishes, and what the app does with them:
 | `task.created` | sessions and locations refresh |
 | `worktree.created`, `worktree.removed`, `worktree.{setup,archive}.{started,finished,failed}` | locations refresh; ReviewScreen reloads; local notification on `*.failed` |
 | `location.added`, `location.removed`, `config.changed` | locations refresh |
+| `clone.started`, `clone.finished`, `clone.failed` | none yet: ClonesStore polls `GET /v1/clones` while a clone runs |
 | `service.started`, `service.stopped`, `service.failed` | HomeStore refreshes services; local notification on `service.failed` |
 | `exec.finished`, `client.paired`, `client.revoked`, `pairing.invited`, `agents.found`, `file.written` | none (informational) |
 

@@ -18,8 +18,13 @@ struct ProjectsRoot: View {
     @State private var sectionName = ""
     @State private var renamingProject: ProjectEntry?
     @State private var projectName = ""
+    @State private var showGitHub = false
+    @State private var showCloneLink = false
+    @State private var removingProject: ProjectEntry?
+    private let clones = ClonesStore.shared
 
     private var editing: Bool { editMode == .active }
+    private var canAddProjects: Bool { !projectBoxes(model).isEmpty }
     private var multiBox: Bool { model.boxes.count > 1 }
 
     private func activity(_ e: ProjectEntry) -> Date? { ProjectGrouping.lastActivity(e, in: model.boxes) }
@@ -41,6 +46,16 @@ struct ProjectsRoot: View {
                 }
             }
             ToolbarItem(placement: .topBarTrailing) {
+                if !editing && canAddProjects {
+                    Menu {
+                        Button { showGitHub = true } label: { Label("Repositórios do GitHub", systemImage: "arrow.down.circle") }
+                        Button { showCloneLink = true } label: { Label("Clonar por link", systemImage: "link.badge.plus") }
+                    } label: { Image(systemName: "plus") }
+                    .accessibilityLabel("Adicionar projeto")
+                    .accessibilityIdentifier("projects-add")
+                }
+            }
+            ToolbarItem(placement: .topBarTrailing) {
                 if !editing {
                     NavigationLink(value: HousekeepingRoute()) { Image(systemName: "sparkles") }
                         .accessibilityLabel("Faxina")
@@ -55,9 +70,15 @@ struct ProjectsRoot: View {
                 }
             }
         }
+        .sheet(isPresented: $showGitHub) { GitHubReposScreen() }
+        .sheet(isPresented: $showCloneLink) { CloneLinkSheet() }
+        .sheet(item: $removingProject) { e in
+            RemoveProjectSheet(box: e.box, location: e.location.name) {}
+        }
         #if DEBUG
         .task {
             Self.seedSectionsIfRequested(prefs: prefs, boxes: model.boxes)
+            if UserDefaults.standard.bool(forKey: "openGitHubRepos") { showGitHub = true }
             if UserDefaults.standard.bool(forKey: "projectsEdit") { editMode = .active }
         }
         #endif
@@ -90,13 +111,21 @@ struct ProjectsRoot: View {
         let columns = [GridItem(.adaptive(minimum: 250, maximum: 420), spacing: 12, alignment: .top)]
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 22) {
+                if !clones.entries.isEmpty && query.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Chegando na box").font(.system(size: Density.small + 1, weight: .semibold)).foregroundStyle(Theme.textDim)
+                        VStack(spacing: 0) { ForEach(clones.entries) { cloneRow($0).padding(.horizontal, 12).padding(.vertical, 6) } }
+                            .background(Theme.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Theme.stroke))
+                    }
+                }
                 if !query.isEmpty {
                     let hits = entries.filter { ProjectGrouping.matches($0, query, display: prefs.displayName(box: $0.box, location: $0.location.name)) }
                     if hits.isEmpty { EmptyState(symbol: "magnifyingglass", title: "Nada encontrado") }
                     LazyVGrid(columns: columns, spacing: 12) { ForEach(hits) { card($0) } }
                 } else if entries.isEmpty {
                     if model.boxes.allSatisfy({ $0.state != .connecting }) {
-                        EmptyState(symbol: "folder", title: "Nenhum projeto", message: "Adicione repositórios na box (pierd) para vê-los aqui.")
+                        EmptyState(symbol: "folder", title: "Nenhum projeto", message: canAddProjects ? "Baixe um repositório do GitHub ou clone um pelo link no botão +." : "Adicione repositórios na box (pierd) para vê-los aqui.")
                     } else {
                         HStack { Spacer(); ProgressView().tint(Theme.accent); Spacer() }
                     }
@@ -133,13 +162,16 @@ struct ProjectsRoot: View {
 
     private func list(entries: [ProjectEntry], groups: [ProjectGroup]) -> some View {
         List {
+            if !clones.entries.isEmpty && query.isEmpty && !editing {
+                Section { ForEach(clones.entries) { cloneRow($0) } } header: { SectionHeader(title: "Chegando na box", count: clones.running.count) }
+            }
             if !query.isEmpty {
                 let hits = entries.filter { ProjectGrouping.matches($0, query, display: prefs.displayName(box: $0.box, location: $0.location.name)) }
                 Section { ForEach(hits) { row($0) } }
                 if hits.isEmpty { EmptyState(symbol: "magnifyingglass", title: "Nada encontrado").listRowBackground(Color.clear) }
             } else if entries.isEmpty {
                 if model.boxes.allSatisfy({ $0.state != .connecting }) {
-                    EmptyState(symbol: "folder", title: "Nenhum projeto", message: "Adicione repositórios na box (pierd) para vê-los aqui.")
+                    EmptyState(symbol: "folder", title: "Nenhum projeto", message: canAddProjects ? "Baixe um repositório do GitHub ou clone um pelo link no botão +." : "Adicione repositórios na box (pierd) para vê-los aqui.")
                         .listRowBackground(Color.clear)
                 } else {
                     HStack { Spacer(); ProgressView().tint(Theme.accent); Spacer() }.listRowBackground(Color.clear)
@@ -288,6 +320,21 @@ struct ProjectsRoot: View {
         } else {
             Button { prefs.setHidden(true, box: e.box, location: e.location.name) } label: { Label("Ocultar", systemImage: "eye.slash") }
         }
+        if e.location.repo, model.connection(for: e.box)?.info?.has("projects") == true {
+            Divider()
+            Button(role: .destructive) { removingProject = e } label: { Label("Remover do disco…", systemImage: "externaldrive.badge.minus") }
+        }
+    }
+
+    /// A clone on its way (or just arrived, or failed): tap opens the project once it is there; swipe or the menu dismisses it.
+    private func cloneRow(_ c: ClonesStore.Entry) -> some View {
+        Button {
+            if c.clone.state == .ready { router.select(.project(ProjectRoute(box: c.box, location: c.clone.location))); clones.dismiss(c) }
+        } label: { CloneStatusRow(entry: c) }
+        .buttonStyle(.plain)
+        .listRowBackground(Theme.card)
+        .swipeActions { if !c.clone.isRunning { Button("Dispensar") { clones.dismiss(c) }.tint(Theme.gray) } }
+        .contextMenu { if !c.clone.isRunning { Button("Dispensar") { clones.dismiss(c) } } }
     }
 
     private func moveMenu(_ e: ProjectEntry) -> some View {

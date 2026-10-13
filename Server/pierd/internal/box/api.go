@@ -64,6 +64,9 @@ type Box struct {
 	// Relay, when set, is the relay apps can reach the box through when its
 	// own address does not answer (GET /v1/info's relay).
 	Relay func() string
+
+	// clones are the repositories being cloned (POST /v1/clones).
+	clones clones
 }
 
 // Mount registers the box's routes on s. They are reachable by paired
@@ -85,6 +88,11 @@ func (b *Box) Mount(s *wire.Server) {
 	route("GET /v1/locations", b.listLocations)
 	route("POST /v1/locations", b.addLocation)
 	route("DELETE /v1/locations/{name}", b.removeLocation)
+	route("GET /v1/locations/{name}/disk", b.locationDisk)
+	route("GET /v1/clones", b.listClones)
+	route("POST /v1/clones", b.addClone)
+	route("DELETE /v1/clones/{id}", b.forgetClone)
+	route("GET /v1/github/repos", b.listGitHubRepos)
 	route("GET /v1/locations/{name}/branches", b.listBranches)
 	// Config and trust are for `pierd location config`; the app reads only
 	// the effective scripts, in GET /v1/locations.
@@ -164,6 +172,8 @@ func statusFor(err error) int {
 		return http.StatusConflict
 	case errors.Is(err, errTmuxMissing):
 		return http.StatusServiceUnavailable
+	case errors.Is(err, ErrUnsavedWork):
+		return http.StatusConflict
 	}
 	return http.StatusBadRequest
 }
@@ -251,6 +261,9 @@ func (b *Box) addLocation(w http.ResponseWriter, r *http.Request) error {
 
 func (b *Box) removeLocation(w http.ResponseWriter, r *http.Request) error {
 	name := r.PathValue("name")
+	if r.URL.Query().Get("purge") == "1" {
+		return b.purgeLocation(w, r)
+	}
 	if err := b.before(r, "location.remove", map[string]any{"location": name}); err != nil {
 		return err
 	}
@@ -313,9 +326,10 @@ func (b *Box) createWorktree(r *http.Request, loc Location, req WorktreeRequest)
 	return wt, nil
 }
 
-// lifecycle runs a setup or archive script in the background, announcing its
-// start and outcome, then calls next if it succeeded.
-func (b *Box) lifecycle(from, kind string, loc Location, dir, name, script string, next func() error) {
+// lifecycle runs a setup or archive script (callers run it in the
+// background), announcing its start and outcome, then calls next if it
+// succeeded. It returns what went wrong, for callers that wait.
+func (b *Box) lifecycle(from, kind string, loc Location, dir, name, script string, next func() error) error {
 	data := map[string]any{"location": loc.Name, "name": name, "path": dir, "script": script}
 	b.Events.Publish(events.Event{Type: "worktree." + kind + ".started", Box: b.Name, Origin: from, Data: data})
 	// Without a log folder (tests, embedded uses) the log goes to a temp
@@ -333,9 +347,10 @@ func (b *Box) lifecycle(from, kind string, loc Location, dir, name, script strin
 	}
 	if err != nil {
 		b.Events.Publish(events.Event{Type: "worktree." + kind + ".failed", Box: b.Name, Origin: from, Error: err.Error(), Data: data})
-		return
+		return err
 	}
 	b.Events.Publish(events.Event{Type: "worktree." + kind + ".finished", Box: b.Name, Origin: from, Data: data})
+	return nil
 }
 
 func (b *Box) removeWorktree(w http.ResponseWriter, r *http.Request) error {

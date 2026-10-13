@@ -1,0 +1,1 @@
+[{"name":"dev","run":"HOST=0.0.0.0 pnpm run dev --host 0.0.0.0 --port $PIER_PORT","autostart":true,"state":"running","unit":"svc-shop-checkout-fix-dev","port":41010},{"name":"worker","run":"pnpm run worker","state":"stopped","unit":"svc-shop-checkout-fix-worker","port":41010}]

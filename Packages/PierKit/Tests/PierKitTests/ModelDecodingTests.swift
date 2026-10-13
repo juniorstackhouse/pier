@@ -49,6 +49,9 @@ import Testing
             "files_root.json": d(DirListing.self), "files_src.json": d(DirListing.self),
             "file_text.json": d(WorktreeFile.self), "file_binary.json": d(WorktreeFile.self), "file_stat.json": d(WorktreeFile.self),
             "file_too_large.json": d(WorktreeFile.self), "file_written.json": d(WorktreeFile.self), "file_conflict.json": d(BoxError.self),
+            "github_repos.json": d(GitHubRepos.self), "clone_started.json": d(ProjectClone.self), "clones.json": d([ProjectClone].self),
+            "location_disk.json": d(ProjectDisk.self), "location_purged.json": d(ProjectPurge.self), "location_unsaved.json": d(BoxError.self),
+            "services_detail.json": d([WorktreeServiceDetail].self),
         ]
     }()
 

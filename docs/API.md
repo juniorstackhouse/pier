@@ -48,10 +48,10 @@ notifications).
 | Times | RFC 3339 with up to 9 fractional digits (`2026-10-07T19:07:42.53987405Z`). Zero times are omitted. Some fields are Unix milliseconds (transcript); they are named in place. |
 | Omitted fields | Most fields are omitted when empty: absent means zero, false or empty. Model every non-identity field as optional. |
 | Lists | Top-level empty lists are `[]`. Nested lists can be `null` or missing (`branches`, transcript `items`); decode defensively. |
-| Errors | Non-2xx: `{"error": "human text", "code": "..."}`. Branch on `code`, show `error` verbatim. Codes: `not_found` (404), `session_exited` (409), `session_exists` (409), `agent_waiting` (409), `refused` (403, a `before:` hook or a box rule said no), `unsupported` (501), `tmux_missing` (503), `git_failed`, `command_failed`, `too_many` (429), `file_changed` (409), `file_exists` (409), `bad_request`, `internal`. Unknown routes answer Go's plain-text `404 page not found` (or 405 for a known path with another method), not JSON: fall back to the raw text. |
+| Errors | Non-2xx: `{"error": "human text", "code": "..."}`. Branch on `code`, show `error` verbatim. Codes: `not_found` (404), `session_exited` (409), `session_exists` (409), `agent_waiting` (409), `refused` (403, a `before:` hook or a box rule said no), `unsupported` (501), `tmux_missing` (503), `git_failed`, `command_failed`, `too_many` (429), `file_changed` (409), `file_exists` (409), `unsaved_work` (409, 2.8), `gh_missing` (501), `gh_auth` (428), `bad_request`, `internal`. Unknown routes answer Go's plain-text `404 page not found` (or 405 for a known path with another method), not JSON: fall back to the raw text. |
 | Origin header | Optional `X-Pier-Origin: <[a-z0-9][a-z0-9-]{0,31}>` sets the `origin` of the events a call causes (default `pier`). The app sends `ios` (and `ios-push` for push routes). Hooks see a paired client as `client:<name>` whatever the header says. |
 | Gates | Many mutating calls run `before:<action>` hooks the box owner configured (`~/.pier/hooks.json` or a trusted repository config). A refusal is 403 `refused` with the hook's output as `error`. |
-| Capabilities | `GET /v1/info` → `capabilities[]` names optional features: `transcript history diff titles answer session.home session.chat draft journal touched files`, plus `turns queue ask controls` (turn ledger) and `pair.invite`. |
+| Capabilities | `GET /v1/info` → `capabilities[]` names optional features: `transcript history diff titles answer session.home session.chat draft journal touched files projects`, plus `turns queue ask controls` (turn ledger) and `pair.invite`. |
 
 ### 0.3 Naming and addressing
 
@@ -202,7 +202,7 @@ recent commit first; a branch that exists locally and on origin appears once wit
 | `POST /v1/locations/{loc}/worktrees/{wt}/attachments` | upload a file before an agent exists (4.9) |
 | `GET /v1/locations/{loc}/worktrees/{wt}/services` | `[{name, run, autostart?, state, unit, port?}]` |
 | `POST .../services/{service}/{start\|stop\|restart}` | run as systemd user units named `svc-<location>-<worktree>-<service>` |
-| `POST /v1/locations {name, path}`, `DELETE /v1/locations/{name}` | add or forget a repository (`pierd location add\|rm`) |
+| `POST /v1/locations {name, path}`, `DELETE /v1/locations/{name}` | add or forget a repository (`pierd location add\|rm`); `?purge=1` deletes it from the disk (2.8) |
 | `GET`/`PUT /v1/locations/{name}/config`, `POST`/`DELETE .../config/trust` | box-local config and repository-config trust (`pierd location config`); the app does not call them |
 
 ### 2.7 Files of a worktree (capability `files`)
@@ -274,6 +274,67 @@ the entries come without it. A file's path: 400.
 
 These three routes refuse (400) a worktree name two of the location's worktrees share (one added outside pier can
 take another's name): `git worktree move` one of them.
+
+### 2.8 Projects onto and off the box (capability `projects`)
+
+**The GitHub account's repositories**: `GET /v1/github/repos[?owner=ORG]`, through the box's own `gh` (no token
+passes through pierd):
+
+```json
+{"login":"octocat","owner":"octocat","owners":["octocat","octo-org"],
+ "repos":[{"slug":"octocat/shop","name":"shop","description":"…","url":"https://github.com/octocat/shop","private":true,
+           "fork":false,"archived":false,"language":"TypeScript","updated_at":"2026-10-12T18:04:11Z","location":"shop"}]}
+```
+
+Most recently updated first, up to 400. `location` names the location already holding that repository (by origin's
+owner/repo). Errors: `gh_missing` (501, gh not installed), `gh_auth` (428, `gh auth login` not done).
+
+**Clone**: `POST /v1/clones {repo, name?, dir?, setup}` answers `202` with the clone and runs in the background.
+
+* `repo`: `owner/repo`, any GitHub page of it (`…/tree/main`), or a clone URL over https / http / ssh / `user@host:path`.
+  `file://`, `ext::`, a leading `-`, credentials in the URL and shell metacharacters are refused (400). A GitHub
+  repository is cloned with `gh repo clone` when gh is signed in (private repositories work), else `git clone`
+  (`GIT_TERMINAL_PROMPT=0`, ssh in batch mode).
+* `name`: the location's name, the repository's by default (made unique: `shop-2`). `dir`: the parent folder; by default
+  the one most of the box's repositories share, else the first of `~/code`, `~/Projects`, … that exists, else `~/code`. A
+  folder already holding the same repository is used as it is; any other existing folder gets `-2`, `-3`….
+* `setup: true` makes it ready: the repository's `.pier/config.json` is trusted as it is now; a repository without one
+  gets what pierd recognises (lockfiles → `npm ci` / `pnpm install` / `yarn` / `bun install`, `uv sync`, `poetry
+  install`, a venv for `requirements.txt`, `bundle install`, `composer install`, `go mod download`, `cargo fetch`,
+  `.env.example` → `.env`; a `dev` (or `start`) script, Django, Rails or Laravel becomes an autostart service on
+  `$PIER_PORT`, listening beyond localhost) as the box's own config for the location. Then the setup script runs in
+  the main checkout (`worktree.setup.*`) and autostart services start there. `setup: false` only clones.
+* 409 when the repository is already a location, or the same location is being cloned.
+* Gate: `before:location.clone` `{location, path, repo, setup}`.
+
+`GET /v1/clones` lists the clones of the last hour, newest first:
+
+```json
+[{"id":"5f0c2a9e41b7","repo":"octocat/notes","slug":"octocat/notes","location":"notes","path":"/home/octocat/code/notes",
+  "state":"ready","setup":"detected","services":["dev"],"started":"…","finished":"…"}]
+```
+
+`state`: `cloning`, `setting_up`, `ready`, `failed` (`error` holds git's or the setup's last lines, `log` the log
+file). `setup`: `repo`, `detected` or `none`. `DELETE /v1/clones/{id}` forgets a finished one. Events: `clone.started`,
+`clone.finished {id, location, path, repo, setup}`, `clone.failed` (envelope `error`), plus `location.added`.
+
+**Disk**: `GET /v1/locations/{loc}/disk`:
+
+```json
+{"bytes":734003200,"paths":["/home/octocat/code/shop","/home/octocat/code/shop-checkout-fix"],
+ "uncommitted":[{"worktree":"checkout-fix","files":3}],"unpushed":[{"branch":"checkout-fix","commits":2}],
+ "stashes":1,"sessions":1,"removable":true,"remote":"https://github.com/octocat/shop.git"}
+```
+
+`unpushed` counts each local branch's commits no remote-tracking branch has (a repository without a remote: all of
+them). `removable` is false (with `reason`) for a folder that is not a git repository, the home folder or one above
+it, or one holding another location.
+
+**Remove from the disk**: `DELETE /v1/locations/{loc}?purge=1[&force=1]` stops the worktrees' services, ends their
+sessions, releases their ports, forgets the location, then deletes the linked worktrees' folders and the repository's.
+Without `force=1` it refuses with 409 `unsaved_work` while `uncommitted`, `unpushed` or `stashes` is non-empty; 409
+`bad_request` when not `removable`. Answer `{"removed":"shop","freed":734003200}`; event `location.removed {location,
+path, purged: true, freed}`. Gate: `before:location.remove` with `purge: true`.
 
 ---
 
@@ -706,7 +767,8 @@ exit_code}` (every client's exec, the app's own background commands included: ne
 
 **Worktrees and locations**: `worktree.created {location, name, path, branch}`, `worktree.removed`,
 `worktree.setup.{started,finished,failed}` and `worktree.archive.{started,finished,failed}` `{location, name,
-path, script, log}` (failures set the envelope `error`), `location.added`, `location.removed`, `config.changed`,
+path, script, log}` (failures set the envelope `error`), `location.added`, `location.removed` (`purged`, `freed`
+after a removal from the disk), `clone.started|finished|failed` (2.8), `config.changed`,
 `service.started|stopped|failed`, `file.written {location, worktree, path, file, size}` (a save through `PUT
 .../file`, 2.7; `path` is the worktree's folder, `file` the saved file relative to it).
 
@@ -867,7 +929,7 @@ Runs and gates (`/v1/runs…`, `run.*` events), `/v1/turns/{id}[/wait]`, termina
 (`/v1/tcp`), `/v1/ports`, `/v1/processes`, the memory guard, the phone web app and its token, units, shares, teams,
 flows and webhooks, browsers and visual diffs, `/v1/hooks`, `/v1/env`, secrets, skills, integrations install over
 HTTP, self-upgrade, agent CLI install, session commands/files/subagents/fork/rewind, worktree log/sync/pause/resume/
-rename, location clone, and service logs. A client asking for one gets a plain-text 404.
+rename, and service logs. A client asking for one gets a plain-text 404.
 
 ---
 
@@ -943,6 +1005,7 @@ with defaults and a tolerant decoder (missing keys, `null` lists).
 | `Models/BoxModels.swift` | `BoxInfo`, `AgentPreset`, `AdapterCaps`, `AgentCLI`, `BoxStats`, `DoctorCheck` |
 | `Models/LocationModels.swift` | `Location`, `Worktree`, `Scripts`, `WorktreeStatus`, `Commit`, `BranchList`, `WorktreeRequest` |
 | `Models/FileModels.swift` | `DirListing`, `FileEntry`, `WorktreeFile`, `FileWrite` |
+| `Models/ProjectModels.swift` | `GitHubRepos`, `GitHubRepo`, `CloneRequest`, `ProjectClone`, `ProjectDisk`, `ProjectPurge`, `WorktreeServiceDetail` (2.8; called through `BoxAPI+Projects.swift`) |
 | `Models/SessionModels.swift` | `Session`, `Ask`, `TaskRequest`, `TaskResult`, `SessionRequest`, `SendResult`, `InterruptResult`, `SessionControls`, `HeldPrompt`, `Turn`, `WaitResult`, `Draft`, `Attachment` |
 | `Models/QuestionModels.swift` | `Question`, `QuestionOption`, `QuestionAnswer` |
 | `Models/TranscriptModels.swift` | `TranscriptPage`, `TranscriptItem`, `CrewMember`, `ArtifactRef`, `Signals`, `ToolDetail` |
@@ -964,3 +1027,4 @@ Use explicit `CodingKeys`, not `.convertFromSnakeCase`: keys are mixed (`oldStar
 | `GitLog`, `FileSearch` | a worktree's history through exec (the log a page at a time with what is not pushed, one commit's message and files, one file's patch in it) and "Abrir rápido" (`git ls-files` once, a fuzzy match) |
 | `FileTree`, `EditorText` | the workspace's file tree (paths, the rows of the open folders, status badges) and the editor's text rules (line and column, indentation, Return, line endings) for 2.7 |
 | `NotificationText`, `DisplayNames` | notification text and names (9) |
+| `Projects` | the project screens' rules for 2.8: what can be sent as a repository link, the GitHub list's search, a repository's location on the box, a worktree's dev servers and their preview URLs, its port block, what removing a project would lose |
