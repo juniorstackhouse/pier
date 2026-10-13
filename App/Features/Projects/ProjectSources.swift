@@ -321,7 +321,9 @@ struct CloneLinkSheet: View {
     @State private var link = ""
     @State private var name = ""
     @State private var space = ""
-    @State private var setup = true
+    /// Off for a pasted link: setting up runs the repository's own config, so it is the person's choice for a repository
+    /// that may not be theirs (the GitHub list, their own account's, sets up by default).
+    @State private var setup = false
     @State private var working = false
     @State private var error: String?
     @State private var started: ClonesStore.Entry?
