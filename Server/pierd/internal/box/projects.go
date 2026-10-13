@@ -637,6 +637,7 @@ func (b *Box) purge(r *http.Request, loc Location, d DiskUse) error {
 		b.Locations.Ports.Release(wt.Path)
 	}
 	b.dropEnvironment(name, true)
+	b.dropShares(name, "")
 	// Forgotten first: a location whose folder is half gone is worse than
 	// a folder nothing points at.
 	if err := b.Locations.Remove(name); err != nil {

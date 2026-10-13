@@ -22,6 +22,14 @@ struct MockProjects {
     /// The projects folder (`PUT /v1/settings`): the mock's projects already live in it.
     private var root: String? = nil
     private var spaces: [String] = ["clientes"]
+    /// Accounts added in the app (the built-in ones are always there), the defaults, the projects' choices.
+    private var accounts: [JSON] = []
+    private var defaults: [String: String] = [:]
+    private var projectAccounts: [String: [String: String]] = [:]
+    private var limitsEnabled = false
+    private var variables: (env: [String: String], notes: [String: String]) = (["STAGING_URL": "https://staging.example.com", "SENTRY_TOKEN": "sntrys_example"], ["STAGING_URL": "the staging API"])
+    private var skills: Set<String> = ["pier-box"]
+    private var links: [JSON] = []
     /// Environments by location, and when each was applied (it reads "building" for 2 s).
     private var environments: [String: (env: JSON, at: Date)] = [:]
 
@@ -56,6 +64,7 @@ struct MockProjects {
         for i in all.indices {
             let name = (all[i]["name"] as? String) ?? ""
             if environments[name] != nil { all[i]["isolated"] = true }
+            if let a = projectAccounts[name], !a.isEmpty { all[i]["accounts"] = a }
             if let root, let path = all[i]["path"] as? String, path.hasPrefix(root + "/") {
                 let parts = path.dropFirst(root.count + 1).split(separator: "/")
                 if parts.count >= 2 { all[i]["space"] = String(parts[0]) }
@@ -98,6 +107,44 @@ struct MockProjects {
             for c in inside { removed.insert(c.name) }
             spaces.removeAll { $0 == p[2] }
             return (200, Self.json(["removed": p[2], "freed": inside.count * 182_452_224]))
+        case (.get, 2, "accounts"): return (200, Self.json(accountsJSON()))
+        case (.post, 2, "accounts"):
+            let agent = (req["agent"] as? String) ?? "claude"
+            let id = "\(agent)-\(String(UUID().uuidString.prefix(8)).lowercased())"
+            accounts.append(["id": id, "agent": agent, "name": (req["name"] as? String) ?? "Conta", "dir": "/home/ubuntu/.pier/box/accounts/\(id)", "signed_in": false, "signed_in_known": true, "projects": [] as [Any], "limits_ready": true])
+            return (200, Self.json(accounts.last!))
+        case (.patch, 3, "accounts"):
+            if req["default"] as? Bool == true, let a = accountsJSON().first(where: { $0["id"] as? String == p[2] }) {
+                let agent = (a["agent"] as? String) ?? ""
+                defaults[agent] = (a["builtin"] as? Bool) == true ? nil : p[2]
+            }
+            if let n = req["name"] as? String, let i = accounts.firstIndex(where: { $0["id"] as? String == p[2] }) { accounts[i]["name"] = n }
+            return (200, Self.json(accountsJSON().first { $0["id"] as? String == p[2] } ?? [:]))
+        case (.delete, 3, "accounts"):
+            accounts.removeAll { $0["id"] as? String == p[2] }
+            for (k, v) in defaults where v == p[2] { defaults[k] = nil }
+            return (200, Self.json(["removed": p[2]]))
+        case (.post, 3, "limits") where p[2] == "enable": limitsEnabled = true; return (200, Self.json(["enabled": ["claude"]]))
+        case (.put, 4, "locations") where p[3] == "accounts":
+            var cur = projectAccounts[p[2]] ?? [:]
+            for (k, v) in req { cur[k] = (v as? String).flatMap { $0.isEmpty || $0 == k ? nil : $0 } }
+            projectAccounts[p[2]] = cur
+            return (200, Self.json(["name": p[2], "accounts": cur]))
+        case (.get, 2, "env"): return (200, Self.json(["env": variables.env, "notes": variables.notes]))
+        case (.put, 2, "env"):
+            variables = ((req["env"] as? [String: String]) ?? [:], ((req["notes"] as? [String: String]) ?? [:]).filter { !$0.value.isEmpty })
+            return (200, Self.json(["env": variables.env, "notes": variables.notes]))
+        case (.get, 2, "skills"): return (200, skillsJSON())
+        case (.put, 3, "skills"): skills.insert(p[2]); return (200, skillsJSON())
+        case (.delete, 3, "skills"): skills.remove(p[2]); return (200, skillsJSON())
+        case (.get, 2, "shares"): return (200, Self.json(links))
+        case (.post, 2, "shares"):
+            let name = String((UUID().uuidString + UUID().uuidString).replacingOccurrences(of: "-", with: "").lowercased().prefix(24))
+            let l: JSON = ["name": name, "url": "https://p-\(name).docktopier.com", "location": req["location"] ?? "", "worktree": req["worktree"] ?? "",
+                           "port": req["port"] ?? 0, "created": ISO8601DateFormatter().string(from: Date()), "expires": ISO8601DateFormatter().string(from: Date().addingTimeInterval(86400))]
+            links.append(l)
+            return (200, Self.json(l))
+        case (.delete, 3, "shares"): links.removeAll { $0["name"] as? String == p[2] }; return (200, Self.json(["removed": p[2]]))
         case (.get, 4, "locations") where p[3] == "environment": return (200, environmentJSON(p[2]))
         case (.put, 4, "locations") where p[3] == "environment":
             let empty = (req["runtime"] == nil) && ((req["containers"] as? [Any])?.isEmpty ?? true) && (req["compose"] as? Bool) != true
@@ -119,6 +166,36 @@ struct MockProjects {
             return (200, Self.json(serviceJSON(p[2], p[4], name: p[6])))
         default: return nil
         }
+    }
+
+    private func accountsJSON() -> [JSON] {
+        let iso = ISO8601DateFormatter()
+        func w(_ kind: String, _ minutes: Int, _ used: Double, _ hours: Double) -> JSON {
+            ["kind": kind, "minutes": minutes, "used_percent": used, "resets_at": iso.string(from: Date().addingTimeInterval(hours * 3600))]
+        }
+        var claude: JSON = ["id": "claude", "agent": "claude", "name": "Claude Code", "dir": "/home/ubuntu/.claude", "builtin": true, "signed_in": true, "signed_in_known": true,
+                            "limits_ready": limitsEnabled]
+        if limitsEnabled {
+            claude["limits"] = ["windows": [w("five_hour", 300, 23.5, 3.2), w("seven_day", 10080, 81, 70)], "updated": iso.string(from: Date()), "source": "statusline"]
+        }
+        let codex: JSON = ["id": "codex", "agent": "codex", "name": "Codex", "dir": "/home/ubuntu/.codex", "builtin": true, "signed_in": true, "signed_in_known": true, "limits_ready": true,
+                           "limits": ["windows": [w("primary", 300, 12, 1.5), w("secondary", 10080, 3, 120)], "updated": iso.string(from: Date()), "source": "session_log"]]
+        var all = [claude, codex] + accounts
+        for i in all.indices {
+            let agent = (all[i]["agent"] as? String) ?? ""
+            let id = (all[i]["id"] as? String) ?? ""
+            let def = defaults[agent]
+            all[i]["default"] = def == id || def == nil && (all[i]["builtin"] as? Bool) == true
+            all[i]["projects"] = projectAccounts.filter { ($0.value[agent] ?? def ?? agent) == id }.map(\.key).sorted()
+        }
+        return all
+    }
+
+    private func skillsJSON() -> Data {
+        Self.json([["id": "pier-box", "name": "Pier box", "description": "The box's variables (what each is for), the worktree's ports and its project's environment.", "installed": skills.contains("pier-box"),
+                    "paths": skills.contains("pier-box") ? ["/home/ubuntu/.claude/skills/pier-box/SKILL.md", "/home/ubuntu/.agents/skills/pier-box/SKILL.md"] : []],
+                   ["id": "pier-preview", "name": "Pier preview", "description": "Run the worktree's dev server on its own port so the person sees it in the Pier app.", "installed": skills.contains("pier-preview"),
+                    "paths": [] as [String]]])
     }
 
     private func settingsJSON(_ fixture: String) -> Data {

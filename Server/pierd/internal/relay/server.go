@@ -14,6 +14,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"net/http/httputil"
 	"strings"
 	"sync"
 	"time"
@@ -44,6 +45,10 @@ type Server struct {
 	BehindProxy bool
 	// Now is the clock (tests).
 	Now func() time.Time
+	// ShareDomain, when set, makes the relay serve boxes' public links at
+	// https://p-<name>.<ShareDomain> (shares.go); the proxy in front sends
+	// that wildcard here.
+	ShareDomain string
 
 	mu      sync.Mutex
 	boxes   map[identity.Fingerprint]*control
@@ -51,6 +56,10 @@ type Server struct {
 	conns   map[net.Conn]struct{}
 	sources map[string]int
 	usage   map[identity.Fingerprint]*usage
+	shares  map[string]identity.Fingerprint
+
+	shareOnce sync.Once
+	proxy     *httputil.ReverseProxy
 }
 
 // control is a registered box's control connection.
@@ -205,6 +214,16 @@ func (s *Server) handle(c net.Conn) {
 	}()
 	c.SetReadDeadline(time.Now().Add(setupWithin))
 	r := newReader(c)
+	if head, err := r.Peek(4); err == nil && httpMethod(head) && s.ShareDomain != "" {
+		// A public link's request (shares.go), or the relay's WebSocket.
+		big := bufio.NewReaderSize(r, 16<<10)
+		if s.shareOf(requestHost(big)) != "" {
+			c.SetReadDeadline(time.Time{})
+			s.serveShareConn(c, big)
+			return
+		}
+		r = big
+	}
 	if head, err := r.Peek(4); err == nil && string(head) == "GET " {
 		// The same protocol inside a WebSocket (an HTTPS front, ws.go).
 		ws, err := upgradeWebSocket(c, r, s.BehindProxy)
@@ -437,6 +456,7 @@ func (s *Server) listen(c net.Conn, r *bufio.Reader, args []string) {
 		s.logf("relay: box %s connected", fp.Short())
 	}
 	defer s.logf("relay: box %s disconnected", fp.Short())
+	defer s.forgetShares(fp)
 
 	done := make(chan struct{})
 	defer close(done)
@@ -457,9 +477,11 @@ func (s *Server) listen(c net.Conn, r *bufio.Reader, args []string) {
 	}()
 	for {
 		c.SetReadDeadline(time.Now().Add(deadAfter))
-		if _, err := readLine(r); err != nil {
+		line, err := readLine(r)
+		if err != nil {
 			return
 		}
+		s.controlLine(fp, box, line)
 	}
 }
 

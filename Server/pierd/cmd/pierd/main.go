@@ -171,6 +171,10 @@ func run(args []string) error {
 		return runDoctor(b, args[1:])
 	case "client":
 		return clientCmd(args[1:], os.Stdout)
+	case "statusline":
+		// Claude Code's status line (installed in each account's settings):
+		// keeps its usage limits for the app, then prints the person's own.
+		return integrations.StatusLine(args[1:], os.Stdin, os.Stdout, filepath.Join(b.dir, "limits"))
 	case "hook":
 		integrations.Hook(args[1:], os.Stdin, os.Stdout, os.Stderr, func(e events.Event) error { return emitHook(b, e) })
 		return nil
@@ -345,6 +349,16 @@ func serve(b boxHome, args []string) error {
 		Invites:      &box.Invites{Address: func() string { return pairAddress(b) }, Relay: relayAddr, TTL: defaultTTL},
 		Relay:        relayAddr,
 	}
+	if rl != nil {
+		bx.Publisher = rl
+	}
+	if exe, err := os.Executable(); err == nil {
+		if exe, err = stableExecutable(exe); err == nil {
+			bx.Exe = exe
+		}
+	}
+	go bx.SyncSkills()
+	go bx.StartShares(ctx)
 	bx.Mount(s)
 	if err := startPush(ctx, b, s, bx, bus, logger); err != nil {
 		// Push is an extra: pierd serves without it, and says why.

@@ -13,6 +13,9 @@ import (
 // BoxEnv is ~/.pier/env.json.
 type BoxEnv struct {
 	Env map[string]string `json:"env"`
+	// Notes say what each variable is for (the app writes them; pierd's
+	// skills pass them on to the agents).
+	Notes map[string]string `json:"notes,omitempty"`
 }
 
 func loadBoxEnv(path string) (BoxEnv, error) {

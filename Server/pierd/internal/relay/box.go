@@ -31,6 +31,14 @@ type Listener struct {
 
 	mu     sync.Mutex
 	status Status
+
+	// ctrl is the control connection while registered (wmu guards writes
+	// on it); shares are the box's public links, name to port, and waiting
+	// the PUBLISH answers someone waits for (shares.go).
+	ctrl    net.Conn
+	wmu     sync.Mutex
+	shares  map[string]int
+	waiting map[string]chan string
 }
 
 // Status is the control connection's state, for pierd doctor.
@@ -140,6 +148,17 @@ func (l *Listener) session(ctx context.Context) error {
 	}
 	l.setStatus(Status{Connected: true, Since: time.Now()})
 	l.logf("relay %s: connected; apps can reach this box through it", l.Relay)
+	l.mu.Lock()
+	l.ctrl = c
+	l.mu.Unlock()
+	defer func() {
+		l.mu.Lock()
+		if l.ctrl == c {
+			l.ctrl = nil
+		}
+		l.mu.Unlock()
+	}()
+	go l.republish(c)
 	for {
 		c.SetReadDeadline(time.Now().Add(deadAfter))
 		line, err := readLine(r)
@@ -149,9 +168,16 @@ func (l *Listener) session(ctx context.Context) error {
 		f := strings.Fields(line)
 		switch {
 		case f[0] == "PING":
-			if err := writeLine(c, "PONG"); err != nil {
+			l.wmu.Lock()
+			err := writeLine(c, "PONG")
+			l.wmu.Unlock()
+			if err != nil {
 				return err
 			}
+		case f[0] == "PUBLISHED" || f[0] == "ERR":
+			l.answer(line)
+		case f[0] == "SHARE" && len(f) >= 3:
+			go l.serveShare(ctx, f[1], f[2])
 		case f[0] == "CONNECT" && len(f) >= 2:
 			from := ""
 			if len(f) >= 3 {

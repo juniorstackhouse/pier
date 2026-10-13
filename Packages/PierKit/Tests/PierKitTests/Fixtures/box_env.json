@@ -1,0 +1,1 @@
+{"env":{"STAGING_URL":"https://staging.example.com","STRIPE_KEY":"sk_test_example"},"notes":{"STAGING_URL":"the staging API"}}

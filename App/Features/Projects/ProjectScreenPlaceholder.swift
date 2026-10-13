@@ -43,6 +43,7 @@ struct ProjectScreenPlaceholder: View {
                         }
                     }
                 }.listRowBackground(Theme.card)
+                ProjectAccountsSection(box: route.box, location: loc)
                 Section {
                     ForEach(loc.worktrees ?? []) { wt in
                         NavigationLink(value: WorktreeRoute(box: route.box, location: route.location, worktree: wt.name)) {
@@ -112,6 +113,7 @@ struct ProjectScreenPlaceholder: View {
 
     private func reload() async {
         guard let conn else { return }
+        await AccountsCache.shared.load(box: route.box, model: model)
         if let s = try? await conn.client.worktreeStatuses(location: route.location) { statuses = s }
         loaded = true
     }

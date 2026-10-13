@@ -340,3 +340,27 @@ box → relay      PIER-RELAY/1 ACCEPT <id>          a new connection, joined to
   1.2 s later (or at once when that fails), the relay; the first TLS handshake to succeed wins and the other attempt is
   closed. A box last reached through its relay is dialed relay first the next time.
 
+### 10.1 Public links
+
+A relay run with `--share-domain D` also serves the boxes' public links: one of a worktree's dev servers at
+`https://p-<name>.D`, to anyone with the link (`POST /v1/shares`, API.md 2.12). The box decides what is published and
+for how long; the relay learns only a name. After `OK`, on the control connection:
+
+```
+box → relay   PUBLISH <name>          relay → box   PUBLISHED <name> <url>   or   ERR <name> <why>
+box → relay   UNPUBLISH <name>
+relay → box   SHARE <id> <name>       the box dials PIER-RELAY/1 ACCEPT <id> and joins it to the port it keeps for <name>
+```
+
+* `<name>` is 16 to 40 lowercase letters and digits (pierd makes 24 random base32 characters). A name belongs to the
+  box that published it; another box asking for it gets `ERR <name> taken`. At most 32 per box. The relay forgets a
+  box's names when its control connection drops; the box publishes them again when it is back.
+* An HTTP request whose Host is `p-<name>.D` (on the relay's port, through the front's wildcard hostname) is proxied
+  to the box, one connection per request (`Connection: close` towards the front, so a connection never carries
+  another host's request): the box's page sees `Host: localhost` (dev servers that check the host answer) with the
+  public host in `X-Forwarded-Host` and `X-Forwarded-Proto: https`. WebSocket upgrades pass through. An unknown
+  name or an offline box answers 502. Traffic counts against the box's daily quota like its apps'.
+* The relay never names a port: the box joins `SHARE` to the port it published the name with, so a relay cannot reach
+  anything else on the box. A relay without a share domain answers `ERR <name> shares …`; an older relay ignores
+  the lines (the box gives up after 10 s), and an older box ignores `SHARE`.
+

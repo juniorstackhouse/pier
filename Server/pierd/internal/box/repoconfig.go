@@ -361,6 +361,11 @@ func (b *Box) WorktreeEnv(ctx context.Context, location string, wt Worktree) ([]
 	// Many dev servers read PORT (Express, Next.js): give it the worktree's
 	// own in every terminal, agent and service, unless the box or the
 	// project sets it, so two worktrees' `npm start` never collide.
+	// The account the project's agents use, chosen in the app: over any
+	// CLAUDE_CONFIG_DIR / CODEX_HOME in the box's or the project's env.
+	for k, v := range b.accountVars(location) {
+		merged[k] = v
+	}
 	if _, ok := merged["PORT"]; !ok && vars["PIER_PORT"] != "" {
 		vars["PORT"] = vars["PIER_PORT"]
 	}

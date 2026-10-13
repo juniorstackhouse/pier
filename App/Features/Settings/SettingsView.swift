@@ -49,15 +49,31 @@ struct SettingsView: View {
             if model.boxes.contains(where: { $0.info?.has("environments") == true }) {
                 Section {
                     ForEach(model.boxes.filter { $0.info?.has("environments") == true }) { conn in
-                        NavigationLink { BoxProjectsSettingsScreen(box: conn.name) } label: {
+                        NavigationLink(value: BoxSettingsRoute(box: conn.name, page: .projects)) {
                             Label(model.boxes.count > 1 ? String(localized: "Pasta dos projetos em \(conn.name)") : String(localized: "Pasta dos projetos e espaços"),
                                   systemImage: "folder.badge.gearshape")
                         }
                         .accessibilityIdentifier("settings-projects-\(conn.name)")
                         .listRowBackground(Theme.card)
+                        if conn.info?.has("accounts") == true {
+                            NavigationLink(value: BoxSettingsRoute(box: conn.name, page: .accounts)) {
+                                Label(model.boxes.count > 1 ? String(localized: "Contas do Claude e do Codex em \(conn.name)") : String(localized: "Contas do Claude e do Codex"),
+                                      systemImage: "person.2.badge.key")
+                            }
+                            .accessibilityIdentifier("settings-accounts-\(conn.name)")
+                            .listRowBackground(Theme.card)
+                        }
+                        if conn.info?.has("box.env") == true {
+                            NavigationLink(value: BoxSettingsRoute(box: conn.name, page: .variables)) {
+                                Label(model.boxes.count > 1 ? String(localized: "Variáveis e skills em \(conn.name)") : String(localized: "Variáveis e skills"),
+                                      systemImage: "curlybraces.square")
+                            }
+                            .accessibilityIdentifier("settings-vars-\(conn.name)")
+                            .listRowBackground(Theme.card)
+                        }
                     }
                 } header: { Text("Projetos") } footer: {
-                    Text("Onde os projetos ficam na box, os espaços que os separam e os ambientes isolados.")
+                    Text("Onde os projetos ficam na box, os espaços que os separam, os ambientes isolados, as contas dos agentes e as variáveis que todo projeto recebe.")
                 }
             }
             Section("Aparência") {

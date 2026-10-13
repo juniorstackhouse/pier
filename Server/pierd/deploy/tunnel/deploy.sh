@@ -8,16 +8,25 @@
 # t.<domain>:443; behind a router, forward TCP 443 to the server. With --cloudflared the tunnel listens on
 # 127.0.0.1:7443 only and a Cloudflare Tunnel on the same machine brings https://t.<domain> to it (a public hostname,
 # service http://localhost:7443): relay.Official is then wss://t.<domain>, and nothing listens to the internet.
+# --share-domain D also serves boxes' public links at https://p-<name>.D (docs/PROTOCOL.md §10.1): the Cloudflare Tunnel
+# then needs a public hostname *.D (service http://localhost:7443) with its DNS wildcard *.D on the tunnel; the
+# hostnames already there (t, www, the apex) keep their own records. *.D is a first-level wildcard, which Cloudflare's
+# Universal SSL certificate covers.
 set -eu
 target=$1
 shift
-version="" args="--listen :443 --public"
+version="" args="--listen :443 --public" share=""
+want_share=""
 for a in "$@"; do
+  if [ -n "$want_share" ]; then share=$a; want_share=""; continue; fi
   case $a in
     --cloudflared) args="--listen 127.0.0.1:7443 --public --behind-proxy" ;;
+    --share-domain) want_share=1 ;;
+    --share-domain=*) share=${a#--share-domain=} ;;
     *) version=$a ;;
   esac
 done
+if [ -n "$share" ]; then args="$args --share-domain $share"; fi
 here=$(cd "$(dirname "$0")" && pwd)
 # SSH_OPTS="-i ~/.ssh/key" for a key ssh does not pick by itself.
 o=${SSH_OPTS:-}
