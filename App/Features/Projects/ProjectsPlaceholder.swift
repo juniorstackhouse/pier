@@ -377,6 +377,13 @@ struct ProjectRow: View {
                         Text("·").foregroundStyle(Theme.textFaint)
                         Text(entry.location.name).foregroundStyle(Theme.textFaint).lineLimit(1)
                     }
+                    if let space = entry.location.space {
+                        Text("·").foregroundStyle(Theme.textFaint)
+                        Label(space, systemImage: "square.stack.3d.up").labelStyle(.titleAndIcon).foregroundStyle(Theme.textFaint).lineLimit(1)
+                    }
+                    if entry.location.isolated {
+                        Image(systemName: "shippingbox.fill").foregroundStyle(Theme.accent).accessibilityLabel("Ambiente isolado")
+                    }
                 }
                 .font(.caption)
             }
@@ -424,6 +431,8 @@ struct ProjectCard: View {
                           systemImage: "arrow.triangle.branch")
                     if let lastActivity { Text("·"); Text(lastActivity, format: .relative(presentation: .named)) }
                     if showBox { Text("·"); Text(entry.box) }
+                    if let space = entry.location.space { Text("·"); Label(space, systemImage: "square.stack.3d.up") }
+                    if entry.location.isolated { Image(systemName: "shippingbox.fill").foregroundStyle(Theme.accent) }
                     Spacer(minLength: 0)
                 }
                 .font(.system(size: Density.small)).foregroundStyle(Theme.textFaint).lineLimit(1)

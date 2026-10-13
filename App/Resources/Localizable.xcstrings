@@ -61,6 +61,16 @@
         }
       }
     },
+    "%@ %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ %2$@"
+          }
+        }
+      }
+    },
     "%@ %lld%%" : {
       "localizations" : {
         "en" : {
@@ -243,6 +253,16 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$@ quer usar %2$@"
+          }
+        }
+      }
+    },
+    "%@ rodam em %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ run in %2$@"
           }
         }
       }
@@ -693,6 +713,16 @@
         }
       }
     },
+    "%lld projetos" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld projects"
+          }
+        }
+      }
+    },
     "%lld rodando" : {
       "localizations" : {
         "en" : {
@@ -1059,6 +1089,16 @@
         }
       }
     },
+    "1 projeto" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 project"
+          }
+        }
+      }
+    },
     "1 sessão" : {
       "localizations" : {
         "en" : {
@@ -1105,6 +1145,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "1 worktree"
+          }
+        }
+      }
+    },
+    "127.0.0.1:%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "127.0.0.1:%@"
           }
         }
       }
@@ -1775,6 +1825,16 @@
         }
       }
     },
+    "Adicionar banco ou serviço" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add a database or service"
+          }
+        }
+      }
+    },
     "Adicionar box" : {
       "localizations" : {
         "en" : {
@@ -1851,6 +1911,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Agents waiting for a permission or an answer"
+          }
+        }
+      }
+    },
+    "Agentes, terminais e serviços do projeto recebem estas variáveis (o .env do projeto pode ler DB_HOST, DB_PORT, DATABASE_URL…). O env do próprio projeto tem prioridade." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The project’s agents, terminals and services get these variables (its .env can read DB_HOST, DB_PORT, DATABASE_URL…). The project’s own env takes precedence."
           }
         }
       }
@@ -2035,6 +2105,36 @@
         }
       }
     },
+    "Ambiente isolado" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Isolated environment"
+          }
+        }
+      }
+    },
+    "Ambiente pronto" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Environment ready"
+          }
+        }
+      }
+    },
+    "Ambientes isolados" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Isolated environments"
+          }
+        }
+      }
+    },
     "Anexar foto" : {
       "localizations" : {
         "en" : {
@@ -2075,12 +2175,42 @@
         }
       }
     },
+    "Apagar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete"
+          }
+        }
+      }
+    },
     "Apagar a branch %@ depois" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Delete the %@ branch afterwards"
+          }
+        }
+      }
+    },
+    "Apagar espaço" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete space"
+          }
+        }
+      }
+    },
+    "Apagar espaço…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete Space…"
           }
         }
       }
@@ -2101,6 +2231,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Appearance"
+          }
+        }
+      }
+    },
+    "Aplicar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apply"
           }
         }
       }
@@ -2605,6 +2745,16 @@
         }
       }
     },
+    "Bancos e serviços" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Databases and services"
+          }
+        }
+      }
+    },
     "Barra na borda da tela" : {
       "localizations" : {
         "en" : {
@@ -2915,12 +3065,62 @@
         }
       }
     },
+    "Cada espaço é uma pasta dentro da pasta dos projetos, para manter grupos de projetos separados (um por cliente, por exemplo). Ao clonar, escolha o espaço." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Each space is a folder inside the projects folder, to keep groups of projects apart (one per client, for example). Pick the space when cloning."
+          }
+        }
+      }
+    },
+    "Cada projeto com a sua versão, sem instalar nada na box nem mexer nos outros projetos." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Each project with its own version, without installing anything on the box or touching the other projects."
+          }
+        }
+      }
+    },
+    "Cada projeto pode ter a própria versão de PHP, Node, Python… e os próprios bancos (MySQL, Postgres, Redis) em containers, sem nada disso dentro do projeto. Configure em cada projeto › Ambiente." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Each project can have its own version of PHP, Node, Python… and its own databases (MySQL, Postgres, Redis) in containers, none of it inside the project. Set it up in each project › Environment."
+          }
+        }
+      }
+    },
     "Cada serviço roda na box com o ambiente e as portas desta worktree, e volta se cair." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Each service runs on the box with this worktree’s environment and ports, and comes back if it crashes."
+          }
+        }
+      }
+    },
+    "Cada um roda num container só deste projeto, numa porta própria da box, com os dados num volume do Docker. Usuário root (Postgres: postgres), senha “pier”, banco “app”." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Each runs in a container of this project only, on a port of the box’s own, with its data in a Docker volume. User root (Postgres: postgres), password “pier”, database “app”."
+          }
+        }
+      }
+    },
+    "Cada worktree sobe o docker compose do próprio projeto como o serviço “compose”, com um nome só dela (pier-<worktree>), para as worktrees não dividirem containers." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Each worktree brings up the project’s own docker compose as its “compose” service, under a name of its own (pier-<worktree>), so worktrees never share containers."
           }
         }
       }
@@ -3615,6 +3815,16 @@
         }
       }
     },
+    "Deixar de usar uma pasta" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop using a folder"
+          }
+        }
+      }
+    },
     "Delegando a um subagente…" : {
       "localizations" : {
         "en" : {
@@ -3761,6 +3971,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Discard changes?"
+          }
+        }
+      }
+    },
+    "Descartar trabalho não enviado e arquivos soltos" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discard unpushed work and loose files"
           }
         }
       }
@@ -3981,6 +4201,46 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dictate"
+          }
+        }
+      }
+    },
+    "Docker %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Docker %@"
+          }
+        }
+      }
+    },
+    "Docker indisponível" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Docker unavailable"
+          }
+        }
+      }
+    },
+    "Docker indisponível na box" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Docker unavailable on the box"
+          }
+        }
+      }
+    },
+    "Dockerfile do projeto" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Project’s Dockerfile"
           }
         }
       }
@@ -4587,6 +4847,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Effort"
+          }
+        }
+      }
+    },
+    "Espaço" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Space"
+          }
+        }
+      }
+    },
+    "Espaço “%@” apagado (%@ liberados)." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Space “%1$@” deleted (%2$@ freed)."
+          }
+        }
+      }
+    },
+    "Espaços" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spaces"
           }
         }
       }
@@ -5383,6 +5673,16 @@
         }
       }
     },
+    "Imagem própria" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Custom image"
+          }
+        }
+      }
+    },
     "Inbox" : {
       "localizations" : {
         "en" : {
@@ -5509,6 +5809,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Install Claude Code or Codex on the box to create tasks."
+          }
+        }
+      }
+    },
+    "Instale o Docker na box e coloque o usuário do pierd no grupo docker para isolar os ambientes." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Install Docker on the box and add pierd’s user to the docker group to isolate environments."
           }
         }
       }
@@ -5793,6 +6103,16 @@
         }
       }
     },
+    "Letras, números, ponto, hífen e sublinhado." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Letters, digits, dot, dash and underscore."
+          }
+        }
+      }
+    },
     "Leu" : {
       "localizations" : {
         "en" : {
@@ -5849,6 +6169,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Clear filters"
+          }
+        }
+      }
+    },
+    "Linguagem" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Language"
           }
         }
       }
@@ -6723,6 +7053,16 @@
         }
       }
     },
+    "Nenhum (%@)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "None (%@)"
+          }
+        }
+      }
+    },
     "Nenhum (conversa livre)" : {
       "localizations" : {
         "en" : {
@@ -6843,12 +7183,32 @@
         }
       }
     },
+    "Nenhum banco ou serviço." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No databases or services."
+          }
+        }
+      }
+    },
     "Nenhum commit ainda" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "No commits yet"
+          }
+        }
+      }
+    },
+    "Nenhum espaço ainda." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No spaces yet."
           }
         }
       }
@@ -7079,6 +7439,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "On the other device, open Pier and scan this code, or open the link there."
+          }
+        }
+      }
+    },
+    "No projeto, %@ passam a rodar nesta versão." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In this project, %@ run in this version."
           }
         }
       }
@@ -7389,6 +7759,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "New File Here…"
+          }
+        }
+      }
+    },
+    "Novo espaço" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New space"
           }
         }
       }
@@ -7963,6 +8343,16 @@
         }
       }
     },
+    "O espaço está vazio." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The space is empty."
+          }
+        }
+      }
+    },
     "O gh falhou sem dizer por quê." : {
       "localizations" : {
         "en" : {
@@ -8349,6 +8739,16 @@
         }
       }
     },
+    "Onde os projetos ficam na box, os espaços que os separam e os ambientes isolados." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Where projects live on the box, the spaces that keep them apart, and isolated environments."
+          }
+        }
+      }
+    },
     "Onde seus agentes rodam?" : {
       "localizations" : {
         "en" : {
@@ -8459,12 +8859,32 @@
         }
       }
     },
+    "Os projetos dele são apagados da box junto com ele:" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Its projects are deleted from the box with it:"
+          }
+        }
+      }
+    },
     "Os projetos, agentes e pull requests da demonstração são inventados. Para usar o Pier com os seus agentes, instale o pierd na sua máquina e adicione a box." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "The demo's projects, agents and pull requests are made up. To use Pier with your own agents, install pierd on your machine and add the box."
+          }
+        }
+      }
+    },
+    "Os que estão no GitHub podem ser baixados de volta depois." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Those on GitHub can be downloaded again later."
           }
         }
       }
@@ -8961,6 +9381,36 @@
         }
       }
     },
+    "Pasta dos projetos" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Projects folder"
+          }
+        }
+      }
+    },
+    "Pasta dos projetos e espaços" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Projects folder and spaces"
+          }
+        }
+      }
+    },
+    "Pasta dos projetos em %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Projects folder on %@"
+          }
+        }
+      }
+    },
     "Pasta vazia" : {
       "localizations" : {
         "en" : {
@@ -9361,6 +9811,16 @@
         }
       }
     },
+    "Preparando o ambiente…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preparing the environment…"
+          }
+        }
+      }
+    },
     "Pressione" : {
       "localizations" : {
         "en" : {
@@ -9397,6 +9857,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Looking for servers…"
+          }
+        }
+      }
+    },
+    "Programas da box" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The box’s programs"
           }
         }
       }
@@ -9457,6 +9927,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Projects"
+          }
+        }
+      }
+    },
+    "Projetos em %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Projects on %@"
           }
         }
       }
@@ -9951,6 +10431,16 @@
         }
       }
     },
+    "Remover %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove %@"
+          }
+        }
+      }
+    },
     "Remover %lld worktree(s) e parar os serviços delas" : {
       "localizations" : {
         "en" : {
@@ -10371,6 +10861,26 @@
         }
       }
     },
+    "Rodar com" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Run with"
+          }
+        }
+      }
+    },
+    "Rodar o compose do projeto" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Run the project’s compose"
+          }
+        }
+      }
+    },
     "Rode `gh auth login` na box (em um terminal do app, por exemplo) e puxe para atualizar." : {
       "localizations" : {
         "en" : {
@@ -10457,6 +10967,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Save to the box (⌘S)"
+          }
+        }
+      }
+    },
+    "Salvar pasta" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save folder"
           }
         }
       }
@@ -11267,6 +11787,16 @@
         }
       }
     },
+    "Todos os projetos desta box ficam dentro dela: os clonados vão para lá, um projeto fora dela não pode ser adicionado e nada fora dela é apagado. Projetos que já estão fora continuam funcionando." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Every project on this box lives inside it: clones go there, a project outside it can’t be added, and nothing outside it is ever deleted. Projects already outside keep working."
+          }
+        }
+      }
+    },
     "Topo" : {
       "localizations" : {
         "en" : {
@@ -11407,6 +11937,16 @@
         }
       }
     },
+    "Tudo roda em containers do Docker na box; nada é escrito no projeto. Os dados dos bancos ficam em volumes do Docker até o projeto ser removido do disco." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Everything runs in Docker containers on the box; nothing is written into the project. Database data stays in Docker volumes until the project is removed from the disk."
+          }
+        }
+      }
+    },
     "Turnos concluídos esperando você continuar; as sessões arquivadas ou encerradas ficam recolhidas" : {
       "localizations" : {
         "en" : {
@@ -11537,6 +12077,16 @@
         }
       }
     },
+    "Usa os programas da própria box" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uses the box’s own programs"
+          }
+        }
+      }
+    },
     "Usando %@…" : {
       "localizations" : {
         "en" : {
@@ -11589,6 +12139,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Invalid value: use letters, digits, dot, colon or hyphen."
+          }
+        }
+      }
+    },
+    "Variáveis nas worktrees" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Variables in the worktrees"
           }
         }
       }
@@ -11669,6 +12229,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Version"
+          }
+        }
+      }
+    },
+    "Versão escolhida" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chosen version"
           }
         }
       }
@@ -11859,6 +12429,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Worktrees nobody is on"
+          }
+        }
+      }
+    },
+    "a aplicar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "not applied yet"
           }
         }
       }
@@ -12063,6 +12643,16 @@
         }
       }
     },
+    "configurado" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "set up"
+          }
+        }
+      }
+    },
     "configurando" : {
       "localizations" : {
         "en" : {
@@ -12079,6 +12669,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "code"
+          }
+        }
+      }
+    },
+    "da box" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "the box’s"
           }
         }
       }
@@ -12183,6 +12783,16 @@
         }
       }
     },
+    "espaço: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "space: %@"
+          }
+        }
+      }
+    },
     "ex.: gpt-5" : {
       "localizations" : {
         "en" : {
@@ -12219,6 +12829,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "failed"
+          }
+        }
+      }
+    },
+    "fora da pasta dos projetos" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "outside the projects folder"
           }
         }
       }
@@ -12273,6 +12893,16 @@
         }
       }
     },
+    "imagem (ex.: php:8.4-cli)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "image (e.g. php:8.4-cli)"
+          }
+        }
+      }
+    },
     "inferido da tela" : {
       "localizations" : {
         "en" : {
@@ -12289,6 +12919,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "starting"
+          }
+        }
+      }
+    },
+    "isolado" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "isolated"
           }
         }
       }
@@ -12403,6 +13043,16 @@
         }
       }
     },
+    "nome" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "name"
+          }
+        }
+      }
+    },
     "nome-da-worktree" : {
       "localizations" : {
         "en" : {
@@ -12429,6 +13079,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "new"
+          }
+        }
+      }
+    },
+    "não" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "no"
           }
         }
       }
@@ -12583,6 +13243,16 @@
         }
       }
     },
+    "programas (ex.: php composer)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "programs (e.g. php composer)"
+          }
+        }
+      }
+    },
     "push indisponível" : {
       "localizations" : {
         "en" : {
@@ -12723,6 +13393,16 @@
         }
       }
     },
+    "~/projetos" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "~/projects"
+          }
+        }
+      }
+    },
     "·" : {
       "localizations" : {
         "en" : {
@@ -12799,6 +13479,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "—"
+          }
+        }
+      }
+    },
+    "“%@” não serve de nome: use letras, números, ponto, hífen e sublinhado." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” can’t be a name: use letters, digits, dot, dash and underscore."
           }
         }
       }

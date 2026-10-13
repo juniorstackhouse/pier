@@ -72,10 +72,12 @@ public struct CloneRequest: Codable, Sendable, Hashable {
     public var repo: String
     public var name: String?
     public var dir: String?
+    /// The space of the box's projects folder to clone into (made if new).
+    public var space: String?
     /// Make it ready: trust the repository's config or work one out, run setup, start its services.
     public var setup: Bool
-    public init(repo: String, name: String? = nil, dir: String? = nil, setup: Bool = true) {
-        self.repo = repo; self.name = name; self.dir = dir; self.setup = setup
+    public init(repo: String, name: String? = nil, dir: String? = nil, space: String? = nil, setup: Bool = true) {
+        self.repo = repo; self.name = name; self.dir = dir; self.space = space; self.setup = setup
     }
 }
 

@@ -43,6 +43,12 @@ type Location struct {
 	// config file: "none" without one, "trusted", or "untrusted" /
 	// "changed" while it waits to be trusted and only its ports apply.
 	RepoTrust string `json:"repo_trust,omitempty"`
+	// Space is the folder of the projects folder the project is in ("" right
+	// under it); OutsideRoot marks one outside the projects folder.
+	Space       string `json:"space,omitempty"`
+	OutsideRoot bool   `json:"outside_root,omitempty"`
+	// Isolated is set when the project has an environment of its own.
+	Isolated bool `json:"isolated,omitempty"`
 }
 
 type Worktree struct {
@@ -89,6 +95,8 @@ type savedLocation struct {
 	// RepoTrust is the sha256 of the repository's config file as
 	// someone trusted it here; any other version of the file does not run.
 	RepoTrust string `json:"repo_trust,omitempty"`
+	// Environment is the project's isolated environment (environment.go).
+	Environment *Environment `json:"environment,omitempty"`
 }
 
 func (l *Locations) Add(ctx context.Context, name, path string) (Location, error) {
@@ -139,8 +147,9 @@ func (l *Locations) List(ctx context.Context) ([]Location, error) {
 		return nil, err
 	}
 	out := make([]Location, 0, len(saved))
+	root := l.Settings().ProjectsRoot
 	for _, s := range saved {
-		out = append(out, l.withPorts(describe(ctx, s)))
+		out = append(out, l.withPlace(l.withPorts(describe(ctx, s)), root))
 	}
 	return out, nil
 }
@@ -160,7 +169,7 @@ func (l *Locations) Get(ctx context.Context, name string) (Location, error) {
 	}
 	for _, s := range saved {
 		if s.Name == name {
-			return l.withPorts(describe(ctx, s)), nil
+			return l.withPlace(l.withPorts(describe(ctx, s)), l.Settings().ProjectsRoot), nil
 		}
 	}
 	return Location{}, ErrUnknownLocation
@@ -336,7 +345,7 @@ func (l *Locations) RemoveWorktree(ctx context.Context, location, name string, f
 }
 
 func describe(ctx context.Context, s savedLocation) Location {
-	loc := Location{Name: s.Name, Path: s.Path, Scripts: scriptsFor(s)}
+	loc := Location{Name: s.Name, Path: s.Path, Scripts: scriptsFor(s), Isolated: s.Environment != nil}
 	repo, trust, _ := repoLayer(s)
 	loc.RepoTrust = trust.State
 	out, err := git(ctx, "-C", s.Path, "worktree", "list", "--porcelain")

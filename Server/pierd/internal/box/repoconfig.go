@@ -148,6 +148,9 @@ func (l *Locations) Config(ctx context.Context, name string) (Config, error) {
 		out.Local.Archive = saved.Archive
 	}
 	out.Effective = merge(repo, out.Local)
+	if saved.Environment != nil && saved.Environment.Compose {
+		out.Effective.Services = mergeBy(out.Effective.Services, []WorktreeService{composeService}, func(s WorktreeService) string { return s.Name })
+	}
 	return out, nil
 }
 
@@ -341,6 +344,16 @@ func (b *Box) WorktreeEnv(ctx context.Context, location string, wt Worktree) ([]
 	merged := map[string]string{}
 	for k, v := range boxEnv.Env {
 		merged[k] = v
+	}
+	// The project's isolated environment: its launchers first on PATH, its
+	// containers' addresses, unless the project's own env says otherwise.
+	for k, v := range b.envVariables(ctx, location) {
+		switch k {
+		case "PATH", "PIER_ENV_BIN":
+			vars[k] = v
+		default:
+			merged[k] = v
+		}
 	}
 	for k, v := range cfg.Effective.Env {
 		merged[k] = v

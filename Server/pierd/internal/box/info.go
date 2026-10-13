@@ -88,9 +88,11 @@ func (b *Box) handleInfo(w http.ResponseWriter, r *http.Request) error {
 // and PUT …/file; turns, queue, ask and controls come with the turn ledger;
 // pair.invite: POST /v1/pair/invite; push: the /v1/push routes (when push
 // is configured); projects: POST /v1/clones, GET /v1/github/repos, GET
-// …/locations/{name}/disk and DELETE /v1/locations/{name}?purge=1.
+// …/locations/{name}/disk and DELETE /v1/locations/{name}?purge=1;
+// environments: GET/PUT /v1/settings (the projects folder), /v1/spaces and
+// GET/PUT …/locations/{name}/environment.
 func (b *Box) Capabilities() []string {
-	caps := []string{"transcript", "history", "diff", "titles", "answer", "session.home", "session.chat", "draft", "journal", "touched", "files", "projects"}
+	caps := []string{"transcript", "history", "diff", "titles", "answer", "session.home", "session.chat", "draft", "journal", "touched", "files", "projects", "environments"}
 	if b.Turns != nil {
 		caps = append(caps, "turns", "queue", "ask", "controls")
 	}

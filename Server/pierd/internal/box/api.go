@@ -65,8 +65,13 @@ type Box struct {
 	// own address does not answer (GET /v1/info's relay).
 	Relay func() string
 
+	// StateDir is pierd's own folder (environments' launchers live there).
+	StateDir string
+
 	// clones are the repositories being cloned (POST /v1/clones).
 	clones clones
+	// envState is how each location's environment build went.
+	envState envStates
 }
 
 // Mount registers the box's routes on s. They are reachable by paired
@@ -93,6 +98,12 @@ func (b *Box) Mount(s *wire.Server) {
 	route("POST /v1/clones", b.addClone)
 	route("DELETE /v1/clones/{id}", b.forgetClone)
 	route("GET /v1/github/repos", b.listGitHubRepos)
+	route("GET /v1/settings", b.getSettings)
+	route("PUT /v1/settings", b.putSettings)
+	route("POST /v1/spaces", b.addSpace)
+	route("DELETE /v1/spaces/{name}", b.removeSpace)
+	route("GET /v1/locations/{name}/environment", b.getEnvironment)
+	route("PUT /v1/locations/{name}/environment", b.putEnvironment)
 	route("GET /v1/locations/{name}/branches", b.listBranches)
 	// Config and trust are for `pierd location config`; the app reads only
 	// the effective scripts, in GET /v1/locations.
@@ -172,7 +183,7 @@ func statusFor(err error) int {
 		return http.StatusConflict
 	case errors.Is(err, errTmuxMissing):
 		return http.StatusServiceUnavailable
-	case errors.Is(err, ErrUnsavedWork):
+	case errors.Is(err, ErrUnsavedWork), errors.Is(err, ErrSpaceNotEmpty):
 		return http.StatusConflict
 	}
 	return http.StatusBadRequest
@@ -245,6 +256,9 @@ func (b *Box) listLocations(w http.ResponseWriter, r *http.Request) error {
 func (b *Box) addLocation(w http.ResponseWriter, r *http.Request) error {
 	var req struct{ Name, Path string }
 	if err := decode(r, &req); err != nil {
+		return err
+	}
+	if err := b.Locations.checkInRoot(req.Path); err != nil {
 		return err
 	}
 	if err := b.before(r, "location.add", map[string]any{"location": req.Name, "path": req.Path}); err != nil {

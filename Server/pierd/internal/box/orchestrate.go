@@ -448,7 +448,7 @@ func (b *Box) handleExec(w http.ResponseWriter, r *http.Request) error {
 	if shell == "" {
 		shell = "/bin/sh"
 	}
-	cmd := groups.CommandContext(ctx, shell, "-lc", req.Command)
+	cmd := groups.CommandContext(ctx, shell, "-lc", envBinFirst+req.Command)
 	cmd.Dir = dir
 	cmd.Env = append(os.Environ(), b.envForDir(ctx, dir)...)
 	var out tailBuffer

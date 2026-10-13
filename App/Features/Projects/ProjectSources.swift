@@ -5,6 +5,42 @@ import PierKit
 /// any repository by its link. The box clones it in the background and makes it ready (setup, services); `ClonesStore`
 /// follows each clone until it is ready, then reloads the box's projects so the new one appears.
 
+/// The spaces of a box's projects folder, to clone into (empty without a folder or spaces).
+@MainActor @Observable
+final class SpacesStore {
+    static let shared = SpacesStore()
+    private(set) var spaces: [String: [ProjectSpace]] = [:]
+    private(set) var roots: [String: String] = [:]
+
+    func load(box: String, model: AppModel) async {
+        guard let conn = model.connection(for: box), conn.info?.has("environments") == true,
+              let s = try? await BoxAPI(transport: conn.raw).settings() else { return }
+        spaces[box] = s.spaces
+        roots[box] = s.projectsRoot
+    }
+}
+
+/// Picks the space of the projects folder a clone goes to ("" for the folder itself).
+struct SpacePicker: View {
+    let box: String
+    @Binding var space: String
+    @Environment(AppModel.self) private var model
+    private let store = SpacesStore.shared
+
+    var body: some View {
+        Group {
+            if let root = store.roots[box], !(store.spaces[box] ?? []).isEmpty {
+                Picker("Espaço", selection: $space) {
+                    Text("Nenhum (\((root as NSString).lastPathComponent))").tag("")
+                    ForEach(store.spaces[box] ?? []) { Text($0.name).tag($0.name) }
+                }
+                .accessibilityIdentifier("clone-space")
+            }
+        }
+        .task(id: box) { await store.load(box: box, model: model) }
+    }
+}
+
 /// The boxes that can clone and remove projects (capability `projects`).
 @MainActor func projectBoxes(_ model: AppModel) -> [BoxConnection] {
     model.boxes.filter { $0.info?.has("projects") == true }
@@ -88,6 +124,7 @@ struct GitHubReposScreen: View {
     @State private var query = ""
     @State private var showArchived = false
     @State private var setup = true
+    @State private var space = ""
     @State private var cloneLink = false
     @State private var failure: String?
     private let clones = ClonesStore.shared
@@ -126,6 +163,7 @@ struct GitHubReposScreen: View {
                         Text(setup ? "Ao baixar, a box instala as dependências e inicia os serviços do projeto." : "Ao baixar, a box só clona o repositório.")
                     }
                     Section {
+                        SpacePicker(box: box, space: $space)
                         Toggle("Configurar o ambiente ao baixar", isOn: $setup)
                         Toggle("Mostrar arquivados", isOn: $showArchived)
                     }.listRowBackground(Theme.card)
@@ -249,7 +287,7 @@ struct GitHubReposScreen: View {
     }
 
     private func download(_ r: GitHubRepo) async {
-        do { _ = try await clones.start(box: box, CloneRequest(repo: r.slug, setup: setup), model: model) }
+        do { _ = try await clones.start(box: box, CloneRequest(repo: r.slug, space: space.isEmpty ? nil : space, setup: setup), model: model) }
         catch { failure = ComposeErrorText.message(error) }
     }
 }
@@ -267,6 +305,7 @@ struct CloneLinkSheet: View {
     @State private var box = ""
     @State private var link = ""
     @State private var name = ""
+    @State private var space = ""
     @State private var setup = true
     @State private var working = false
     @State private var error: String?
@@ -300,6 +339,7 @@ struct CloneLinkSheet: View {
                         if boxes.count > 1 {
                             Picker("Box", selection: $box) { ForEach(boxes) { Text($0.name).tag($0.name) } }
                         }
+                        SpacePicker(box: box, space: $space)
                         Toggle("Configurar o ambiente", isOn: $setup)
                     } footer: {
                         Text(setup ? "Depois de clonar, a box roda o setup do projeto (o .pier/config.json dele, ou o que ela reconhecer: npm, pnpm, pip, bundler…) e inicia o servidor de desenvolvimento na porta da worktree. Só ative para repositórios em que você confia."
@@ -339,7 +379,7 @@ struct CloneLinkSheet: View {
         defer { working = false }
         let n = name.trimmingCharacters(in: .whitespaces)
         do {
-            let c = try await clones.start(box: box, CloneRequest(repo: link.trimmingCharacters(in: .whitespacesAndNewlines), name: n.isEmpty ? nil : n, setup: setup), model: model)
+            let c = try await clones.start(box: box, CloneRequest(repo: link.trimmingCharacters(in: .whitespacesAndNewlines), name: n.isEmpty ? nil : n, space: space.isEmpty ? nil : space, setup: setup), model: model)
             started = ClonesStore.Entry(box: box, clone: c)
         } catch { self.error = ComposeErrorText.message(error) }
     }

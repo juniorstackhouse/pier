@@ -48,10 +48,10 @@ notifications).
 | Times | RFC 3339 with up to 9 fractional digits (`2026-10-07T19:07:42.53987405Z`). Zero times are omitted. Some fields are Unix milliseconds (transcript); they are named in place. |
 | Omitted fields | Most fields are omitted when empty: absent means zero, false or empty. Model every non-identity field as optional. |
 | Lists | Top-level empty lists are `[]`. Nested lists can be `null` or missing (`branches`, transcript `items`); decode defensively. |
-| Errors | Non-2xx: `{"error": "human text", "code": "..."}`. Branch on `code`, show `error` verbatim. Codes: `not_found` (404), `session_exited` (409), `session_exists` (409), `agent_waiting` (409), `refused` (403, a `before:` hook or a box rule said no), `unsupported` (501), `tmux_missing` (503), `git_failed`, `command_failed`, `too_many` (429), `file_changed` (409), `file_exists` (409), `unsaved_work` (409, 2.8), `gh_missing` (501), `gh_auth` (428), `bad_request`, `internal`. Unknown routes answer Go's plain-text `404 page not found` (or 405 for a known path with another method), not JSON: fall back to the raw text. |
+| Errors | Non-2xx: `{"error": "human text", "code": "..."}`. Branch on `code`, show `error` verbatim. Codes: `not_found` (404), `session_exited` (409), `session_exists` (409), `agent_waiting` (409), `refused` (403, a `before:` hook or a box rule said no), `unsupported` (501), `tmux_missing` (503), `git_failed`, `command_failed`, `too_many` (429), `file_changed` (409), `file_exists` (409), `unsaved_work` (409, 2.8), `space_not_empty` (409, 2.9), `docker_missing` (501), `gh_missing` (501), `gh_auth` (428), `bad_request`, `internal`. Unknown routes answer Go's plain-text `404 page not found` (or 405 for a known path with another method), not JSON: fall back to the raw text. |
 | Origin header | Optional `X-Pier-Origin: <[a-z0-9][a-z0-9-]{0,31}>` sets the `origin` of the events a call causes (default `pier`). The app sends `ios` (and `ios-push` for push routes). Hooks see a paired client as `client:<name>` whatever the header says. |
 | Gates | Many mutating calls run `before:<action>` hooks the box owner configured (`~/.pier/hooks.json` or a trusted repository config). A refusal is 403 `refused` with the hook's output as `error`. |
-| Capabilities | `GET /v1/info` → `capabilities[]` names optional features: `transcript history diff titles answer session.home session.chat draft journal touched files projects`, plus `turns queue ask controls` (turn ledger) and `pair.invite`. |
+| Capabilities | `GET /v1/info` → `capabilities[]` names optional features: `transcript history diff titles answer session.home session.chat draft journal touched files projects environments`, plus `turns queue ask controls` (turn ledger) and `pair.invite`. |
 
 ### 0.3 Naming and addressing
 
@@ -335,6 +335,62 @@ sessions, releases their ports, forgets the location, then deletes the linked wo
 Without `force=1` it refuses with 409 `unsaved_work` while `uncommitted`, `unpushed` or `stashes` is non-empty; 409
 `bad_request` when not `removable`. Answer `{"removed":"shop","freed":734003200}`; event `location.removed {location,
 path, purged: true, freed}`. Gate: `before:location.remove` with `purge: true`.
+
+### 2.9 The projects folder, spaces and isolated environments (capability `environments`)
+
+**Settings**: `GET /v1/settings` →
+
+```json
+{"projects_root":"/home/octocat/projects","home":"/home/octocat",
+ "spaces":[{"name":"acme","path":"/home/octocat/projects/acme","projects":2}],
+ "docker":{"available":true,"version":"27.3.1"}}
+```
+
+`PUT /v1/settings {"projects_root":"~/projects"}` sets the folder every project lives under (made if missing; `""`
+clears it; `/` and files are refused; gate `before:settings.change`; event `settings.changed`). Once set: `POST
+/v1/locations` refuses a path outside it (403), a clone goes into it (or into a space of it), and `?purge=1` refuses a
+project outside it, the folder itself and a space. Locations carry `space` (the folder right under the projects folder
+they are in, absent right under it) and `outside_root: true` for one added before the folder was set.
+
+**Spaces** are the folders right under the projects folder that are not repositories: groups of projects kept apart on
+the disk (`<root>/<space>/<repo>`, worktrees beside the repository, inside the space). `POST /v1/spaces {name}` makes
+one (a valid location name). `DELETE /v1/spaces/{name}[?purge=1[&force=1]]`: an empty space goes; one holding projects
+is refused with 409 `space_not_empty` unless `purge=1`, which removes its projects from the disk with it, each checked
+like 2.8 first (409 `unsaved_work` without `force=1`; all go or none). Files in it that are no project's are deleted
+only with `force=1`. Projects never move out of a space. Answer `{"removed":"acme","freed":…}`; events
+`space.added`, `space.removed`; gate `before:space.remove`. `POST /v1/clones` takes `space` (made if new).
+
+**Environment** of a project, the box's own config (never written into the repository): `GET`/`PUT
+/v1/locations/{loc}/environment`.
+
+```json
+{"environment":{"runtime":{"preset":"php:8.4"},"containers":[{"name":"mysql","image":"mysql:8.0"}],"compose":false},
+ "status":{"state":"ready","image":"pier-env-shop:latest","commands":["php","composer"],
+   "containers":[{"name":"mysql","image":"mysql:8.0","host_port":41030,"state":"running","unit":"ctr-shop-mysql"}],
+   "variables":["DATABASE_URL","DB_CONNECTION","DB_HOST","DB_PORT","PIER_ENV_BIN","PIER_MYSQL_PORT","..."],"log":"…/apply.log"},
+ "project":{"dockerfile":false,"compose":true},"docker":{"available":true,"version":"27.3.1"}}
+```
+
+* `runtime`: exactly one of `preset` (`php:<v>` builds `php:<v>-cli` with Composer and the usual extensions; `node:<v>`,
+  `python:<v>`, `ruby:<v>`, `go:<v>` use the official images), `image` (with `commands`), or `project_dockerfile: true`
+  (the repository's `Dockerfile`, with `commands`). Each command gets a launcher in pierd's folder
+  (`~/.pier/box/env/<loc>/bin`) that runs it with `docker run --rm --network host --user <uid>` in the image, on the
+  worktree's folder mounted at the same path, with the caller's variables. That folder is first on `PATH` (and in
+  `PIER_ENV_BIN`) for everything run in the project's worktrees: sessions, agents, services, setup scripts, exec.
+* `containers`: `{name, image, port?, env?}`, each run as a managed unit (`ctr-<loc>-<name>`) published on
+  `127.0.0.1:<a port block of the box's>`, its data in the Docker volume of the same name. MySQL/MariaDB, Postgres,
+  Redis and Mongo are known: their port and data folder, root password `pier`, database `app`, and the variables the
+  worktrees get (`DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, `DATABASE_URL`;
+  `REDIS_HOST`/`REDIS_PORT`/`REDIS_URL`; `MONGODB_URI`). Every container also gives `PIER_<NAME>_HOST` and
+  `PIER_<NAME>_PORT`. The project's and the box's own env win over these.
+* `compose: true` adds the service `compose` to every worktree: `docker compose -p "pier-$PIER_WORKTREE_SLUG" up`
+  with the project's own compose file.
+* `PUT` answers 202 and applies it in the background: `status.state` `building` → `ready` | `failed` (`error` with the
+  log's tail); events `environment.changed`, `environment.started`, `environment.ready`, `environment.failed`.
+  Containers taken out are stopped (their volume kept). An empty environment removes the launchers and stops the
+  containers. 501 `docker_missing` when the box has no Docker. Gate: `before:environment.change`.
+* Removing the project from the disk (2.8, or with its space) also removes its containers, volumes, built image and
+  launchers.
 
 ---
 
@@ -768,7 +824,8 @@ exit_code}` (every client's exec, the app's own background commands included: ne
 **Worktrees and locations**: `worktree.created {location, name, path, branch}`, `worktree.removed`,
 `worktree.setup.{started,finished,failed}` and `worktree.archive.{started,finished,failed}` `{location, name,
 path, script, log}` (failures set the envelope `error`), `location.added`, `location.removed` (`purged`, `freed`
-after a removal from the disk), `clone.started|finished|failed` (2.8), `config.changed`,
+after a removal from the disk), `clone.started|finished|failed` (2.8), `settings.changed`, `space.added|removed`,
+`environment.changed|started|ready|failed` (2.9), `config.changed`,
 `service.started|stopped|failed`, `file.written {location, worktree, path, file, size}` (a save through `PUT
 .../file`, 2.7; `path` is the worktree's folder, `file` the saved file relative to it).
 
@@ -1005,6 +1062,7 @@ with defaults and a tolerant decoder (missing keys, `null` lists).
 | `Models/BoxModels.swift` | `BoxInfo`, `AgentPreset`, `AdapterCaps`, `AgentCLI`, `BoxStats`, `DoctorCheck` |
 | `Models/LocationModels.swift` | `Location`, `Worktree`, `Scripts`, `WorktreeStatus`, `Commit`, `BranchList`, `WorktreeRequest` |
 | `Models/FileModels.swift` | `DirListing`, `FileEntry`, `WorktreeFile`, `FileWrite` |
+| `Models/EnvironmentModels.swift` | `BoxSettings`, `ProjectSpace`, `DockerState`, `ProjectEnvironment`, `EnvRuntime`, `EnvContainer`, `EnvironmentView` (2.9) |
 | `Models/ProjectModels.swift` | `GitHubRepos`, `GitHubRepo`, `CloneRequest`, `ProjectClone`, `ProjectDisk`, `ProjectPurge`, `WorktreeServiceDetail` (2.8; called through `BoxAPI+Projects.swift`) |
 | `Models/SessionModels.swift` | `Session`, `Ask`, `TaskRequest`, `TaskResult`, `SessionRequest`, `SendResult`, `InterruptResult`, `SessionControls`, `HeldPrompt`, `Turn`, `WaitResult`, `Draft`, `Attachment` |
 | `Models/QuestionModels.swift` | `Question`, `QuestionOption`, `QuestionAnswer` |
@@ -1027,4 +1085,5 @@ Use explicit `CodingKeys`, not `.convertFromSnakeCase`: keys are mixed (`oldStar
 | `GitLog`, `FileSearch` | a worktree's history through exec (the log a page at a time with what is not pushed, one commit's message and files, one file's patch in it) and "Abrir rápido" (`git ls-files` once, a fuzzy match) |
 | `FileTree`, `EditorText` | the workspace's file tree (paths, the rows of the open folders, status badges) and the editor's text rules (line and column, indentation, Return, line endings) for 2.7 |
 | `NotificationText`, `DisplayNames` | notification text and names (9) |
+| `Environments` | the runtimes and service containers the environment screen offers by version, a saved environment read back as those choices, its one-line summary, valid container and space names (2.9) |
 | `Projects` | the project screens' rules for 2.8: what can be sent as a repository link, the GitHub list's search, a repository's location on the box, a worktree's dev servers and their preview URLs, its port block, what removing a project would lose |
