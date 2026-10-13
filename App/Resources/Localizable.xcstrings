@@ -325,6 +325,26 @@
         }
       }
     },
+    "%@: %lld arquivo(s) não commitado(s)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@: %2$lld uncommitted file(s)"
+          }
+        }
+      }
+    },
+    "%@: %lld commit(s) que nenhum remoto tem" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@: %2$lld commit(s) no remote has"
+          }
+        }
+      }
+    },
     "%lld" : {
       "localizations" : {
         "en" : {
@@ -713,6 +733,26 @@
         }
       }
     },
+    "%lld sessões em andamento serão encerradas." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld running sessions will be ended."
+          }
+        }
+      }
+    },
+    "%lld stash(es)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld stash(es)"
+          }
+        }
+      }
+    },
     "%lld subagentes" : {
       "localizations" : {
         "en" : {
@@ -1029,6 +1069,16 @@
         }
       }
     },
+    "1 sessão em andamento será encerrada." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 running session will be ended."
+          }
+        }
+      }
+    },
     "1 subagente" : {
       "localizations" : {
         "en" : {
@@ -1065,6 +1115,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "12:34"
+          }
+        }
+      }
+    },
+    ":%lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : ":%lld"
           }
         }
       }
@@ -1239,6 +1299,26 @@
         }
       }
     },
+    "A box só clona; nada do repositório roda." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The box only clones it; nothing from the repository runs."
+          }
+        }
+      }
+    },
+    "A box é alcançada por um relay: as páginas abrem só na mesma rede dela (ou por VPN)." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The box is reached through a relay: its pages open only on its own network (or over a VPN)."
+          }
+        }
+      }
+    },
     "A box “%@” não está pareada." : {
       "localizations" : {
         "en" : {
@@ -1335,6 +1415,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "From"
+          }
+        }
+      }
+    },
+    "A pasta do repositório e as das worktrees são apagadas da box." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The repository’s folder and its worktrees’ are deleted from the box."
           }
         }
       }
@@ -1615,6 +1705,16 @@
         }
       }
     },
+    "Abrir projeto" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open project"
+          }
+        }
+      }
+    },
     "Abrir rápido…" : {
       "localizations" : {
         "en" : {
@@ -1681,6 +1781,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Add box"
+          }
+        }
+      }
+    },
+    "Adicionar projeto" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add project"
           }
         }
       }
@@ -1915,12 +2025,52 @@
         }
       }
     },
+    "Ambiente" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Environment"
+          }
+        }
+      }
+    },
     "Anexar foto" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Attach photo"
+          }
+        }
+      }
+    },
+    "Ao baixar, a box instala as dependências e inicia os serviços do projeto." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When downloading, the box installs the dependencies and starts the project’s services."
+          }
+        }
+      }
+    },
+    "Ao baixar, a box só clona o repositório." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When downloading, the box only clones the repository."
+          }
+        }
+      }
+    },
+    "Apaga o repositório e as worktrees da box para liberar espaço. Se estiver no GitHub, baixe de volta quando quiser." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deletes the repository and its worktrees from the box to free space. If it is on GitHub, download it again whenever you like."
           }
         }
       }
@@ -2235,6 +2385,16 @@
         }
       }
     },
+    "Atenção" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Heads up"
+          }
+        }
+      }
+    },
     "Ativadas" : {
       "localizations" : {
         "en" : {
@@ -2401,6 +2561,46 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Actions"
+          }
+        }
+      }
+    },
+    "Baixando" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Downloading"
+          }
+        }
+      }
+    },
+    "Baixando o repositório…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Downloading the repository…"
+          }
+        }
+      }
+    },
+    "Baixar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download"
+          }
+        }
+      }
+    },
+    "Baixe um repositório do GitHub ou clone um pelo link no botão +." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download a repository from GitHub or clone one by its link with the + button."
           }
         }
       }
@@ -2665,6 +2865,16 @@
         }
       }
     },
+    "Buscar repositório" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search repositories"
+          }
+        }
+      }
+    },
     "Buscou" : {
       "localizations" : {
         "en" : {
@@ -2701,6 +2911,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Each working agent and the step it's on"
+          }
+        }
+      }
+    },
+    "Cada serviço roda na box com o ambiente e as portas desta worktree, e volta se cair." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Each service runs on the box with this worktree’s environment and ports, and comes back if it crashes."
           }
         }
       }
@@ -2785,6 +3005,16 @@
         }
       }
     },
+    "Chegando na box" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arriving on the box"
+          }
+        }
+      }
+    },
     "Claro" : {
       "localizations" : {
         "en" : {
@@ -2801,6 +3031,46 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Claude Code, Codex and others work on your dev machine, not on the phone."
+          }
+        }
+      }
+    },
+    "Clonar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clone"
+          }
+        }
+      }
+    },
+    "Clonar por link" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clone from link"
+          }
+        }
+      }
+    },
+    "Clonar repositório" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clone repository"
+          }
+        }
+      }
+    },
+    "Colar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paste"
           }
         }
       }
@@ -3035,12 +3305,62 @@
         }
       }
     },
+    "Configurando" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Setting up"
+          }
+        }
+      }
+    },
+    "Configurando o ambiente…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Setting up the environment…"
+          }
+        }
+      }
+    },
+    "Configurar o ambiente" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set up the environment"
+          }
+        }
+      }
+    },
+    "Configurar o ambiente ao baixar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set up the environment when downloading"
+          }
+        }
+      }
+    },
     "Confira a rede ou a VPN; o app tenta de novo sozinho." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Check the network or the VPN; the app retries on its own."
+          }
+        }
+      }
+    },
+    "Conta" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Account"
           }
         }
       }
@@ -3345,6 +3665,16 @@
         }
       }
     },
+    "Depois de clonar, a box roda o setup do projeto (o .pier/config.json dele, ou o que ela reconhecer: npm, pnpm, pip, bundler…) e inicia o servidor de desenvolvimento na porta da worktree. Só ative para repositórios em que você confia." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "After cloning, the box runs the project’s setup (its .pier/config.json, or what it recognises: npm, pnpm, pip, bundler…) and starts the dev server on the worktree’s port. Only turn this on for repositories you trust."
+          }
+        }
+      }
+    },
     "Depois, para o iPhone: Ajustes → Levar para o iPhone." : {
       "localizations" : {
         "en" : {
@@ -3381,6 +3711,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Discard Changes…"
+          }
+        }
+      }
+    },
+    "Descartar este trabalho" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discard this work"
           }
         }
       }
@@ -3511,6 +3851,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Details"
+          }
+        }
+      }
+    },
+    "Detalhes: serviços e visualização" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Details: services and preview"
           }
         }
       }
@@ -4491,6 +4841,26 @@
         }
       }
     },
+    "Este projeto não pode ser apagado do disco." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This project can’t be deleted from the disk."
+          }
+        }
+      }
+    },
+    "Este projeto não tem serviços configurados." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This project has no services set up."
+          }
+        }
+      }
+    },
     "Este worktree está limpo em relação a %@." : {
       "localizations" : {
         "en" : {
@@ -5053,6 +5423,16 @@
         }
       }
     },
+    "Iniciar %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start %@"
+          }
+        }
+      }
+    },
     "Iniciar agente" : {
       "localizations" : {
         "en" : {
@@ -5139,6 +5519,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Install the GitHub CLI on the box and run `gh auth login`."
+          }
+        }
+      }
+    },
+    "Instale o gh na box e entre na sua conta com `gh auth login`. Enquanto isso, dá para clonar pelo link." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Install gh on the box and sign in with `gh auth login`. Meanwhile, you can clone by link."
           }
         }
       }
@@ -5463,6 +5853,16 @@
         }
       }
     },
+    "Link do repositório" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Repository link"
+          }
+        }
+      }
+    },
     "Link inválido. Use um link pier:// gerado por “pierd pair”." : {
       "localizations" : {
         "en" : {
@@ -5639,6 +6039,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Select all"
+          }
+        }
+      }
+    },
+    "Medindo o projeto…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Measuring the project…"
           }
         }
       }
@@ -5913,6 +6323,16 @@
         }
       }
     },
+    "Mostrar arquivados" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show archived"
+          }
+        }
+      }
+    },
     "Mostrar arquivos ignorados pelo git" : {
       "localizations" : {
         "en" : {
@@ -6083,6 +6503,16 @@
         }
       }
     },
+    "Na box" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On the box"
+          }
+        }
+      }
+    },
     "Na fila" : {
       "localizations" : {
         "en" : {
@@ -6159,6 +6589,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nothing found"
+          }
+        }
+      }
+    },
+    "Nada encontrado." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nothing found."
+          }
+        }
+      }
+    },
+    "Nada escutando nesta worktree agora." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nothing is listening in this worktree right now."
           }
         }
       }
@@ -6453,6 +6903,16 @@
         }
       }
     },
+    "Nenhum repositório nesta conta." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No repositories in this account."
+          }
+        }
+      }
+    },
     "Nenhum servidor rodando" : {
       "localizations" : {
         "en" : {
@@ -6699,6 +7159,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Project name"
+          }
+        }
+      }
+    },
+    "Nome do projeto (opcional)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Project name (optional)"
           }
         }
       }
@@ -7073,6 +7543,16 @@
         }
       }
     },
+    "Não foi possível baixar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t download"
+          }
+        }
+      }
+    },
     "Não foi possível carregar" : {
       "localizations" : {
         "en" : {
@@ -7183,6 +7663,16 @@
         }
       }
     },
+    "Não foi possível listar os repositórios" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t list the repositories"
+          }
+        }
+      }
+    },
     "Não foi possível listar os serviços" : {
       "localizations" : {
         "en" : {
@@ -7269,6 +7759,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Claude Code was not found on the box."
+          }
+        }
+      }
+    },
+    "O GitHub CLI (gh) não está instalado na box" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The GitHub CLI (gh) isn’t installed on the box"
           }
         }
       }
@@ -7469,6 +7969,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "gh failed without saying why."
+          }
+        }
+      }
+    },
+    "O gh não está conectado a uma conta" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "gh isn’t signed in to an account"
           }
         }
       }
@@ -7709,6 +8219,16 @@
         }
       }
     },
+    "O repositório continua no GitHub: baixe de volta quando quiser em Projetos › Repositórios do GitHub." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The repository stays on GitHub: download it again whenever you like from Projects › GitHub repositories."
+          }
+        }
+      }
+    },
     "O roteador apontou para um agente que não existe. Escolha o agente." : {
       "localizations" : {
         "en" : {
@@ -7765,6 +8285,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hidden"
+          }
+        }
+      }
+    },
+    "Ocupa %@ no disco da box" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Takes %@ on the box’s disk"
           }
         }
       }
@@ -8265,6 +8795,16 @@
         }
       }
     },
+    "Parar %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop %@"
+          }
+        }
+      }
+    },
     "Parar de acompanhar" : {
       "localizations" : {
         "en" : {
@@ -8731,6 +9271,16 @@
         }
       }
     },
+    "Pode fechar: a box continua e o projeto aparece em Projetos quando ficar pronto." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can close this: the box carries on and the project shows up in Projects when it’s ready."
+          }
+        }
+      }
+    },
     "Por atividade recente" : {
       "localizations" : {
         "en" : {
@@ -8767,6 +9317,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "By Name"
+          }
+        }
+      }
+    },
+    "Portas" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ports"
           }
         }
       }
@@ -8827,6 +9387,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Finding the right agent…"
+          }
+        }
+      }
+    },
+    "Procurando servidores…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Looking for servers…"
           }
         }
       }
@@ -8991,6 +9561,56 @@
         }
       }
     },
+    "Pronto, com o setup do próprio repositório." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ready, with the repository’s own setup."
+          }
+        }
+      }
+    },
+    "Pronto, com o setup do repositório. Serviços: %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ready, with the repository’s setup. Services: %@."
+          }
+        }
+      }
+    },
+    "Pronto." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ready."
+          }
+        }
+      }
+    },
+    "Pronto: dependências instaladas e %@ rodando." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ready: dependencies installed and %@ running."
+          }
+        }
+      }
+    },
+    "Pronto: dependências instaladas." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ready: dependencies installed."
+          }
+        }
+      }
+    },
     "Próximos passos" : {
       "localizations" : {
         "en" : {
@@ -9097,6 +9717,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Agents board"
+          }
+        }
+      }
+    },
+    "Quando o servidor de desenvolvimento subir em $PIER_PORT, a página fica em:" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When the dev server starts on $PIER_PORT, the page will be at:"
           }
         }
       }
@@ -9271,6 +9901,16 @@
         }
       }
     },
+    "Reiniciar %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restart %@"
+          }
+        }
+      }
+    },
     "Remove a pasta e a branch local; os serviços dela param juntos. Desmarcadas: têm trabalho não enviado." : {
       "localizations" : {
         "en" : {
@@ -9331,6 +9971,26 @@
         }
       }
     },
+    "Remover do disco (libera %@)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove from disk (frees %@)"
+          }
+        }
+      }
+    },
+    "Remover do disco…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove from Disk…"
+          }
+        }
+      }
+    },
     "Remover foto" : {
       "localizations" : {
         "en" : {
@@ -9347,6 +10007,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Remove picture"
+          }
+        }
+      }
+    },
+    "Remover projeto" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove project"
+          }
+        }
+      }
+    },
+    "Remover projeto do disco" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove project from disk"
           }
         }
       }
@@ -9447,6 +10127,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Large repository: search covers part of the files."
+          }
+        }
+      }
+    },
+    "Repositórios" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Repositories"
+          }
+        }
+      }
+    },
+    "Repositórios do GitHub" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub repositories"
           }
         }
       }
@@ -9667,6 +10367,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Running…"
+          }
+        }
+      }
+    },
+    "Rode `gh auth login` na box (em um terminal do app, por exemplo) e puxe para atualizar." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Run `gh auth login` on the box (in one of the app’s terminals, for example) and pull to refresh."
           }
         }
       }
@@ -9991,6 +10701,16 @@
         }
       }
     },
+    "Serviços" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Services"
+          }
+        }
+      }
+    },
     "Serviços rodando" : {
       "localizations" : {
         "en" : {
@@ -10107,6 +10827,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sessions in this worktree"
+          }
+        }
+      }
+    },
+    "Setup" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Setup"
           }
         }
       }
@@ -10587,6 +11317,16 @@
         }
       }
     },
+    "Trabalho que só existe aqui" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Work that only exists here"
+          }
+        }
+      }
+    },
     "Trabalho terminado" : {
       "localizations" : {
         "en" : {
@@ -10623,6 +11363,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Switch worktree"
+          }
+        }
+      }
+    },
+    "Tudo commitado e enviado: nada se perde." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Everything committed and pushed: nothing is lost."
           }
         }
       }
@@ -10933,6 +11683,16 @@
         }
       }
     },
+    "Visualização" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preview"
+          }
+        }
+      }
+    },
     "Visão geral" : {
       "localizations" : {
         "en" : {
@@ -11213,6 +11973,16 @@
         }
       }
     },
+    "auto" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "auto"
+          }
+        }
+      }
+    },
     "base: %@" : {
       "localizations" : {
         "en" : {
@@ -11309,6 +12079,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "code"
+          }
+        }
+      }
+    },
+    "dono/repositório, a página no GitHub ou a URL de clone (https ou ssh). Repositórios privados usam o login do gh ou as chaves ssh da box." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "owner/repository, its GitHub page or the clone URL (https or ssh). Private repositories use gh’s login or the box’s ssh keys."
           }
         }
       }
@@ -11473,6 +12253,16 @@
         }
       }
     },
+    "github.com/dono/repositorio" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "github.com/owner/repository"
+          }
+        }
+      }
+    },
     "ignorado" : {
       "localizations" : {
         "en" : {
@@ -11489,6 +12279,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "inferred from screen"
+          }
+        }
+      }
+    },
+    "iniciando" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "starting"
           }
         }
       }
@@ -11999,6 +12799,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "—"
+          }
+        }
+      }
+    },
+    "“%@” removido da box (%@ liberados)." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%1$@” removed from the box (%2$@ freed)."
           }
         }
       }

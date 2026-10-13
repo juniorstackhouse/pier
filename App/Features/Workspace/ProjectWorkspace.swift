@@ -89,6 +89,7 @@ private struct WorkspaceContent: View {
                 case .history: HistoryPane(store: state.history, ref: ref, onOpenFile: openFile)
                 case .overview: OverviewPane(project: project, worktree: worktree, ref: ref, status: status, sessions: sessions,
                                              onNewWorktree: { newWorktree = true }, onRemove: { removing = true })
+                case .details: WorktreeDetailsView(box: ref.box, location: project.name, worktree: worktree.name)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -305,6 +306,7 @@ private struct WorkspaceContent: View {
         case .changes: await review.load()
         case .history: if state.history.state != .loaded { await state.history.load() }
         case .overview: await loadStatus()
+        case .details: break
         }
     }
 
@@ -316,6 +318,7 @@ private struct WorkspaceContent: View {
         case .changes: await review.load()
         case .history: await state.history.load()
         case .overview: await conn?.refreshSessions()
+        case .details: break
         }
         if !quiet, state.tab != .changes { await review.load() }
     }

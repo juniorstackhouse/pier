@@ -37,6 +37,10 @@ struct WorktreeScreenPlaceholder: View {
                     Button { router.push(ReviewRoute(box: route.box, location: route.location, worktree: route.worktree)) } label: {
                         Label("Revisar mudanças", systemImage: "doc.text.magnifyingglass")
                     }
+                    NavigationLink(value: WorktreeDetailsRoute(box: route.box, location: route.location, worktree: route.worktree)) {
+                        Label("Detalhes: serviços e visualização", systemImage: "server.rack")
+                    }
+                    .accessibilityIdentifier("worktree-details")
                     NavigationLink(value: FilesRoute(ref: workspaceRef)) { Label("Arquivos", systemImage: "folder") }
                         .accessibilityIdentifier("worktree-files")
                     NavigationLink(value: HistoryRoute(ref: workspaceRef)) { Label("Histórico", systemImage: "clock.arrow.circlepath") }

@@ -3,7 +3,7 @@ import PierKit
 
 /// The tabs of a project's workspace.
 enum WorkspaceTab: String, CaseIterable, Identifiable {
-    case files, changes, history, overview
+    case files, changes, history, overview, details
     var id: String { rawValue }
     var title: LocalizedStringKey {
         switch self {
@@ -11,6 +11,7 @@ enum WorkspaceTab: String, CaseIterable, Identifiable {
         case .changes: "Alterações"
         case .history: "Histórico"
         case .overview: "Visão geral"
+        case .details: "Detalhes"
         }
     }
     var symbol: String {
@@ -19,6 +20,7 @@ enum WorkspaceTab: String, CaseIterable, Identifiable {
         case .changes: "plusminus"
         case .history: "clock.arrow.circlepath"
         case .overview: "info.circle"
+        case .details: "server.rack"
         }
     }
 }

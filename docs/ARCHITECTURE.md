@@ -240,6 +240,17 @@ lost), stop the services of the ones kept, drop exited sessions, update every pr
 and shows why the others are risky; the Shortcuts action runs only the safe ones (`Housekeeper.runSafe`), for a daily
 automation.
 
+## Projects coming and going
+
+Projetos ⟶ + (boxes with the `projects` capability): **Repositórios do GitHub** lists the account the box's gh is signed
+in to, and its organisations (`GET /v1/github/repos`), marking what is already on the box; a tap clones one, **Clonar
+por link** takes any repository link. Both `POST /v1/clones` with `setup` (the box trusts the repository's config or
+works one out, runs setup, starts the dev server: docs/API.md 2.8); `ClonesStore` polls `GET /v1/clones` while one runs,
+shows it under "Chegando na box" and reloads the box's projects when it is ready. **Remover do disco** (a project's
+screen, its menu in Projetos, the main checkout's Visão geral) reads `GET …/disk` first (size, uncommitted files,
+commits no remote has, stashes, sessions) and needs "Descartar este trabalho" for anything that would be lost; the
+project stays on GitHub, to download again from the list.
+
 ## Layouts: tabs (compact) and sidebar (regular width, Mac)
 
 `MainLayout` (RootView) picks by horizontal size class: the iPhone's TabView, or `MainSplit` (iPad, Mac Catalyst): a
@@ -290,12 +301,15 @@ editor's line, column, language and line ending):
   as badges (`--decorate=full`); a commit's message, author, files with their counts, and the patch of the file picked.
 - **Visão geral** (`OverviewPane`): the project (path, remote, default branch), its worktrees with their git state, the
   sessions running in this one.
+- **Detalhes** (`WorktreeDetailsView`, also a screen of its own on the iPhone): the dev servers listening in the worktree
+  as links to the box's address and port (checked from the device), the project's services there with their command and
+  start / stop / restart, and its environment (branch, base, port block, folder, setup).
 
 What each worktree holds (open files with their unsaved text, the folders open, the history read, the tab) lives in
 `WorkspaceState` for the app's run (`WorkspaceRegistry`), so opening a session or another project and coming back finds it
 as it was; the sidebar and the Projetos cards mark projects with unsaved files. A worktree removed (`worktree.removed`, or
 Remover worktree, which warns of unsaved files) takes its state with it. The menu bar adds ⌘S, ⇧⌘O (Ir), ⌘R (read the
-box again) and ⌥⌘1–4 (the tabs), handed to the workspace in front as requests on its `WorkspaceState`. Projetos itself is
+box again) and ⌥⌘1–5 (the tabs), handed to the workspace in front as requests on its `WorkspaceState`. Projetos itself is
 a grid of project cards on regular width; a location that is not a git repository keeps its project screen.
 
 On the iPhone the worktree screen has **Arquivos** and **Histórico**, the same stores one screen at a time
@@ -323,7 +337,7 @@ follows it); only an exit (`ended`) ends the activity. Debug `-openLink pier://�
 `-sessionDetails 1`, `-sessionTerminal 1`, `-openInstallHelp 1` (the onboarding's "Outros jeitos de instalar" sheet),
 `-runIntent postNotif|notifAction|notifDelivered …` (App/Intents/DebugIntentRunner.swift), `-openLink <pier://…>`,
 `-debugStartActivity 1`, `-widgetGallery home|lock|activity|island|all`, `-openTalk 1 [-talkText "…" -talkRoute 1]`,
-`-openPalette 1`, `-openFaxina 1`, `-openProject <loc>[/<worktree>] [-workspaceTab files|changes|history|overview]
+`-openPalette 1`, `-openFaxina 1`, `-openGitHubRepos 1` (with `-startTab projects`: the GitHub list), `-openProject <loc>[/<worktree>] [-workspaceTab files|changes|history|overview|details]
 [-openFile <path>]` (a project's workspace); Mac: `-macSurfaceDebug <commands>`, `-macFakeShot <png>`, `-macWindowSize 1280x800`,
 and for the alerts through iCloud (`CloudAlerts`, docs/PUSH.md 8) `-cloudAlertsDiagnose 1` (logs every device's
 subscription), `-cloudAlertsTest 1` (a test alert for the iPhone and iPad), `-cloudAlertsSeed 1` (every field in
@@ -340,7 +354,9 @@ its side. The hooks above run with the mock as with real boxes (`AppModel.runLau
 `Packages/PierKit/Tests/PierKitTests/Fixtures` into `App/Debug/UITestMockFixtures.swift`): no network, keychain or push.
 It answers like pierd for the endpoints the app uses and is stateful for send, answer and create task; its worktrees
 have files and a history (`App/Debug/UITestMockWorkspace.swift`: the file routes with sha checks, `GitLog` and
-`FileSearch` commands), and saves stick for the run. On the Mac a mock run shares the installed app's container and App
+`FileSearch` commands), and saves stick for the run. Its projects come and go too (`App/Debug/UITestMockProjects.swift`:
+a GitHub account's repositories, clones that are ready after about 3 s, disk use and removal, with `sandbox` holding
+unsaved work, and each worktree's `dev` service, which can be stopped and started). On the Mac a mock run shares the installed app's container and App
 Group: its sidebar prefs go to `prefs-mock.json`, and it never writes the widgets' copy of names and hidden projects
 (the app rewrites that copy at launch). `-uiTestExtras 1`,
 `-uiTestChats 1`, `-uiTestPRs 1`, `-uiTestAsk 1` (an agent asking a question with three choices) and `-uiTestHealth 1`

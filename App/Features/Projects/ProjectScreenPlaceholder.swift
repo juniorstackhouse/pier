@@ -11,6 +11,7 @@ struct ProjectScreenPlaceholder: View {
     @State private var loaded = false
     @State private var newWorktree = false
     @State private var removing: Worktree?
+    @State private var removingProject = false
     @State private var message: BannerMessage?
 
     private var conn: BoxConnection? { model.connection(for: route.box) }
@@ -26,6 +27,11 @@ struct ProjectScreenPlaceholder: View {
                         Label("Nova tarefa aqui", systemImage: "plus.bubble.fill").font(.body.weight(.semibold))
                     }
                     Button { newWorktree = true } label: { Label("Nova worktree", systemImage: "arrow.triangle.branch") }
+                    if let main = loc.worktrees?.first(where: { $0.main == true }) {
+                        NavigationLink(value: WorktreeDetailsRoute(box: route.box, location: route.location, worktree: main.name)) {
+                            Label("Detalhes: serviços e visualização", systemImage: "server.rack")
+                        }
+                    }
                 }.listRowBackground(Theme.card)
                 Section {
                     ForEach(loc.worktrees ?? []) { wt in
@@ -44,6 +50,15 @@ struct ProjectScreenPlaceholder: View {
                         }
                     }
                 } header: { SectionHeader(title: "Worktrees", count: loc.worktrees?.count) }
+                if loc.repo, conn?.info?.has("projects") == true {
+                    Section {
+                        Button(role: .destructive) { removingProject = true } label: {
+                            Label("Remover projeto do disco", systemImage: "externaldrive.badge.minus").foregroundStyle(Theme.red)
+                        }
+                        .accessibilityIdentifier("project-remove")
+                    } footer: { Text("Apaga o repositório e as worktrees da box para liberar espaço. Se estiver no GitHub, baixe de volta quando quiser.") }
+                    .listRowBackground(Theme.card)
+                }
             } else {
                 EmptyState(symbol: "folder", title: "Projeto não encontrado").listRowBackground(Color.clear)
             }
@@ -63,6 +78,9 @@ struct ProjectScreenPlaceholder: View {
                     message = BannerMessage(text: String(localized: "Worktree “\(wt.name)” criada."), kind: .success)
                 }
             }
+        }
+        .sheet(isPresented: $removingProject) {
+            RemoveProjectSheet(box: route.box, location: route.location) { router.popTop() }
         }
         .sheet(item: $removing) { wt in
             RemoveWorktreeSheet(box: route.box, location: route.location, worktree: wt.name,

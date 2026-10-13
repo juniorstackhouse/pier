@@ -16,6 +16,7 @@ struct OverviewPane: View {
     @Environment(Router.self) private var router
     @Environment(LocalPrefs.self) private var prefs
     @State private var statuses: [WorktreeStatus] = []
+    @State private var removingProject = false
 
     private var name: String { prefs.displayName(box: ref.box, location: project.name) }
 
@@ -41,6 +42,9 @@ struct OverviewPane: View {
         .background(Theme.card)
         .task { await loadStatuses() }
         .refreshable { await loadStatuses() }
+        .sheet(isPresented: $removingProject) {
+            RemoveProjectSheet(box: ref.box, location: project.name) { router.select(.tab(.projects)) }
+        }
     }
 
     private var header: some View {
@@ -82,6 +86,10 @@ struct OverviewPane: View {
                 .buttonStyle(.bordered)
             if worktree.main != true {
                 Button(role: .destructive, action: onRemove) { Label("Remover worktree", systemImage: "archivebox") }
+                    .buttonStyle(.bordered)
+                    .tint(Theme.red)
+            } else if project.repo, model.connection(for: ref.box)?.info?.has("projects") == true {
+                Button(role: .destructive) { removingProject = true } label: { Label("Remover projeto do disco", systemImage: "externaldrive.badge.minus") }
                     .buttonStyle(.bordered)
                     .tint(Theme.red)
             }

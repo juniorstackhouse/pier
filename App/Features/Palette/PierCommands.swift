@@ -22,6 +22,7 @@ struct PierCommands: Commands {
             Button("Alterações") { workspace?.tab(.changes) }.keyboardShortcut("2", modifiers: [.command, .option]).disabled(workspace == nil)
             Button("Histórico") { workspace?.tab(.history) }.keyboardShortcut("3", modifiers: [.command, .option]).disabled(workspace == nil)
             Button("Visão geral") { workspace?.tab(.overview) }.keyboardShortcut("4", modifiers: [.command, .option]).disabled(workspace == nil)
+            Button("Detalhes") { workspace?.tab(.details) }.keyboardShortcut("5", modifiers: [.command, .option]).disabled(workspace == nil)
         }
         CommandGroup(replacing: .newItem) {
             Button("Nova tarefa") { if let b = box { PaletteActions.newTask(model.router, box: b) } }
