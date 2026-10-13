@@ -231,7 +231,7 @@ func (b *Box) setSkill(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-var envKey = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]{0,127}$`)
+var envVarName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]{0,127}$`)
 
 // reservedEnv are names the box sets itself for each worktree, or that
 // would break every program it starts.
@@ -261,7 +261,7 @@ func (b *Box) putEnv(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	for k, v := range req.Env {
-		if !envKey.MatchString(k) || strings.HasPrefix(k, "PIER_") || reservedEnv[k] {
+		if !envVarName.MatchString(k) || strings.HasPrefix(k, "PIER_") || reservedEnv[k] {
 			return badRequest("%q cannot be a box variable", k)
 		}
 		if len(v) > 16<<10 {

@@ -27,6 +27,7 @@ import (
 //	file_exists      a new file's path is taken
 //	unsaved_work     removing a project would lose work no remote has
 //	space_not_empty  a space still holds projects
+//	space_has_files  a space holds files that are no project's
 //	docker_missing   docker is not available on the box
 //	gh_missing       gh (GitHub CLI) is not installed on the box
 //	gh_auth          gh is not signed in on the box
@@ -48,6 +49,7 @@ const (
 	CodeUnsavedWork   = "unsaved_work"
 	CodeGHMissing     = "gh_missing"
 	CodeSpaceNotEmpty = "space_not_empty"
+	CodeSpaceHasFiles = "space_has_files"
 	CodeDockerMissing = "docker_missing"
 	CodeGHAuth        = "gh_auth"
 	CodeBadRequest    = "bad_request"
@@ -80,6 +82,8 @@ func codeFor(err error) string {
 		return CodeUnsavedWork
 	case errors.Is(err, ErrSpaceNotEmpty):
 		return CodeSpaceNotEmpty
+	case errors.Is(err, ErrSpaceHasFiles):
+		return CodeSpaceHasFiles
 	case errors.Is(err, ErrUnknownLocation), errors.Is(err, ErrUnknownWorktree), errors.Is(err, ErrUnknownSession), errors.Is(err, ErrUnknownUnit):
 		return CodeNotFound
 	case errors.As(err, &he):

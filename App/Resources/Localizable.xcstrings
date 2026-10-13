@@ -375,6 +375,16 @@
         }
       }
     },
+    "%@: o git não conseguiu ler esta worktree" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: git could not read this worktree"
+          }
+        }
+      }
+    },
     "%lld" : {
       "localizations" : {
         "en" : {
@@ -1329,6 +1339,16 @@
         }
       }
     },
+    "A box perdeu o andamento deste clone (o pierd reiniciou?). Veja em Projetos se ele chegou." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The box lost track of this clone (did pierd restart?). Check in Projects whether it arrived."
+          }
+        }
+      }
+    },
     "A box precisa de você" : {
       "localizations" : {
         "en" : {
@@ -2251,6 +2271,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Also delete the branch"
+          }
+        }
+      }
+    },
+    "Apagar também o que não é projeto" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Also delete what isn’t a project"
           }
         }
       }
@@ -4125,12 +4155,12 @@
         }
       }
     },
-    "Descartar trabalho não enviado e arquivos soltos" : {
+    "Descartar o trabalho não enviado" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Discard unpushed work and loose files"
+            "value" : "Discard the unpushed work"
           }
         }
       }
@@ -7443,6 +7473,16 @@
         }
       }
     },
+    "Nenhum projeto da box neste espaço." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No box project in this space."
+          }
+        }
+      }
+    },
     "Nenhum projeto da box é um clone de %@." : {
       "localizations" : {
         "en" : {
@@ -8373,6 +8413,16 @@
         }
       }
     },
+    "Não publique servidores com console de depuração ligado (web-console, debug toolbar): quem tem o link chega a eles." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Don’t publish servers with a debug console on (web-console, debug toolbar): anyone with the link reaches it."
+          }
+        }
+      }
+    },
     "Não salvar" : {
       "localizations" : {
         "en" : {
@@ -8599,16 +8649,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dictation isn't available right now. Type the request."
-          }
-        }
-      }
-    },
-    "O espaço está vazio." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The space is empty."
           }
         }
       }
@@ -11881,6 +11921,16 @@
         }
       }
     },
+    "Também são apagados os arquivos que o git ignora (.env, bancos locais, builds) e os dados dos bancos do ambiente isolado." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Files git ignores (.env, local databases, builds) and the isolated environment’s database data are deleted too."
+          }
+        }
+      }
+    },
     "Tarefa" : {
       "localizations" : {
         "en" : {
@@ -12247,12 +12297,12 @@
         }
       }
     },
-    "Tudo commitado e enviado: nada se perde." : {
+    "Tudo commitado e enviado." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Everything committed and pushed: nothing is lost."
+            "value" : "Everything committed and pushed."
           }
         }
       }
@@ -13273,12 +13323,12 @@
         }
       }
     },
-    "github.com/dono/repositorio" : {
+    "https://github.com/dono/repositorio" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "github.com/owner/repository"
+            "value" : "https://github.com/owner/repository"
           }
         }
       }

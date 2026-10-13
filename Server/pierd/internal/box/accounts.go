@@ -580,12 +580,11 @@ func (b *Box) putLocationAccounts(w http.ResponseWriter, r *http.Request) error 
 			return badRequest("unknown agent %q", agent)
 		}
 		if id != "" {
+			// The built-in account is kept as a choice of its own: it wins over
+			// a box default that is an added account.
 			a, ok := b.account(id)
 			if !ok || a.Agent != agent {
 				return badRequest("%q is not a %s account", id, agent)
-			}
-			if a.Builtin {
-				req[agent] = ""
 			}
 		}
 	}

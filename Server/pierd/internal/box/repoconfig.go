@@ -345,6 +345,9 @@ func (b *Box) WorktreeEnv(ctx context.Context, location string, wt Worktree) ([]
 	for k, v := range boxEnv.Env {
 		merged[k] = v
 	}
+	if env, err := b.Locations.Environment(location); err == nil && env.Compose {
+		vars["PIER_COMPOSE_PROJECT"] = composeProject(location, wt)
+	}
 	// The project's isolated environment: its launchers first on PATH, its
 	// containers' addresses, unless the project's own env says otherwise.
 	for k, v := range b.envVariables(ctx, location) {
@@ -380,13 +383,7 @@ func (b *Box) WorktreeEnv(ctx context.Context, location string, wt Worktree) ([]
 	}
 	sort.Strings(keys)
 	for _, k := range keys {
-		v := os.Expand(merged[k], func(name string) string {
-			if v, ok := vars[name]; ok {
-				return v
-			}
-			return os.Getenv(name)
-		})
-		env = append(env, k+"="+v)
+		env = append(env, k+"="+expandPier(merged[k], vars))
 	}
 	return env, nil
 }
@@ -451,4 +448,19 @@ func (b *Box) putConfig(w http.ResponseWriter, r *http.Request) error {
 	}
 	b.publish(r, "config.changed", map[string]any{"location": name})
 	return b.getConfig(w, r)
+}
+
+var varRef = regexp.MustCompile(`\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\$([A-Za-z_][A-Za-z0-9_]*)`)
+
+// expandPier puts pierd's own variables ($PIER_PORT, ${PIER_WORKTREE_SLUG},
+// $PORT…) into a value and leaves every other "$" as it is: a password or a
+// hash with a "$" in it arrives intact.
+func expandPier(v string, vars map[string]string) string {
+	return varRef.ReplaceAllStringFunc(v, func(m string) string {
+		name := strings.Trim(m, "${}")
+		if val, ok := vars[name]; ok {
+			return val
+		}
+		return m
+	})
 }

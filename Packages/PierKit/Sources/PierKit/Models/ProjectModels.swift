@@ -151,17 +151,19 @@ public struct ProjectDisk: Codable, Sendable, Hashable {
     public let removable: Bool
     public let reason: String?
     public let remote: String?
+    /// Worktrees git could not read: what they hold is unknown, so it counts as work that would be lost.
+    public let unreadable: [String]
 
     /// Removing it loses work that exists nowhere else.
-    public var hasUnsavedWork: Bool { !uncommitted.isEmpty || !unpushed.isEmpty || stashes > 0 }
+    public var hasUnsavedWork: Bool { !uncommitted.isEmpty || !unpushed.isEmpty || stashes > 0 || !unreadable.isEmpty }
 
     public init(bytes: Int64 = 0, paths: [String] = [], uncommitted: [Uncommitted] = [], unpushed: [Unpushed] = [], stashes: Int = 0,
-                sessions: Int = 0, removable: Bool = true, reason: String? = nil, remote: String? = nil) {
+                sessions: Int = 0, removable: Bool = true, reason: String? = nil, remote: String? = nil, unreadable: [String] = []) {
         self.bytes = bytes; self.paths = paths; self.uncommitted = uncommitted; self.unpushed = unpushed; self.stashes = stashes
-        self.sessions = sessions; self.removable = removable; self.reason = reason; self.remote = remote
+        self.sessions = sessions; self.removable = removable; self.reason = reason; self.remote = remote; self.unreadable = unreadable
     }
 
-    enum CodingKeys: String, CodingKey { case bytes, paths, uncommitted, unpushed, stashes, sessions, removable, reason, remote }
+    enum CodingKeys: String, CodingKey { case bytes, paths, uncommitted, unpushed, stashes, sessions, removable, reason, remote, unreadable }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -174,6 +176,7 @@ public struct ProjectDisk: Codable, Sendable, Hashable {
         removable = try c.decodeIfPresent(Bool.self, forKey: .removable) ?? false
         reason = try c.decodeIfPresent(String.self, forKey: .reason)
         remote = try c.decodeIfPresent(String.self, forKey: .remote)
+        unreadable = try c.decodeIfPresent([String].self, forKey: .unreadable) ?? []
     }
 }
 

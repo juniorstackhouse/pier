@@ -73,6 +73,8 @@ type Box struct {
 	clones clones
 	// envState is how each location's environment build went.
 	envState envStates
+	// envLocks keeps one environment apply per location at a time.
+	envLocks sync.Map
 	// Publisher, when set, is the relay the box's public links go through.
 	Publisher Publisher
 	// Exe is pierd's own binary, for the hooks and status line it puts in
@@ -207,7 +209,7 @@ func statusFor(err error) int {
 		return http.StatusConflict
 	case errors.Is(err, errTmuxMissing):
 		return http.StatusServiceUnavailable
-	case errors.Is(err, ErrUnsavedWork), errors.Is(err, ErrSpaceNotEmpty):
+	case errors.Is(err, ErrUnsavedWork), errors.Is(err, ErrSpaceNotEmpty), errors.Is(err, ErrSpaceHasFiles):
 		return http.StatusConflict
 	}
 	return http.StatusBadRequest
@@ -304,6 +306,15 @@ func (b *Box) removeLocation(w http.ResponseWriter, r *http.Request) error {
 	}
 	if err := b.before(r, "location.remove", map[string]any{"location": name}); err != nil {
 		return err
+	}
+	// Forgotten, its folders stay; what pierd ran for it stops: its links,
+	// its services, its environment's containers (their data kept).
+	if loc, err := b.Locations.Get(r.Context(), name); err == nil {
+		b.dropShares(name, "")
+		for _, wt := range loc.Worktrees {
+			b.stopServices(name, wt.Name)
+		}
+		b.dropEnvironment(name, false)
 	}
 	if err := b.Locations.Remove(name); err != nil {
 		return err

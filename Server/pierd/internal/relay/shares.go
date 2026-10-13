@@ -46,6 +46,12 @@ var shareName = regexp.MustCompile(`^[a-z0-9]{16,40}$`)
 // maxSharesPerBox bounds the links one box holds on a relay.
 const maxSharesPerBox = 32
 
+// ShareNamePrefix is how every link name of a box starts: the first
+// characters of its key's fingerprint. The relay holds a box to it, so no
+// other box can ever publish under a name of its links, even while it is
+// away.
+func ShareNamePrefix(fp identity.Fingerprint) string { return strings.ToLower(fp.String()[:8]) }
+
 // ShareHost is the host a name is published at.
 func ShareHost(name, domain string) string { return SharePrefix + name + "." + domain }
 
@@ -83,7 +89,7 @@ func (s *Server) controlLine(fp identity.Fingerprint, box *control, line string)
 			box.send("ERR " + name + " shares this relay serves no public links")
 			return
 		}
-		if !shareName.MatchString(name) {
+		if !shareName.MatchString(name) || !strings.HasPrefix(name, ShareNamePrefix(fp)) {
 			box.send("ERR " + name + " request")
 			return
 		}
@@ -120,10 +126,14 @@ func (s *Server) controlLine(fp identity.Fingerprint, box *control, line string)
 	}
 }
 
-// forgetShares drops a box's links when it disconnects.
-func (s *Server) forgetShares(fp identity.Fingerprint) {
+// forgetShares drops a box's links when its control connection ends, unless
+// a newer connection of the same box replaced it (and published them again).
+func (s *Server) forgetShares(fp identity.Fingerprint, box *control) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if cur := s.boxes[fp]; cur != nil && cur != box {
+		return
+	}
 	for name, o := range s.shares {
 		if o == fp {
 			delete(s.shares, name)
@@ -140,13 +150,17 @@ func (s *Server) dialShare(ctx context.Context, name string) (net.Conn, error) {
 		s.mu.Unlock()
 		return nil, errShareOffline
 	}
-	if box.pending >= 32 || len(s.pending) >= s.maxPending() || s.MaxConnsPerBox > 0 && box.active+box.pending >= s.MaxConnsPerBox || s.overQuota(fp) {
+	limit := s.MaxShareConnsPerBox
+	if limit <= 0 {
+		limit = 32
+	}
+	if box.sharePending+box.shareActive >= limit || len(s.pending) >= s.maxPending() || s.overShareQuota(fp) {
 		s.mu.Unlock()
 		return nil, errors.New("busy")
 	}
 	id := newID()
-	d := &pendingDial{box: box, joined: make(chan *bufferedConn, 1)}
-	box.pending++
+	d := &pendingDial{box: box, share: true, joined: make(chan *bufferedConn, 1)}
+	box.sharePending++
 	s.pending[id] = d
 	s.mu.Unlock()
 	if err := box.send("SHARE " + id + " " + name); err != nil {
@@ -158,14 +172,14 @@ func (s *Server) dialShare(ctx context.Context, name string) (net.Conn, error) {
 	select {
 	case other := <-d.joined:
 		s.mu.Lock()
-		box.active++
+		box.shareActive++
 		s.mu.Unlock()
 		return &sharedConn{bufferedConn: other, done: func() {
 			s.mu.Lock()
-			box.active--
+			box.shareActive--
 			s.mu.Unlock()
 			s.untrack(other.Conn)
-		}, count: func(n int) bool { return s.count(fp, n) }}, nil
+		}, count: func(n int) bool { return s.countShare(fp, n) }}, nil
 	case <-timer.C:
 		if s.take(id) != nil {
 			return nil, errors.New("the box did not answer")
@@ -178,6 +192,35 @@ func (s *Server) dialShare(ctx context.Context, name string) (net.Conn, error) {
 		s.take(id)
 		return nil, ctx.Err()
 	}
+}
+
+// overShareQuota and countShare are overQuota and count for public links,
+// in a day's budget of their own.
+func (s *Server) overShareQuota(fp identity.Fingerprint) bool {
+	if s.MaxBytesPerDay <= 0 {
+		return false
+	}
+	u := s.shareUsage[fp]
+	return u != nil && u.day == s.now().UTC().Format("2006-01-02") && u.bytes >= s.MaxBytesPerDay
+}
+
+func (s *Server) countShare(fp identity.Fingerprint, n int) bool {
+	if s.MaxBytesPerDay <= 0 {
+		return true
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.shareUsage == nil {
+		s.shareUsage = map[identity.Fingerprint]*usage{}
+	}
+	day := s.now().UTC().Format("2006-01-02")
+	u := s.shareUsage[fp]
+	if u == nil || u.day != day {
+		u = &usage{day: day}
+		s.shareUsage[fp] = u
+	}
+	u.bytes += int64(n)
+	return u.bytes < s.MaxBytesPerDay
 }
 
 var errShareOffline = errors.New("offline")
@@ -212,7 +255,10 @@ func (c *sharedConn) Close() error {
 
 // shareProxy forwards public requests to their boxes: one connection to the
 // box per request (the page's server sees Host localhost, so dev servers that
-// check the host answer), the public host in X-Forwarded-Host.
+// check the host answer), the public host in X-Forwarded-Host and the
+// visitor's own address in X-Forwarded-For / X-Real-IP, so a server that
+// trusts its local proxy (Rails' web-console, its remote_ip) sees a visitor
+// from the internet, not this machine.
 func (s *Server) shareProxy() *httputil.ReverseProxy {
 	s.shareOnce.Do(func() {
 		t := &http.Transport{
@@ -228,15 +274,24 @@ func (s *Server) shareProxy() *httputil.ReverseProxy {
 				name := s.shareOf(pr.In.Host)
 				pr.Out.URL = &url.URL{Scheme: "http", Host: name + ".share", Path: pr.In.URL.Path, RawPath: pr.In.URL.RawPath, RawQuery: pr.In.URL.RawQuery}
 				pr.Out.Host = "localhost"
-				pr.SetXForwarded()
+				visitor := s.visitorIP(pr.In)
+				for _, h := range []string{"X-Forwarded-For", "X-Real-Ip", "Forwarded", "Cf-Connecting-Ip", "True-Client-Ip"} {
+					pr.Out.Header.Del(h)
+				}
+				pr.Out.Header.Set("X-Forwarded-For", visitor)
+				pr.Out.Header.Set("X-Real-IP", visitor)
 				pr.Out.Header.Set("X-Forwarded-Host", pr.In.Host)
 				pr.Out.Header.Set("X-Forwarded-Proto", "https")
+				pr.Out.Header.Set("X-Pier-Public-Link", "1")
 			},
 			Transport: t,
 			ModifyResponse: func(r *http.Response) error {
 				// One request per connection from the proxy in front: a
 				// connection never carries another host's request after it.
-				r.Header.Set("Connection", "close")
+				// A WebSocket's 101 keeps its Upgrade.
+				if r.StatusCode != http.StatusSwitchingProtocols {
+					r.Header.Set("Connection", "close")
+				}
 				return nil
 			},
 			ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
@@ -254,6 +309,25 @@ func (s *Server) shareProxy() *httputil.ReverseProxy {
 	return s.proxy
 }
 
+// visitorIP is the public request's client: the address the proxy in front
+// names when the relay is behind one, else the connection's.
+func (s *Server) visitorIP(r *http.Request) string {
+	if s.BehindProxy {
+		from := r.Header.Get("Cf-Connecting-Ip")
+		if from == "" {
+			from, _, _ = strings.Cut(r.Header.Get("X-Forwarded-For"), ",")
+		}
+		if ip := net.ParseIP(strings.TrimSpace(from)); ip != nil {
+			return ip.String()
+		}
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
+}
+
 // serveShareConn serves one connection that brought a public request.
 func (s *Server) serveShareConn(c net.Conn, r *bufio.Reader) {
 	srv := &http.Server{
@@ -266,6 +340,7 @@ func (s *Server) serveShareConn(c net.Conn, r *bufio.Reader) {
 			s.shareProxy().ServeHTTP(w, req)
 		}),
 		ReadHeaderTimeout: setupWithin,
+		IdleTimeout:       setupWithin,
 		ErrorLog:          s.Log,
 	}
 	ln := &oneConn{c: &bufferedConn{Conn: c, r: r}, done: make(chan struct{})}
@@ -344,7 +419,7 @@ type ShareTarget struct {
 // Publish publishes name on the relay, served from port on this box, and
 // returns its public URL. It waits for the relay's answer.
 func (l *Listener) Publish(ctx context.Context, name string, port int) (string, error) {
-	if !shareName.MatchString(name) {
+	if !shareName.MatchString(name) || !strings.HasPrefix(name, l.SharePrefix()) {
 		return "", fmt.Errorf("invalid link name %q", name)
 	}
 	l.mu.Lock()
@@ -359,6 +434,9 @@ func (l *Listener) Publish(ctx context.Context, name string, port int) (string, 
 	}
 	return l.ask(ctx, ctrl, name)
 }
+
+// SharePrefix is how this box's link names must start (ShareNamePrefix).
+func (l *Listener) SharePrefix() string { return ShareNamePrefix(l.Identity.Fingerprint()) }
 
 // ask sends PUBLISH for name and waits for the answer.
 func (l *Listener) ask(ctx context.Context, ctrl net.Conn, name string) (string, error) {
@@ -454,9 +532,13 @@ func (l *Listener) serveShare(ctx context.Context, id, name string) {
 	if !ok {
 		return
 	}
-	local, err := (&net.Dialer{Timeout: 5 * time.Second}).DialContext(ctx, "tcp", fmt.Sprintf("127.0.0.1:%d", port))
+	// IPv4's loopback first, then IPv6's (a server listening on ::1 only).
+	d := &net.Dialer{Timeout: 3 * time.Second}
+	local, err := d.DialContext(ctx, "tcp", fmt.Sprintf("127.0.0.1:%d", port))
 	if err != nil {
-		return
+		if local, err = d.DialContext(ctx, "tcp", fmt.Sprintf("[::1]:%d", port)); err != nil {
+			return
+		}
 	}
 	c, err := dialRelay(ctx, l.Relay)
 	if err != nil {

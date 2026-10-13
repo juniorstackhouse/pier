@@ -30,6 +30,22 @@ func TestInstallStatusLineKeepsThePersonsOwn(t *testing.T) {
 	if !HasStatusLine(settings) {
 		t.Error("HasStatusLine")
 	}
+	// Another tool's statusline is not pierd's; a line with shell operators
+	// is kept whole.
+	other := filepath.Join(dir, "other.json")
+	os.WriteFile(other, []byte(`{"statusLine":{"type":"command","command":"npx -y ccusage statusline|head -c 80"}}`), 0o600)
+	if HasStatusLine(other) {
+		t.Error("ccusage's statusline read as pierd's")
+	}
+	if changed, err := InstallStatusLine(other, "/opt/pier/pierd"); err != nil || !changed {
+		t.Fatalf("install over ccusage = %v %v", changed, err)
+	}
+	data, _ = os.ReadFile(other)
+	var o map[string]any
+	json.Unmarshal(data, &o)
+	if cmd := o["statusLine"].(map[string]any)["command"]; cmd != `/opt/pier/pierd statusline --then 'npx -y ccusage statusline|head -c 80'` {
+		t.Errorf("wrapped = %v", cmd)
+	}
 }
 
 func TestStatusLineKeepsLimitsAndRunsTheOwnLine(t *testing.T) {

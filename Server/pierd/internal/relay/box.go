@@ -167,6 +167,7 @@ func (l *Listener) session(ctx context.Context) error {
 		}
 		f := strings.Fields(line)
 		switch {
+		case len(f) == 0:
 		case f[0] == "PING":
 			l.wmu.Lock()
 			err := writeLine(c, "PONG")

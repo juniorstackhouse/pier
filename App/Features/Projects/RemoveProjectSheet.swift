@@ -74,6 +74,8 @@ struct RemoveProjectSheet: View {
                                     Label("\(l.name): \(l.count) commit(s) que nenhum remoto tem", systemImage: "arrow.up.circle").foregroundStyle(Theme.orange)
                                 case .stash:
                                     Label("\(l.count) stash(es)", systemImage: "tray.full").foregroundStyle(Theme.orange)
+                                case .unreadable:
+                                    Label("\(l.name): o git não conseguiu ler esta worktree", systemImage: "questionmark.folder").foregroundStyle(Theme.orange)
                                 }
                             }
                             if disk.hasUnsavedWork {
@@ -84,7 +86,9 @@ struct RemoveProjectSheet: View {
                         .listRowBackground(Theme.card)
                     } else {
                         Section {
-                            Label("Tudo commitado e enviado: nada se perde.", systemImage: "checkmark.seal.fill").foregroundStyle(Theme.green).font(.subheadline)
+                            Label("Tudo commitado e enviado.", systemImage: "checkmark.seal.fill").foregroundStyle(Theme.green).font(.subheadline)
+                        } footer: {
+                            Text("Também são apagados os arquivos que o git ignora (.env, bancos locais, builds) e os dados dos bancos do ambiente isolado.")
                         }.listRowBackground(Theme.card)
                     }
                     if let error { Section { Text(error).foregroundStyle(Theme.red).font(.subheadline) }.listRowBackground(Theme.card) }
@@ -104,7 +108,7 @@ struct RemoveProjectSheet: View {
             .pierBackground()
             .navigationTitle("Remover projeto")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { dismiss() }.keyboardShortcut(.cancelAction) } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { dismiss() }.keyboardShortcut(.cancelAction).disabled(working) } }
             .task { await load() }
         }
         .presentationDetents([.large])

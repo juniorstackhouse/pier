@@ -64,8 +64,9 @@ func gh(ctx context.Context, args ...string) ([]byte, error) {
 		quoted[i] = shellQuote(a)
 	}
 	script := "command -v gh >/dev/null 2>&1 || exit 127; exec gh " + strings.Join(quoted, " ")
-	cmd := groups.CommandContext(ctx, loginShell(), "-lc", script)
-	cmd.Env = append(os.Environ(), "GH_PROMPT_DISABLED=1", "GH_NO_UPDATE_NOTIFIER=1", "NO_COLOR=1")
+	shArgs, shVar := shInLogin(script)
+	cmd := groups.CommandContext(ctx, loginShell(), shArgs...)
+	cmd.Env = append(os.Environ(), shVar, "GH_PROMPT_DISABLED=1", "GH_NO_UPDATE_NOTIFIER=1", "NO_COLOR=1")
 	var stderr strings.Builder
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()
@@ -192,7 +193,7 @@ type repoSource struct {
 
 var (
 	slugInput  = regexp.MustCompile(`^([A-Za-z0-9][A-Za-z0-9-]*)/([A-Za-z0-9._-]+)$`)
-	scpInput   = regexp.MustCompile(`^[A-Za-z0-9._-]+@([A-Za-z0-9.-]+):([A-Za-z0-9._~/-]+)$`)
+	scpInput   = regexp.MustCompile(`^[A-Za-z0-9._-]+@([A-Za-z0-9][A-Za-z0-9.-]*):([A-Za-z0-9._~/][A-Za-z0-9._~/-]*)$`)
 	safeRepoPa = regexp.MustCompile(`^/?[A-Za-z0-9._~/-]+$`)
 )
 
@@ -210,7 +211,7 @@ func parseRepoSource(in string) (repoSource, error) {
 	}
 	github := func(owner, repo string) (repoSource, error) {
 		repo = strings.TrimSuffix(repo, ".git")
-		if repo == "" || repo == "." || repo == ".." {
+		if repo == "" || repo == "." || repo == ".." || strings.HasPrefix(owner, "-") || strings.HasPrefix(repo, "-") {
 			return bad()
 		}
 		slug := owner + "/" + repo
@@ -231,7 +232,10 @@ func parseRepoSource(in string) (repoSource, error) {
 		return repoSource{URL: s, Name: repoName(path)}, nil
 	}
 	u, err := url.Parse(s)
-	if err != nil || u.Host == "" || u.User != nil && u.Scheme != "ssh" || !safeRepoPa.MatchString(u.Path) {
+	if err != nil || u.Host == "" || u.User != nil && u.Scheme != "ssh" || !safeRepoPa.MatchString(u.Path) || strings.HasPrefix(u.Hostname(), "-") {
+		return bad()
+	}
+	if _, has := u.User.Password(); u.User != nil && has {
 		return bad()
 	}
 	switch u.Scheme {
@@ -259,6 +263,18 @@ func parseRepoSource(in string) (repoSource, error) {
 		host = u.User.Username() + "@" + host
 	}
 	return repoSource{URL: u.Scheme + "://" + host + "/" + path, Name: repoName(path)}, nil
+}
+
+// Display is the source as it may be shown and logged: its URL without a
+// password.
+func (r repoSource) Display() string {
+	if u, err := url.Parse(r.URL); err == nil && u.User != nil {
+		if _, has := u.User.Password(); has {
+			u.User = url.User(u.User.Username())
+			return u.String()
+		}
+	}
+	return r.URL
 }
 
 // repoName is a repository's name from its URL path.

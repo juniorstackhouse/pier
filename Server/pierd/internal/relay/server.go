@@ -48,7 +48,8 @@ type Server struct {
 	// ShareDomain, when set, makes the relay serve boxes' public links at
 	// https://p-<name>.<ShareDomain> (shares.go); the proxy in front sends
 	// that wildcard here.
-	ShareDomain string
+	ShareDomain         string
+	MaxShareConnsPerBox int
 
 	mu      sync.Mutex
 	boxes   map[identity.Fingerprint]*control
@@ -57,6 +58,11 @@ type Server struct {
 	sources map[string]int
 	usage   map[identity.Fingerprint]*usage
 	shares  map[string]identity.Fingerprint
+	// shareUsage is what public links moved today, per box, apart from
+	// the apps' traffic.
+	shareUsage map[identity.Fingerprint]*usage
+	// MaxShareConnsPerBox bounds a box's public-link connections at once
+	// (0: 32).
 
 	shareOnce sync.Once
 	proxy     *httputil.ReverseProxy
@@ -68,6 +74,9 @@ type control struct {
 	wmu     sync.Mutex
 	pending int
 	active  int
+	// sharePending and shareActive count public-link connections apart
+	// from the apps', so visitors never use up the owner's own.
+	sharePending, shareActive int
 }
 
 // usage is what a box's apps moved today, both ways.
@@ -84,7 +93,9 @@ func (c *control) send(line string) error {
 
 // pendingDial is an app waiting for its box to open the other side.
 type pendingDial struct {
-	box    *control
+	box *control
+	// share marks a public link's connection (counted apart).
+	share  bool
 	joined chan *bufferedConn
 }
 
@@ -354,7 +365,11 @@ func (s *Server) take(id string) *pendingDial {
 	d := s.pending[id]
 	if d != nil {
 		delete(s.pending, id)
-		d.box.pending--
+		if d.share {
+			d.box.sharePending--
+		} else {
+			d.box.pending--
+		}
 	}
 	return d
 }
@@ -456,7 +471,7 @@ func (s *Server) listen(c net.Conn, r *bufio.Reader, args []string) {
 		s.logf("relay: box %s connected", fp.Short())
 	}
 	defer s.logf("relay: box %s disconnected", fp.Short())
-	defer s.forgetShares(fp)
+	defer s.forgetShares(fp, box)
 
 	done := make(chan struct{})
 	defer close(done)

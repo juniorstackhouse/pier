@@ -21,8 +21,22 @@ import (
 // limits, then prints what the person's own status line prints: an existing
 // one is kept, run by pierd's with the same input.
 
-// StatusLineMark is in the command of pierd's status line.
+// StatusLineMark is in the command of pierd's status line (after pierd's
+// path), and in no other tool's: ccusage's own `statusline` says ccusage.
 const StatusLineMark = " statusline"
+
+// isPierdStatusLine reports whether command is pierd's status line.
+func isPierdStatusLine(command, bin string) bool {
+	first, _, _ := strings.Cut(strings.TrimSpace(command), " statusline")
+	if first == strings.TrimSpace(command) {
+		return false
+	}
+	first = strings.Trim(first, "'\"")
+	return first == bin || filepath.Base(first) == "pierd"
+}
+
+// quoteAlways single-quotes s for sh, whatever it holds.
+func quoteAlways(s string) string { return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'" }
 
 // InstallStatusLine puts pierd's status line in a Claude Code settings file.
 // A status line already there is kept and run behind it (--then). Running
@@ -32,12 +46,12 @@ func InstallStatusLine(settingsPath, bin string) (bool, error) {
 	return editJSON(f, rel, func(root map[string]any) bool {
 		sl, _ := root["statusLine"].(map[string]any)
 		old, _ := sl["command"].(string)
-		if strings.Contains(old, shellQuote(bin)+StatusLineMark) || strings.Contains(old, "pierd"+StatusLineMark) {
+		if isPierdStatusLine(old, bin) {
 			return false
 		}
 		command := shellQuote(bin) + StatusLineMark
 		if strings.TrimSpace(old) != "" {
-			command += " --then " + shellQuote(old)
+			command += " --then " + quoteAlways(old)
 		}
 		next := map[string]any{"type": "command", "command": command}
 		for k, v := range sl {
@@ -53,7 +67,18 @@ func InstallStatusLine(settingsPath, bin string) (bool, error) {
 // HasStatusLine reports whether pierd's status line is in a settings file.
 func HasStatusLine(settingsPath string) bool {
 	b, err := os.ReadFile(settingsPath)
-	return err == nil && bytes.Contains(b, []byte(StatusLineMark))
+	if err != nil {
+		return false
+	}
+	var s struct {
+		StatusLine struct {
+			Command string `json:"command"`
+		} `json:"statusLine"`
+	}
+	if json.Unmarshal(b, &s) != nil {
+		return false
+	}
+	return isPierdStatusLine(s.StatusLine.Command, "")
 }
 
 // LimitWindow is one usage window of an account's subscription.

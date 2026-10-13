@@ -2,6 +2,8 @@ package box
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -97,7 +99,7 @@ func detectSetup(dir string) RepoConfig {
 // worktree's, HOST opens it beyond localhost, and Vite and Astro, which read
 // neither, get flags.
 func nodeDevCommand(packageJSON, pm string) string {
-	b, err := os.ReadFile(packageJSON)
+	b, err := readSmallFile(packageJSON, maxRepoFile)
 	if err != nil {
 		return ""
 	}
@@ -126,4 +128,30 @@ func nodeDevCommand(packageJSON, pm string) string {
 		run += flags
 	}
 	return "HOST=0.0.0.0 " + run
+}
+
+// maxRepoFile bounds a file pierd reads out of a repository.
+const maxRepoFile = 1 << 20
+
+// readSmallFile reads a regular file of at most max bytes. A repository is
+// someone else's: a name that is a pipe, a device or a link to one, or a huge
+// file, is refused before it is opened, so it can neither hang pierd nor fill
+// its memory.
+func readSmallFile(path string, max int64) ([]byte, error) {
+	st, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+	if !st.Mode().IsRegular() {
+		return nil, fmt.Errorf("%s is not a regular file", filepath.Base(path))
+	}
+	if st.Size() > max {
+		return nil, fmt.Errorf("%s is larger than %d KB", filepath.Base(path), max>>10)
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	return io.ReadAll(io.LimitReader(f, max))
 }

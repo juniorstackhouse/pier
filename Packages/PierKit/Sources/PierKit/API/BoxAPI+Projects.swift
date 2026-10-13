@@ -58,8 +58,9 @@ extension BoxAPI {
 
     /// Delete a space. With projects in it the box refuses (409 `space_not_empty`) unless `purge`, which removes them from
     /// the disk with it (409 `unsaved_work` for work no remote has, unless `force`). Its projects never move out of it.
-    public func removeSpace(name: String, purge: Bool, force: Bool) async throws -> ProjectPurge {
-        let path = Self.url("/v1/spaces/\(Self.seg(name))", [("purge", purge ? "1" : nil), ("force", force ? "1" : nil)])
+    /// `deleteFiles` also deletes what in it is no project's (409 `space_has_files` without it).
+    public func removeSpace(name: String, purge: Bool, force: Bool, deleteFiles: Bool = false) async throws -> ProjectPurge {
+        let path = Self.url("/v1/spaces/\(Self.seg(name))", [("purge", purge ? "1" : nil), ("force", force ? "1" : nil), ("delete_files", deleteFiles ? "1" : nil)])
         return try decode(try await call(.delete, path).data)
     }
 

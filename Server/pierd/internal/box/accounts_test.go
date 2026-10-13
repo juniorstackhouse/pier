@@ -171,6 +171,7 @@ func (f *fakePublisher) Publish(_ context.Context, name string, port int) (strin
 	return "https://p-" + name + ".example.test", nil
 }
 func (f *fakePublisher) Unpublish(name string) { delete(f.published, name) }
+func (f *fakePublisher) SharePrefix() string   { return "abcd2345" }
 
 func TestSharesPublishOnlyTheWorktreesPorts(t *testing.T) {
 	pub := &fakePublisher{published: map[string]int{}}
@@ -183,7 +184,7 @@ func TestSharesPublishOnlyTheWorktreesPorts(t *testing.T) {
 		t.Skip("no port block on this machine")
 	}
 	var sh Share
-	if status := call(t, c, "POST", "/v1/shares", "", map[string]any{"location": "cal", "worktree": wt.Name, "port": wt.Port}, &sh); status != 200 || pub.published[sh.Name] != wt.Port || !strings.HasPrefix(sh.URL, "https://p-") {
+	if status := call(t, c, "POST", "/v1/shares", "", map[string]any{"location": "cal", "worktree": wt.Name, "port": wt.Port}, &sh); status != 200 || pub.published[sh.Name] != wt.Port || !strings.HasPrefix(sh.URL, "https://p-abcd2345") || len(sh.Name) != 24 {
 		t.Fatalf("share = %d %+v", status, sh)
 	}
 	if time.Until(sh.Expires) < 23*time.Hour {

@@ -202,6 +202,7 @@ struct WorktreeDetailsView: View {
                         .buttonStyle(.borderless).tint(Theme.red).accessibilityLabel("Tirar do ar")
                 }
                 if let e = l.expires { Text("Público até \(e.formatted(date: .abbreviated, time: .shortened)): qualquer pessoa com o link vê a página.").font(.caption2).foregroundStyle(Theme.textFaint) }
+                Text("Não publique servidores com console de depuração ligado (web-console, debug toolbar): quem tem o link chega a eles.").font(.caption2).foregroundStyle(Theme.orange)
             }
             .accessibilityIdentifier("public-link-\(port)")
         } else if conn?.info?.has("shares") == true {
@@ -215,6 +216,7 @@ struct WorktreeDetailsView: View {
                 .font(.caption.weight(.semibold))
             }
             .buttonStyle(.borderless)
+            .disabled(store.busy.contains("link-\(port)"))
             .accessibilityIdentifier("public-link-create-\(port)")
         }
     }

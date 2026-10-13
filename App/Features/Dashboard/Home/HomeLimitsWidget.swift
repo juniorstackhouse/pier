@@ -21,6 +21,8 @@ struct LimitsWidget: View {
                 else if model.boxes.allSatisfy({ $0.info?.has("accounts") != true }) {
                     HomeEmpty(symbol: "gauge.with.dots.needle.0percent", title: "Atualize o pierd", hint: HL("As boxes mostram os limites a partir desta versão do pierd."))
                 } else { HomeSkeleton(rows: 2) }
+            } else if list.isEmpty && model.boxes.allSatisfy({ $0.info?.has("accounts") != true }) {
+                HomeEmpty(symbol: "gauge.with.dots.needle.0percent", title: "Atualize o pierd", hint: HL("As boxes mostram os limites a partir desta versão do pierd."))
             } else if list.isEmpty {
                 HomeEmpty(symbol: "gauge.with.dots.needle.0percent", title: "Nenhuma conta", hint: HL("Instale o Claude Code ou o Codex na box."))
             } else {
@@ -99,8 +101,12 @@ struct LimitsWidget: View {
         guard let conn = model.connection(for: e.box) else { return }
         busy = e.id
         defer { busy = nil }
-        _ = try? await BoxAPI(transport: conn.raw).makeDefaultAccount(id: e.account.id)
-        model.toast = AppToast(text: String(localized: "Novos agentes em \(e.box) usam “\(e.account.name)”."), symbol: "person.crop.circle.badge.checkmark")
+        do {
+            _ = try await BoxAPI(transport: conn.raw).makeDefaultAccount(id: e.account.id)
+            model.toast = AppToast(text: String(localized: "Novos agentes em \(e.box) usam “\(e.account.name)”."), symbol: "person.crop.circle.badge.checkmark")
+        } catch {
+            model.toast = AppToast(text: ComposeErrorText.message(error), symbol: "exclamationmark.triangle")
+        }
         await home.reloadLimits()
     }
 

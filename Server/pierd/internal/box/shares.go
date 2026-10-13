@@ -29,6 +29,8 @@ import (
 type Publisher interface {
 	Publish(ctx context.Context, name string, port int) (string, error)
 	Unpublish(name string)
+	// SharePrefix is how this box's link names start (its key's).
+	SharePrefix() string
 }
 
 // Share is one public link (GET /v1/shares).
@@ -124,10 +126,11 @@ func (b *Box) expireShares() {
 	}
 }
 
-func newShareName() string {
-	var b [15]byte
+// newShareName is the box's key prefix and 16 random characters (80 bits).
+func newShareName(prefix string) string {
+	var b [10]byte
 	rand.Read(b[:])
-	return strings.ToLower(base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(b[:]))
+	return prefix + strings.ToLower(base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(b[:]))
 }
 
 // shareablePort says whether port belongs to the worktree: its own block,
@@ -189,7 +192,7 @@ func (b *Box) addShare(w http.ResponseWriter, r *http.Request) error {
 	if err := b.before(r, "share.create", map[string]any{"location": loc.Name, "worktree": wt.Name, "port": req.Port, "hours": hours}); err != nil {
 		return err
 	}
-	name := newShareName()
+	name := newShareName(b.Publisher.SharePrefix())
 	url, err := b.Publisher.Publish(r.Context(), name, req.Port)
 	if err != nil {
 		b.Publisher.Unpublish(name)
