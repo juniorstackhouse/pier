@@ -220,7 +220,12 @@ func (b *Box) createAgentSession(ctx context.Context, name, location, dir, comma
 func (b *Box) sessionEnv(ctx context.Context, dir string) []string {
 	loc, wt, ok := b.worktreeAt(ctx, dir)
 	if !ok {
-		return nil
+		// A chat or a home terminal: no project, the box's default accounts.
+		var env []string
+		for k, v := range b.accountVars("") {
+			env = append(env, k+"="+v)
+		}
+		return env
 	}
 	env, err := b.WorktreeEnv(ctx, loc.Name, wt)
 	if err != nil {

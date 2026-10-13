@@ -45,6 +45,15 @@ type Space struct {
 
 var ErrSpaceNotEmpty = errors.New("the space still holds projects")
 
+// ErrSpaceHasFiles refuses to delete a space holding files that are no
+// project's (an unregistered repository, notes…) unless asked to with
+// delete_files=1.
+var ErrSpaceHasFiles = errors.New("the space holds files that are not projects")
+
+// spaceMarker is in every folder made as a space: only those are spaces, so
+// a folder that just happens to be there is never deleted as one.
+const spaceMarker = ".pier-space"
+
 func (l *Locations) settingsPath() string {
 	return filepath.Join(filepath.Dir(l.path), "settings.json")
 }
@@ -80,6 +89,17 @@ func (l *Locations) SetProjectsRoot(root string) (Settings, error) {
 		}
 		if resolved, err := filepath.EvalSymlinks(abs); err == nil {
 			abs = resolved
+		}
+		// The folder pierd may delete projects and spaces in: never the home
+		// folder or one holding it.
+		if home, err := os.UserHomeDir(); err == nil {
+			h := filepath.Clean(home)
+			if r, err := filepath.EvalSymlinks(h); err == nil {
+				h = r
+			}
+			if under(h, abs) {
+				return s, badRequest("the projects folder cannot be the home folder or one holding it: use a folder such as %s", filepath.Join(h, "code"))
+			}
 		}
 		s.ProjectsRoot = abs
 	}
@@ -156,7 +176,7 @@ func (l *Locations) Spaces(ctx context.Context) []Space {
 			continue
 		}
 		p := filepath.Join(root, e.Name())
-		if _, err := os.Stat(filepath.Join(p, ".git")); err == nil {
+		if st, err := os.Lstat(filepath.Join(p, spaceMarker)); err != nil || !st.Mode().IsRegular() {
 			continue
 		}
 		s := Space{Name: e.Name(), Path: p}
@@ -187,11 +207,20 @@ func (l *Locations) spaceDir(name string, create bool) (string, error) {
 	if _, err := os.Stat(filepath.Join(p, ".git")); err == nil {
 		return "", badRequest("%s is a project, not a space", name)
 	}
-	if create {
+	_, markErr := os.Lstat(filepath.Join(p, spaceMarker))
+	switch {
+	case markErr == nil:
+	case create:
+		if fi, err := os.Lstat(p); err == nil && !fi.IsDir() {
+			return "", badRequest("%s is a file, not a folder", p)
+		}
 		if err := os.MkdirAll(p, 0o755); err != nil {
 			return "", err
 		}
-	} else if fi, err := os.Stat(p); err != nil || !fi.IsDir() {
+		if err := os.WriteFile(filepath.Join(p, spaceMarker), []byte("A space of Pier's projects folder: the projects in it are removed with it.\n"), 0o644); err != nil {
+			return "", err
+		}
+	default:
 		return "", httpError{http.StatusNotFound, "no space called " + name}
 	}
 	return p, nil
@@ -259,7 +288,8 @@ func (b *Box) removeSpace(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	purge, force := r.URL.Query().Get("purge") == "1", r.URL.Query().Get("force") == "1"
+	q := r.URL.Query()
+	purge, force, deleteFiles := q.Get("purge") == "1", q.Get("force") == "1", q.Get("delete_files") == "1"
 	locs, err := b.Locations.List(ctx)
 	if err != nil {
 		return err
@@ -288,7 +318,35 @@ func (b *Box) removeSpace(w http.ResponseWriter, r *http.Request) error {
 			return fmt.Errorf("%w: %s: %s", ErrUnsavedWork, l.Name, unsavedSummary(disks[i]))
 		}
 	}
-	if err := b.before(r, "space.remove", map[string]any{"space": name, "path": dir, "projects": len(inside)}); err != nil {
+	// What is in it besides its projects (and their worktrees) goes only
+	// when asked to: an unregistered repository may hold work.
+	var others []string
+	if entries, err := os.ReadDir(dir); err == nil {
+		for _, e := range entries {
+			p := filepath.Join(dir, e.Name())
+			if e.Name() == spaceMarker {
+				continue
+			}
+			known := false
+			for _, l := range inside {
+				for _, wt := range l.Worktrees {
+					known = known || samePath(wt.Path, p)
+				}
+				known = known || samePath(l.Path, p)
+			}
+			if !known {
+				others = append(others, e.Name())
+			}
+		}
+	}
+	if len(others) > 0 && !deleteFiles {
+		shown := others
+		if len(shown) > 5 {
+			shown = append(shown[:5:5], fmt.Sprintf("and %d more", len(others)-5))
+		}
+		return fmt.Errorf("%w: %s (delete them with it with delete_files=1)", ErrSpaceHasFiles, strings.Join(shown, ", "))
+	}
+	if err := b.before(r, "space.remove", map[string]any{"space": name, "path": dir, "projects": len(inside), "files": len(others)}); err != nil {
 		return err
 	}
 	var freed int64
@@ -298,15 +356,11 @@ func (b *Box) removeSpace(w http.ResponseWriter, r *http.Request) error {
 		}
 		freed += disks[i].Bytes
 	}
-	// What is left is not any project's: it goes only when asked to.
-	if err := os.Remove(dir); err != nil {
-		if !force {
-			return httpError{http.StatusConflict, fmt.Sprintf("%s holds files that are not projects; remove it with force=1 to delete them too", dir)}
-		}
+	if len(others) > 0 {
 		freed += dirSize(ctx, dir)
-		if err := os.RemoveAll(dir); err != nil {
-			return err
-		}
+	}
+	if err := os.RemoveAll(dir); err != nil {
+		return err
 	}
 	b.publish(r, "space.removed", map[string]any{"space": name, "path": dir, "freed": freed})
 	writeJSON(w, map[string]any{"removed": name, "freed": freed})

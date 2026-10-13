@@ -111,12 +111,40 @@ func (c *clones) forget(id string) bool {
 func (c *clones) inFlight(name, path string) bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	return c.inFlightLocked(name, path)
+}
+
+func (c *clones) inFlightLocked(name, path string) bool {
 	for _, cl := range c.all {
-		if (cl.State == CloneCloning || cl.State == CloneSettingUp) && (cl.Location == name || cl.Path == path) {
+		if (cl.State == CloneCloning || cl.State == CloneSettingUp) && (name != "" && strings.EqualFold(cl.Location, name) || path != "" && cl.Path == path) {
 			return true
 		}
 	}
 	return false
+}
+
+// reserve adds cl unless a running clone already uses its name or folder:
+// the check and the claim are one step, so two requests never both win.
+func (c *clones) reserve(cl *Clone) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.inFlightLocked(cl.Location, cl.Path) {
+		return false
+	}
+	c.all = append(c.all, cl)
+	return true
+}
+
+// drop forgets a clone that never started.
+func (c *clones) drop(id string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for i, cl := range c.all {
+		if cl.ID == id {
+			c.all = append(c.all[:i], c.all[i+1:]...)
+			return
+		}
+	}
 }
 
 // CloneRequest is the body of POST /v1/clones.
@@ -223,15 +251,20 @@ func (b *Box) addClone(w http.ResponseWriter, r *http.Request) error {
 	} else if !trust.ValidName(name) {
 		return badRequest("invalid location name %q", name)
 	}
+	b.clones.mu.Lock()
+	for _, cl := range b.clones.all {
+		if cl.State == CloneCloning || cl.State == CloneSettingUp {
+			taken[strings.ToLower(cl.Location)] = true
+		}
+	}
+	b.clones.mu.Unlock()
 	name = locationName(name, taken)
 	parent := req.Dir
 	root := b.Locations.Settings().ProjectsRoot
 	switch {
 	case req.Space != "":
-		if parent, err = b.Locations.spaceDir(req.Space, false); err != nil && root != "" && trust.ValidName(req.Space) {
-			parent, err = filepath.Join(root, req.Space), nil
-		}
-		if err != nil {
+		// A space named for the first time is made, with its marker.
+		if parent, err = b.Locations.spaceDir(req.Space, true); err != nil {
 			return err
 		}
 	case parent == "" && root != "":
@@ -256,7 +289,7 @@ func (b *Box) addClone(w http.ResponseWriter, r *http.Request) error {
 		if i > 1 {
 			p += "-" + strconv.Itoa(i)
 		}
-		if _, err := os.Stat(p); os.IsNotExist(err) {
+		if _, err := os.Stat(p); os.IsNotExist(err) && !b.clones.inFlight("", p) {
 			path = p
 			break
 		}
@@ -265,18 +298,18 @@ func (b *Box) addClone(w http.ResponseWriter, r *http.Request) error {
 			break
 		}
 	}
-	if b.clones.inFlight(name, path) {
-		return httpError{http.StatusConflict, fmt.Sprintf("%s is being cloned already", name)}
-	}
-	if err := b.before(r, "location.clone", map[string]any{"location": name, "path": path, "repo": src.URL, "setup": req.Setup}); err != nil {
-		return err
-	}
-	cl := &Clone{ID: newCloneID(), Repo: req.Repo, Slug: src.Slug, Location: name, Path: path, State: CloneCloning, Started: time.Now()}
+	cl := &Clone{ID: newCloneID(), Repo: src.Display(), Slug: src.Slug, Location: name, Path: path, State: CloneCloning, Started: time.Now()}
 	if adopt {
 		cl.State = CloneSettingUp
 	}
-	b.clones.add(cl)
-	b.publish(r, "clone.started", map[string]any{"id": cl.ID, "location": name, "path": path, "repo": req.Repo})
+	if !b.clones.reserve(cl) {
+		return httpError{http.StatusConflict, fmt.Sprintf("%s is being cloned already", name)}
+	}
+	if err := b.before(r, "location.clone", map[string]any{"location": name, "path": path, "repo": src.Display(), "setup": req.Setup}); err != nil {
+		b.clones.drop(cl.ID)
+		return err
+	}
+	b.publish(r, "clone.started", map[string]any{"id": cl.ID, "location": name, "path": path, "repo": cl.Repo})
 	go b.runClone(origin(r), *cl, src, req.Setup, adopt)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
@@ -323,9 +356,17 @@ func (b *Box) runClone(from string, cl Clone, src repoSource, setup, adopt bool)
 			return
 		}
 		b.own(cl.Path)
-		if err := cloneRepo(ctx, src, cl.Path, logPath); err != nil {
-			os.RemoveAll(cl.Path)
+		// Into a folder of this clone's own, renamed into place when done: a
+		// failure removes only what this clone made.
+		tmp := filepath.Join(filepath.Dir(cl.Path), "."+filepath.Base(cl.Path)+".pier-clone-"+cl.ID)
+		if err := cloneRepo(ctx, src, tmp, logPath); err != nil {
+			os.RemoveAll(tmp)
 			fail(err)
+			return
+		}
+		if err := os.Rename(tmp, cl.Path); err != nil {
+			os.RemoveAll(tmp)
+			fail(fmt.Errorf("%s appeared while cloning: %w", cl.Path, err))
 			return
 		}
 	}
@@ -393,8 +434,9 @@ func cloneRepo(ctx context.Context, src repoSource, dest, logPath string) error 
 		script = "if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then gh repo clone " +
 			shellQuote(src.Slug) + " " + shellQuote(dest) + "; else " + gitClone + "; fi"
 	}
-	cmd := groups.CommandContext(ctx, loginShell(), "-lc", script)
-	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0", "GH_PROMPT_DISABLED=1", "GIT_SSH_COMMAND=ssh -o BatchMode=yes")
+	shArgs, shVar := shInLogin(script)
+	cmd := groups.CommandContext(ctx, loginShell(), shArgs...)
+	cmd.Env = append(os.Environ(), shVar, "GIT_TERMINAL_PROMPT=0", "GH_PROMPT_DISABLED=1", "GIT_SSH_COMMAND=ssh -o BatchMode=yes")
 	cmd.Stdout, cmd.Stderr = log, log
 	cmd.WaitDelay = 5 * time.Second
 	if err := cmd.Run(); err != nil {
@@ -456,6 +498,9 @@ type DiskUse struct {
 	Unpushed []UnpushedBranch `json:"unpushed"`
 	Stashes  int              `json:"stashes"`
 	Sessions int              `json:"sessions"`
+	// Unreadable are worktrees git could not read: what they hold is not
+	// known, so it counts as work that would be lost.
+	Unreadable []string `json:"unreadable"`
 	// Removable is false when the project cannot be removed from the disk
 	// at all, with Reason saying why (forgetting it still works).
 	Removable bool   `json:"removable"`
@@ -475,7 +520,7 @@ type UnpushedBranch struct {
 
 // Unsaved reports whether removing the project loses work.
 func (d DiskUse) Unsaved() bool {
-	return len(d.Uncommitted) > 0 || len(d.Unpushed) > 0 || d.Stashes > 0
+	return len(d.Uncommitted) > 0 || len(d.Unpushed) > 0 || d.Stashes > 0 || len(d.Unreadable) > 0
 }
 
 // ErrUnsavedWork refuses to remove a project from the disk with work that
@@ -483,13 +528,24 @@ func (d DiskUse) Unsaved() bool {
 var ErrUnsavedWork = errors.New("the project has work that is not on any remote")
 
 func (b *Box) diskUse(ctx context.Context, loc Location) DiskUse {
-	d := DiskUse{Paths: []string{}, Uncommitted: []UncommittedWorktree{}, Unpushed: []UnpushedBranch{}, Remote: loc.Remote}
+	d := DiskUse{Paths: []string{}, Uncommitted: []UncommittedWorktree{}, Unpushed: []UnpushedBranch{}, Unreadable: []string{}, Remote: loc.Remote}
 	d.Removable, d.Reason = b.purgeable(ctx, loc)
 	for _, wt := range loc.Worktrees {
 		d.Paths = append(d.Paths, wt.Path)
-		if out, err := git(ctx, "-C", wt.Path, "status", "--porcelain=v1"); err == nil {
-			if s := strings.TrimRight(string(out), "\n"); strings.TrimSpace(s) != "" {
-				d.Uncommitted = append(d.Uncommitted, UncommittedWorktree{Worktree: wt.Name, Files: strings.Count(s, "\n") + 1})
+		out, err := git(ctx, "-C", wt.Path, "status", "--porcelain=v1")
+		if err != nil {
+			d.Unreadable = append(d.Unreadable, wt.Name)
+			continue
+		}
+		if s := strings.TrimRight(string(out), "\n"); strings.TrimSpace(s) != "" {
+			d.Uncommitted = append(d.Uncommitted, UncommittedWorktree{Worktree: wt.Name, Files: strings.Count(s, "\n") + 1})
+		}
+		// A detached HEAD's commits are on no branch: counted here.
+		if wt.Branch == "" {
+			if n, err := git(ctx, "-C", wt.Path, "rev-list", "--count", "HEAD", "--not", "--remotes", "--branches"); err == nil {
+				if c, _ := strconv.Atoi(strings.TrimSpace(string(n))); c > 0 {
+					d.Unpushed = append(d.Unpushed, UnpushedBranch{Branch: wt.Name + " (HEAD)", Commits: c})
+				}
 			}
 		}
 	}
@@ -570,9 +626,21 @@ func (b *Box) purgeable(ctx context.Context, loc Location) (bool, string) {
 			return false, clean + " is the projects folder or one of its spaces"
 		}
 	}
+	// Only a repository's own top folder: a location that is a folder inside
+	// a repository would take the whole repository's worktrees with it.
+	if out, err := git(ctx, "-C", clean, "rev-parse", "--show-toplevel"); err != nil || !samePath(strings.TrimSpace(string(out)), clean) {
+		return false, clean + " is not the top folder of its git repository; forget it instead"
+	}
 	paths := []string{clean}
 	for _, wt := range loc.Worktrees {
 		paths = append(paths, filepath.Clean(wt.Path))
+	}
+	if root := b.Locations.Settings().ProjectsRoot; root != "" {
+		for _, p := range paths[1:] {
+			if !under(p, root) {
+				return false, "the worktree " + p + " is outside the box's projects folder (" + root + ")"
+			}
+		}
 	}
 	if locs, err := b.Locations.List(ctx); err == nil {
 		for _, other := range locs {
@@ -637,6 +705,7 @@ func (b *Box) purge(r *http.Request, loc Location, d DiskUse) error {
 		b.Locations.Ports.Release(wt.Path)
 	}
 	b.dropEnvironment(name, true)
+	b.dropShares(name, "")
 	// Forgotten first: a location whose folder is half gone is worse than
 	// a folder nothing points at.
 	if err := b.Locations.Remove(name); err != nil {
@@ -674,6 +743,9 @@ func unsavedSummary(d DiskUse) string {
 	}
 	if d.Stashes > 0 {
 		parts = append(parts, fmt.Sprintf("%d stashes", d.Stashes))
+	}
+	for _, w := range d.Unreadable {
+		parts = append(parts, w+" could not be read by git")
 	}
 	return strings.Join(parts, "; ") + " (remove with force=1 to lose them)"
 }

@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"pier/pierd/internal/doctor"
@@ -72,6 +73,16 @@ type Box struct {
 	clones clones
 	// envState is how each location's environment build went.
 	envState envStates
+	// envLocks keeps one environment apply per location at a time.
+	envLocks sync.Map
+	// Publisher, when set, is the relay the box's public links go through.
+	Publisher Publisher
+	// Exe is pierd's own binary, for the hooks and status line it puts in
+	// accounts' folders.
+	Exe        string
+	accounts   accountStore
+	sharesOnce sync.Once
+	shareList  *shareStore
 }
 
 // Mount registers the box's routes on s. They are reachable by paired
@@ -98,6 +109,21 @@ func (b *Box) Mount(s *wire.Server) {
 	route("POST /v1/clones", b.addClone)
 	route("DELETE /v1/clones/{id}", b.forgetClone)
 	route("GET /v1/github/repos", b.listGitHubRepos)
+	route("GET /v1/env", b.getEnv)
+	route("PUT /v1/env", b.putEnv)
+	route("GET /v1/skills", b.listSkills)
+	route("PUT /v1/skills/{id}", b.setSkill)
+	route("DELETE /v1/skills/{id}", b.setSkill)
+	route("GET /v1/accounts", b.listAccounts)
+	route("POST /v1/accounts", b.addAccount)
+	route("PATCH /v1/accounts/{id}", b.updateAccount)
+	route("DELETE /v1/accounts/{id}", b.removeAccount)
+	route("POST /v1/accounts/{id}/login", b.loginAccount)
+	route("POST /v1/limits/enable", b.enableLimits)
+	route("PUT /v1/locations/{name}/accounts", b.putLocationAccounts)
+	route("GET /v1/shares", b.listShares)
+	route("POST /v1/shares", b.addShare)
+	route("DELETE /v1/shares/{name}", b.removeShare)
 	route("GET /v1/settings", b.getSettings)
 	route("PUT /v1/settings", b.putSettings)
 	route("POST /v1/spaces", b.addSpace)
@@ -183,7 +209,7 @@ func statusFor(err error) int {
 		return http.StatusConflict
 	case errors.Is(err, errTmuxMissing):
 		return http.StatusServiceUnavailable
-	case errors.Is(err, ErrUnsavedWork), errors.Is(err, ErrSpaceNotEmpty):
+	case errors.Is(err, ErrUnsavedWork), errors.Is(err, ErrSpaceNotEmpty), errors.Is(err, ErrSpaceHasFiles):
 		return http.StatusConflict
 	}
 	return http.StatusBadRequest
@@ -280,6 +306,15 @@ func (b *Box) removeLocation(w http.ResponseWriter, r *http.Request) error {
 	}
 	if err := b.before(r, "location.remove", map[string]any{"location": name}); err != nil {
 		return err
+	}
+	// Forgotten, its folders stay; what pierd ran for it stops: its links,
+	// its services, its environment's containers (their data kept).
+	if loc, err := b.Locations.Get(r.Context(), name); err == nil {
+		b.dropShares(name, "")
+		for _, wt := range loc.Worktrees {
+			b.stopServices(name, wt.Name)
+		}
+		b.dropEnvironment(name, false)
 	}
 	if err := b.Locations.Remove(name); err != nil {
 		return err
@@ -394,6 +429,7 @@ func (b *Box) removeWorktree(w http.ResponseWriter, r *http.Request) error {
 	b.stopServices(location, name)
 	from := origin(r)
 	removed := func(ctx context.Context) {
+		b.dropShares(location, name)
 		b.stopSessionsIn(from, dir)
 		b.Locations.Ports.Release(dir)
 		if branch != "" {

@@ -115,8 +115,10 @@ final class ProjectsUITests: XCTestCase {
         app.buttons["Criar"].tap()
         XCTAssertTrue(element("space-pessoal").waitForExistence(timeout: 10), "the new space is not listed")
         shot("projects-folder")
+        app.navigationBars.buttons.firstMatch.tap()
 
         // A project's environment: PHP 8.4 and MySQL 8.0.
+        XCTAssertTrue(app.tabBars.buttons["Projetos"].waitForExistence(timeout: 5))
         app.tabBars.buttons["Projetos"].tap()
         let project = app.staticTexts["sandbox"].firstMatch
         XCTAssertTrue(project.waitForExistence(timeout: 10))
@@ -137,5 +139,72 @@ final class ProjectsUITests: XCTestCase {
         app.swipeUp()
         XCTAssertTrue(text("DB_HOST").waitForExistence(timeout: 5), "the worktrees' variables are not shown")
         shot("project-environment")
+    }
+
+    func testLimitsAccountsVariablesAndPublicLink() throws {
+        app.launch()
+        XCTAssertTrue(app.navigationBars["Projetos"].waitForExistence(timeout: 15))
+        if element("sidebar-home").exists { throw XCTSkip("regular width: covered on the iPhone") }
+
+        // Home: the limits, Claude's to be turned on.
+        app.tabBars.buttons["Início"].tap()
+        let enable = element("limits-enable")
+        for _ in 0..<6 where !enable.exists { app.swipeUp() }
+        XCTAssertTrue(enable.waitForExistence(timeout: 10), "no limits widget with Claude's to turn on")
+        XCTAssertTrue(text("12%").exists, "Codex's limits are not shown")
+        enable.tap()
+        XCTAssertTrue(text("81%").waitForExistence(timeout: 10), "Claude's limits did not show once turned on")
+        shot("home-limits")
+
+        // Ajustes: a second Claude account, signed in from a terminal.
+        app.tabBars.buttons["Ajustes"].tap()
+        let accounts = element("settings-accounts-devbox")
+        for _ in 0..<4 where !accounts.isHittable { app.swipeUp() }
+        accounts.tap()
+        element("account-add-claude").tap()
+        app.textFields.firstMatch.typeText("Trabalho")
+        app.buttons["Criar e entrar"].tap()
+        XCTAssertTrue(app.navigationBars.firstMatch.waitForExistence(timeout: 10))
+        app.navigationBars.buttons.firstMatch.tap()
+        XCTAssertTrue(text("Trabalho").waitForExistence(timeout: 10), "the new account is not listed")
+        shot("accounts")
+        app.navigationBars.buttons.firstMatch.tap()
+
+        // The box's variables, with a note.
+        let vars = element("settings-vars-devbox")
+        for _ in 0..<4 where !vars.isHittable { app.swipeUp() }
+        vars.tap()
+        XCTAssertTrue(element("var-value-STAGING_URL").waitForExistence(timeout: 10), "the variables did not load")
+        let key = element("var-new-key")
+        key.tap()
+        key.typeText("REGION")
+        element("var-add").tap()
+        element("var-value-REGION").tap()
+        element("var-value-REGION").typeText("sa-east-1")
+        element("vars-save").tap()
+        XCTAssertTrue(text("Variáveis salvas").waitForExistence(timeout: 10), "saving did not confirm")
+        XCTAssertTrue(element("skill-pier-box").exists, "no skills")
+        shot("variables")
+        app.navigationBars.buttons.firstMatch.tap()
+
+        // A worktree's dev server gets a public link; the project picks the new account.
+        XCTAssertTrue(app.tabBars.buttons["Projetos"].waitForExistence(timeout: 5))
+        app.tabBars.buttons["Projetos"].tap()
+        app.staticTexts["sandbox"].firstMatch.tap()
+        let picker = element("project-account-claude")
+        for _ in 0..<4 where !picker.waitForExistence(timeout: 3) { app.swipeUp() }
+        XCTAssertTrue(picker.waitForExistence(timeout: 10), "no account picker on the project")
+        picker.tap()
+        app.buttons["Trabalho"].firstMatch.tap()
+        let details = app.buttons["Detalhes: serviços e visualização"].firstMatch
+        for _ in 0..<4 where !details.isHittable { app.swipeDown() }
+        XCTAssertTrue(details.waitForExistence(timeout: 5))
+        details.tap()
+        let create = element("public-link-create-41000")
+        XCTAssertTrue(create.waitForExistence(timeout: 10), "no public link button on the dev server")
+        create.tap()
+        XCTAssertTrue(element("public-link-41000").waitForExistence(timeout: 10), "the public link did not show")
+        XCTAssertTrue(text("docktopier.com").exists)
+        shot("public-link")
     }
 }

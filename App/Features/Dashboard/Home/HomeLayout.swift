@@ -2,7 +2,7 @@ import SwiftUI
 
 /// The Home widgets.
 enum HomeWidgetKind: String, CaseIterable, Codable, Identifiable {
-    case needsYou, working, finished, prs, ci, git, services, areas
+    case needsYou, working, finished, prs, ci, git, services, areas, limits
 
     var id: String { rawValue }
 
@@ -16,6 +16,7 @@ enum HomeWidgetKind: String, CaseIterable, Codable, Identifiable {
         case .git: "Atividade git"
         case .services: "Serviços rodando"
         case .areas: "Áreas recentes"
+        case .limits: "Limites de uso"
         }
     }
     var subtitle: LocalizedStringKey {
@@ -28,6 +29,7 @@ enum HomeWidgetKind: String, CaseIterable, Codable, Identifiable {
         case .git: "Commits e linhas por dia nas últimas duas semanas"
         case .services: "Servidores de desenvolvimento nas suas worktrees"
         case .areas: "Worktrees em que você e seus agentes trabalharam"
+        case .limits: "Quanto já foi usado das assinaturas do Claude e do Codex, por conta"
         }
     }
     var symbol: String {
@@ -40,10 +42,11 @@ enum HomeWidgetKind: String, CaseIterable, Codable, Identifiable {
         case .git: "chart.bar.xaxis"
         case .services: "dot.radiowaves.left.and.right"
         case .areas: "arrow.triangle.branch"
+        case .limits: "gauge.with.dots.needle.50percent"
         }
     }
     /// Read on the box with gh/git (cached, refreshed every few minutes) rather than live from sessions.
-    var isRemote: Bool { self == .prs || self == .ci || self == .git }
+    var isRemote: Bool { self == .prs || self == .ci || self == .git || self == .limits }
 }
 
 /// Order and visibility of the widgets, kept on the phone (UserDefaults).
@@ -52,7 +55,7 @@ final class HomeLayout {
     struct Saved: Codable { var order: [HomeWidgetKind]; var hidden: Set<HomeWidgetKind> }
 
     private static let key = "home.layout.v1"
-    static let defaultOrder: [HomeWidgetKind] = [.needsYou, .working, .finished, .prs, .ci, .git, .services, .areas]
+    static let defaultOrder: [HomeWidgetKind] = [.needsYou, .working, .finished, .limits, .prs, .ci, .git, .services, .areas]
 
     private(set) var order: [HomeWidgetKind]
     private(set) var hidden: Set<HomeWidgetKind>

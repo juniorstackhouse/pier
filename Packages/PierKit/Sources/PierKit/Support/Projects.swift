@@ -60,7 +60,8 @@ public enum Projects {
         d.uncommitted.map { (UnsavedKind.uncommitted, $0.worktree, $0.files) }
             + d.unpushed.map { (UnsavedKind.unpushed, $0.branch, $0.commits) }
             + (d.stashes > 0 ? [(UnsavedKind.stash, "", d.stashes)] : [])
+            + d.unreadable.map { (UnsavedKind.unreadable, $0, 0) }
     }
 
-    public enum UnsavedKind: Sendable { case uncommitted, unpushed, stash }
+    public enum UnsavedKind: Sendable { case uncommitted, unpushed, stash, unreadable }
 }

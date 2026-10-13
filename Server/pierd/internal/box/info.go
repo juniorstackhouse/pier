@@ -92,12 +92,15 @@ func (b *Box) handleInfo(w http.ResponseWriter, r *http.Request) error {
 // environments: GET/PUT /v1/settings (the projects folder), /v1/spaces and
 // GET/PUT …/locations/{name}/environment.
 func (b *Box) Capabilities() []string {
-	caps := []string{"transcript", "history", "diff", "titles", "answer", "session.home", "session.chat", "draft", "journal", "touched", "files", "projects", "environments"}
+	caps := []string{"transcript", "history", "diff", "titles", "answer", "session.home", "session.chat", "draft", "journal", "touched", "files", "projects", "environments", "accounts", "box.env"}
 	if b.Turns != nil {
 		caps = append(caps, "turns", "queue", "ask", "controls")
 	}
 	if b.Invites != nil {
 		caps = append(caps, "pair.invite")
+	}
+	if b.Publisher != nil {
+		caps = append(caps, "shares")
 	}
 	return caps
 }

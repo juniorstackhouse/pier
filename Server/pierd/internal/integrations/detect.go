@@ -44,13 +44,18 @@ var Tools = []Tool{
 // nobody is told to sign in on a hunch. A signed-out agent stops at its login prompt the moment a session starts, and
 // nothing in the app says why: doctor does (docs/ARCHITECTURE.md, "The box needs you too").
 func (t Tool) SignedIn(home string) (signedIn, known bool) {
+	return t.SignedInAt(t.ConfigDir(home))
+}
+
+// SignedInAt is SignedIn for the settings folder dir (an account's).
+func (t Tool) SignedInAt(dir string) (signedIn, known bool) {
 	if t.keyVar != "" && os.Getenv(t.keyVar) != "" {
 		return true, true
 	}
 	if t.credentials == "" {
 		return true, false
 	}
-	if st, err := os.Stat(filepath.Join(t.ConfigDir(home), t.credentials)); err == nil && !st.IsDir() && st.Size() > 0 {
+	if st, err := os.Stat(filepath.Join(dir, t.credentials)); err == nil && !st.IsDir() && st.Size() > 0 {
 		return true, true
 	}
 	if t.ID == "claude" && runtime.GOOS == "darwin" {

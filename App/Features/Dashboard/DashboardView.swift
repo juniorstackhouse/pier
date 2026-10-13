@@ -109,6 +109,7 @@ struct DashboardView: View {
         case .git: GitActivityWidget(home: home)
         case .services: ServicesWidget(home: home)
         case .areas: AreasWidget()
+        case .limits: LimitsWidget(home: home)
         }
     }
 

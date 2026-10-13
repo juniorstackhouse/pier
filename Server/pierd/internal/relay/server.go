@@ -14,6 +14,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"net/http/httputil"
 	"strings"
 	"sync"
 	"time"
@@ -44,6 +45,11 @@ type Server struct {
 	BehindProxy bool
 	// Now is the clock (tests).
 	Now func() time.Time
+	// ShareDomain, when set, makes the relay serve boxes' public links at
+	// https://p-<name>.<ShareDomain> (shares.go); the proxy in front sends
+	// that wildcard here.
+	ShareDomain         string
+	MaxShareConnsPerBox int
 
 	mu      sync.Mutex
 	boxes   map[identity.Fingerprint]*control
@@ -51,6 +57,15 @@ type Server struct {
 	conns   map[net.Conn]struct{}
 	sources map[string]int
 	usage   map[identity.Fingerprint]*usage
+	shares  map[string]identity.Fingerprint
+	// shareUsage is what public links moved today, per box, apart from
+	// the apps' traffic.
+	shareUsage map[identity.Fingerprint]*usage
+	// MaxShareConnsPerBox bounds a box's public-link connections at once
+	// (0: 32).
+
+	shareOnce sync.Once
+	proxy     *httputil.ReverseProxy
 }
 
 // control is a registered box's control connection.
@@ -59,6 +74,9 @@ type control struct {
 	wmu     sync.Mutex
 	pending int
 	active  int
+	// sharePending and shareActive count public-link connections apart
+	// from the apps', so visitors never use up the owner's own.
+	sharePending, shareActive int
 }
 
 // usage is what a box's apps moved today, both ways.
@@ -75,7 +93,9 @@ func (c *control) send(line string) error {
 
 // pendingDial is an app waiting for its box to open the other side.
 type pendingDial struct {
-	box    *control
+	box *control
+	// share marks a public link's connection (counted apart).
+	share  bool
 	joined chan *bufferedConn
 }
 
@@ -205,6 +225,16 @@ func (s *Server) handle(c net.Conn) {
 	}()
 	c.SetReadDeadline(time.Now().Add(setupWithin))
 	r := newReader(c)
+	if head, err := r.Peek(4); err == nil && httpMethod(head) && s.ShareDomain != "" {
+		// A public link's request (shares.go), or the relay's WebSocket.
+		big := bufio.NewReaderSize(r, 16<<10)
+		if s.shareOf(requestHost(big)) != "" {
+			c.SetReadDeadline(time.Time{})
+			s.serveShareConn(c, big)
+			return
+		}
+		r = big
+	}
 	if head, err := r.Peek(4); err == nil && string(head) == "GET " {
 		// The same protocol inside a WebSocket (an HTTPS front, ws.go).
 		ws, err := upgradeWebSocket(c, r, s.BehindProxy)
@@ -335,7 +365,11 @@ func (s *Server) take(id string) *pendingDial {
 	d := s.pending[id]
 	if d != nil {
 		delete(s.pending, id)
-		d.box.pending--
+		if d.share {
+			d.box.sharePending--
+		} else {
+			d.box.pending--
+		}
 	}
 	return d
 }
@@ -437,6 +471,7 @@ func (s *Server) listen(c net.Conn, r *bufio.Reader, args []string) {
 		s.logf("relay: box %s connected", fp.Short())
 	}
 	defer s.logf("relay: box %s disconnected", fp.Short())
+	defer s.forgetShares(fp, box)
 
 	done := make(chan struct{})
 	defer close(done)
@@ -457,9 +492,11 @@ func (s *Server) listen(c net.Conn, r *bufio.Reader, args []string) {
 	}()
 	for {
 		c.SetReadDeadline(time.Now().Add(deadAfter))
-		if _, err := readLine(r); err != nil {
+		line, err := readLine(r)
+		if err != nil {
 			return
 		}
+		s.controlLine(fp, box, line)
 	}
 }
 

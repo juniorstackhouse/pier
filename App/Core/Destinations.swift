@@ -11,6 +11,7 @@ extension View {
             .navigationDestination(for: WorktreeRoute.self) { WorktreeDestination(route: $0).toolbar(.hidden, for: .tabBar) }
             .navigationDestination(for: ReviewRoute.self) { ReviewScreenPlaceholder(route: $0).toolbar(.hidden, for: .tabBar) }
             .navigationDestination(for: HousekeepingRoute.self) { _ in HousekeepingScreen().toolbar(.hidden, for: .tabBar) }
+            .navigationDestination(for: BoxSettingsRoute.self) { BoxSettingsDestination(route: $0).toolbar(.hidden, for: .tabBar) }
             .navigationDestination(for: ProjectEnvironmentRoute.self) { ProjectEnvironmentScreen(route: $0).toolbar(.hidden, for: .tabBar) }
             .navigationDestination(for: WorktreeDetailsRoute.self) { WorktreeDetailsScreen(route: $0).toolbar(.hidden, for: .tabBar) }
             .navigationDestination(for: PullRequestRoute.self) { PullRequestScreen(route: $0).toolbar(.hidden, for: .tabBar) }

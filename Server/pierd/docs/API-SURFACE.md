@@ -38,6 +38,12 @@ by the box's own user over the Unix socket `$PIER_HOME/box/pierd.sock` (the `pie
 | `GET`/`PUT /v1/settings` | `settings.go` `getSettings`/`putSettings` (projects folder, spaces, Docker) | App `settings()`/`setProjectsRoot()`: BoxProjectsSettingsScreen, SpacesStore |
 | `POST /v1/spaces`, `DELETE /v1/spaces/{name}` (`purge`, `force`) | `settings.go` `addSpace`/`removeSpace` | App `addSpace()`/`removeSpace()`: BoxProjectsSettingsScreen, RemoveSpaceSheet |
 | `GET`/`PUT /v1/locations/{name}/environment` | `environment.go` `getEnvironment`/`putEnvironment` (launchers, containers as units) | App `environment()`/`setEnvironment()`: ProjectEnvironmentScreen |
+| `GET`/`POST /v1/accounts`, `PATCH`/`DELETE /v1/accounts/{id}`, `POST /v1/accounts/{id}/login` | `accounts.go` | App `accounts()`… : AccountsScreen, LimitsWidget (default), AccountsCache |
+| `POST /v1/limits/enable` | `accounts.go` `enableLimits` (pierd's status line, `integrations/statusline.go`) | App `enableLimits()`: LimitsWidget |
+| `PUT /v1/locations/{name}/accounts` | `accounts.go` `putLocationAccounts` | App `setProjectAccounts()`: ProjectAccountsSection |
+| `GET`/`PUT /v1/env` | `skills.go` `getEnv`/`putEnv` (rewrites the skills) | App `boxVariables()`/`setBoxVariables()`: BoxVariablesScreen |
+| `GET /v1/skills`, `PUT`/`DELETE /v1/skills/{id}` | `skills.go` | App `skills()`/`setSkill()`: BoxVariablesScreen |
+| `GET`/`POST /v1/shares`, `DELETE /v1/shares/{name}` | `shares.go` (through `relay.Listener.Publish`) | App `publicLinks()`… : WorktreeDetails |
 | `GET /v1/github/repos[?owner=]` | `github.go` `listGitHubRepos` (the box's gh) | App `gitHubRepos()`: GitHubReposScreen |
 | `GET /v1/locations/{name}/branches` | `helpers.go` `listBranches` | App `branches()`: ComposeModel, WorktreeParts |
 | `GET`/`PUT /v1/locations/{name}/config` | `repoconfig.go` `getConfig`/`putConfig` | `pierd location config [--set FILE]` |
@@ -105,6 +111,8 @@ Event types pierd publishes, and what the app does with them:
 | `task.created` | sessions and locations refresh |
 | `worktree.created`, `worktree.removed`, `worktree.{setup,archive}.{started,finished,failed}` | locations refresh; ReviewScreen reloads; local notification on `*.failed` |
 | `location.added`, `location.removed`, `config.changed` | locations refresh |
+| `account.*` | HomeStore reads the limits again |
+| `env.changed`, `skills.changed`, `share.*`, `location.accounts` | none: the screens read the box again after their own changes |
 | `settings.changed`, `space.added`, `space.removed`, `environment.*` | none yet: the screens read the box again after their own changes; ProjectEnvironmentScreen polls while building |
 | `clone.started`, `clone.finished`, `clone.failed` | none yet: ClonesStore polls `GET /v1/clones` while a clone runs |
 | `service.started`, `service.stopped`, `service.failed` | HomeStore refreshes services; local notification on `service.failed` |

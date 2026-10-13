@@ -53,7 +53,7 @@ func (t RepoTrust) Pending() bool {
 // bytes.
 func readRepoFile(repo string) (c RepoConfig, hash string, ok bool, err error) {
 	path := repoConfigPath(repo)
-	b, err := os.ReadFile(path)
+	b, err := readSmallFile(path, maxRepoFile)
 	if os.IsNotExist(err) {
 		return c, "", false, nil
 	}

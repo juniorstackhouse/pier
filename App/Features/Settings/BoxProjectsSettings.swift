@@ -134,9 +134,11 @@ struct RemoveSpaceSheet: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     @State private var force = false
+    @State private var deleteFiles = false
     @State private var working = false
     @State private var error: String?
     @State private var needsForce = false
+    @State private var hasFiles = false
 
     private var projects: [Location] { model.connection(for: box)?.locations.filter { $0.space == space.name } ?? [] }
 
@@ -147,7 +149,7 @@ struct RemoveSpaceSheet: View {
                     Label(space.name, systemImage: "square.stack.3d.up").font(.headline)
                     MonoText(space.path, size: 11, color: Theme.textFaint)
                     if projects.isEmpty {
-                        Text("O espaço está vazio.").font(.subheadline).foregroundStyle(Theme.textDim)
+                        Text("Nenhum projeto da box neste espaço.").font(.subheadline).foregroundStyle(Theme.textDim)
                     } else {
                         Text("Os projetos dele são apagados da box junto com ele:").font(.subheadline).foregroundStyle(Theme.orange)
                         ForEach(projects) { p in Label(p.name, systemImage: "folder").font(.subheadline) }
@@ -156,9 +158,10 @@ struct RemoveSpaceSheet: View {
                     if !projects.isEmpty { Text("Os que estão no GitHub podem ser baixados de volta depois.") }
                 }
                 .listRowBackground(Theme.card)
-                if needsForce {
+                if needsForce || hasFiles {
                     Section {
-                        Toggle("Descartar trabalho não enviado e arquivos soltos", isOn: $force).tint(Theme.red)
+                        if needsForce { Toggle("Descartar o trabalho não enviado", isOn: $force).tint(Theme.red) }
+                        if hasFiles { Toggle("Apagar também o que não é projeto", isOn: $deleteFiles).tint(Theme.red) }
                     }.listRowBackground(Theme.card)
                 }
                 if let error { Section { Text(error).foregroundStyle(Theme.red).font(.subheadline) }.listRowBackground(Theme.card) }
@@ -166,14 +169,14 @@ struct RemoveSpaceSheet: View {
                     Button(role: .destructive) { Task { await remove() } } label: {
                         HStack { Spacer(); if working { ProgressView() } else { Text("Apagar espaço").fontWeight(.semibold) }; Spacer() }
                     }
-                    .disabled(working || (needsForce && !force))
+                    .disabled(working || (needsForce && !force) || (hasFiles && !deleteFiles))
                     .accessibilityIdentifier("space-remove-run")
                 }.listRowBackground(Theme.card)
             }
             .pierBackground()
             .navigationTitle("Apagar espaço")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { dismiss() }.keyboardShortcut(.cancelAction) } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { dismiss() }.keyboardShortcut(.cancelAction).disabled(working) } }
         }
         .presentationDetents([.large])
         .presentationBackground(Theme.bg)
@@ -185,14 +188,17 @@ struct RemoveSpaceSheet: View {
         working = true; error = nil
         defer { working = false }
         do {
-            let r = try await BoxAPI(transport: conn.raw).removeSpace(name: space.name, purge: !projects.isEmpty, force: force)
+            let r = try await BoxAPI(transport: conn.raw).removeSpace(name: space.name, purge: !projects.isEmpty, force: force, deleteFiles: deleteFiles)
             await conn.refreshLocations(); await conn.refreshSessions()
             let freed = ByteCountFormatter.string(fromByteCount: r.freed, countStyle: .file)
             model.toast = AppToast(text: String(localized: "Espaço “\(space.name)” apagado (\(freed) liberados)."), symbol: "trash")
             onRemoved()
             dismiss()
         } catch {
-            if let e = error as? BoxError, e.code == "unsaved_work" || e.status == 409 { needsForce = true }
+            if let e = error as? BoxError {
+                if e.code == "unsaved_work" { needsForce = true }
+                if e.code == "space_has_files" { hasFiles = true }
+            }
             self.error = ComposeErrorText.message(error)
         }
     }

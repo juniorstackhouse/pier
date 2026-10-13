@@ -101,7 +101,17 @@ final class ClonesStore {
             guard let conn = model.connection(for: box), let list = try? await BoxAPI(transport: conn.raw).clones() else { continue }
             var finished = false
             for i in entries.indices where entries[i].box == box {
-                guard let now = list.first(where: { $0.id == entries[i].clone.id }) else { continue }
+                guard let now = list.first(where: { $0.id == entries[i].clone.id }) else {
+                    // The box no longer knows it (pierd restarted, or an hour went by): it stops here, as failed,
+                    // so it can be dismissed or tried again, and the projects are read again in case it finished.
+                    if entries[i].clone.isRunning {
+                        let c = entries[i].clone
+                        entries[i].clone = ProjectClone(id: c.id, repo: c.repo, slug: c.slug, location: c.location, path: c.path, state: .failed,
+                                                        error: String(localized: "A box perdeu o andamento deste clone (o pierd reiniciou?). Veja em Projetos se ele chegou."))
+                        finished = true
+                    }
+                    continue
+                }
                 if entries[i].clone.isRunning && !now.isRunning { finished = true }
                 entries[i].clone = now
             }
@@ -127,6 +137,8 @@ struct GitHubReposScreen: View {
     @State private var space = ""
     @State private var cloneLink = false
     @State private var failure: String?
+    /// Repositories whose download was asked for and not answered yet (a second tap does nothing).
+    @State private var starting: Set<String> = []
     private let clones = ClonesStore.shared
 
     private var boxes: [BoxConnection] { projectBoxes(model) }
@@ -184,6 +196,7 @@ struct GitHubReposScreen: View {
                         .accessibilityIdentifier("clone-by-link")
                 }
             }
+            .onChange(of: box) { owner = nil; space = ""; result = nil }
             .task(id: "\(box)|\(owner ?? "")") {
                 if box.isEmpty { box = boxes.first?.name ?? ""; if box.isEmpty { return } }
                 await load()
@@ -236,7 +249,7 @@ struct GitHubReposScreen: View {
             if let here {
                 dismiss()
                 router.select(.project(ProjectRoute(box: box, location: here.name)))
-            } else if job?.clone.isRunning != true {
+            } else if job?.clone.isRunning != true, !starting.contains(r.slug) {
                 Task { await download(r) }
             }
         } label: {
@@ -287,6 +300,8 @@ struct GitHubReposScreen: View {
     }
 
     private func download(_ r: GitHubRepo) async {
+        starting.insert(r.slug)
+        defer { starting.remove(r.slug) }
         do { _ = try await clones.start(box: box, CloneRequest(repo: r.slug, space: space.isEmpty ? nil : space, setup: setup), model: model) }
         catch { failure = ComposeErrorText.message(error) }
     }
@@ -323,7 +338,7 @@ struct CloneLinkSheet: View {
                     progress(current)
                 } else {
                     Section {
-                        TextField("github.com/dono/repositorio", text: $link)
+                        TextField("https://github.com/dono/repositorio", text: $link)
                             .font(.mono(15)).textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.URL)
                             .onSubmit { if canClone { Task { await clone() } } }
                             .accessibilityIdentifier("clone-link-field")
@@ -366,6 +381,7 @@ struct CloneLinkSheet: View {
                 }
             }
             .task { if box.isEmpty { box = boxes.contains(where: { $0.name == initialBox }) ? initialBox : boxes.first?.name ?? "" } }
+            .onChange(of: box) { space = "" }
         }
         .presentationDetents([.medium, .large])
         .presentationBackground(Theme.bg)

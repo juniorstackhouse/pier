@@ -2,6 +2,8 @@ package box
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
@@ -248,13 +250,21 @@ func (b *Box) envDir(location string) string {
 	if base == "" {
 		base = filepath.Join(os.TempDir(), "pier-env")
 	}
-	return filepath.Join(base, "env", slug(location, 60))
+	return filepath.Join(base, "env", envKey(location))
 }
 
-func envImageTag(location string) string { return "pier-env-" + slug(location, 60) + ":latest" }
+// envKey names a location's environment in folders, images, units and
+// volumes: its slug, and a hash of its exact name, so "my-app" and "my_app"
+// (or "Shop" and "shop") never share a database.
+func envKey(location string) string {
+	sum := sha256.Sum256([]byte(location))
+	return slug(location, 40) + "-" + hex.EncodeToString(sum[:3])
+}
+
+func envImageTag(location string) string { return "pier-env-" + envKey(location) + ":latest" }
 
 func containerUnit(location, name string) string {
-	n := "ctr-" + slug(location, 60) + "-" + name
+	n := "ctr-" + envKey(location) + "-" + name
 	if len(n) > 128 {
 		n = n[:128]
 	}
@@ -299,7 +309,9 @@ var docker = func(ctx context.Context, log *os.File, stdin string, args ...strin
 	for i, a := range args {
 		quoted[i] = shellQuote(a)
 	}
-	cmd := groups.CommandContext(ctx, loginShell(), "-lc", "exec docker "+strings.Join(quoted, " "))
+	shArgs, shVar := shInLogin("exec docker " + strings.Join(quoted, " "))
+	cmd := groups.CommandContext(ctx, loginShell(), shArgs...)
+	cmd.Env = append(os.Environ(), shVar)
 	if stdin != "" {
 		cmd.Stdin = strings.NewReader(stdin)
 	}
@@ -323,7 +335,10 @@ var docker = func(ctx context.Context, log *os.File, stdin string, args ...strin
 var dockerState = func(ctx context.Context) DockerState {
 	ctx, cancel := context.WithTimeout(ctx, 8*time.Second)
 	defer cancel()
-	out, err := exec.CommandContext(ctx, loginShell(), "-lc", "docker version --format '{{.Server.Version}}'").CombinedOutput()
+	shArgs, shVar := shInLogin("docker version --format '{{.Server.Version}}'")
+	cmd := exec.CommandContext(ctx, loginShell(), shArgs...)
+	cmd.Env = append(os.Environ(), shVar)
+	out, err := cmd.CombinedOutput()
 	s := strings.TrimSpace(string(out))
 	if err != nil {
 		if s == "" {
@@ -410,8 +425,12 @@ func (b *Box) envVariables(ctx context.Context, location string) map[string]stri
 // launcher is the script that runs one program of the project's runtime in
 // its image, on the worktree's files at the same path, as the box's user,
 // on the box's network (its ports are the worktree's), with the caller's
-// environment.
-func launcher(image, mount, cache, command string) string {
+// environment. Only the worktree it runs in is mounted (and the repository's
+// git folder, which a linked worktree's .git points into), never the folder
+// around it; outside any worktree, the repository's main checkout.
+func launcher(image, repo, cache, command string) string {
+	run := `docker run --rm -i $tty --network host --user "$(id -u):$(id -g)" -e HOME=/tmp/pier-home -v ` + shellQuote(cache) + `:/tmp/pier-home`
+	tail := `-w "$wd" $envs ` + shellQuote(image) + ` ` + shellQuote(command) + ` "$@"`
 	return `#!/bin/sh
 # pierd: ` + command + ` runs in ` + image + `, this project's environment.
 envs=""
@@ -422,12 +441,17 @@ for n in $(env | sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/\1/p'); do
   esac
 done
 tty=""; if [ -t 0 ] && [ -t 1 ]; then tty="-t"; fi
-case "$PWD" in ` + shellQuote(mount) + `|` + shellQuote(mount) + `/*) wd="$PWD" ;; *) wd=` + shellQuote(mount) + ` ;; esac
+top=$(git rev-parse --show-toplevel 2>/dev/null) || top=""
+[ -n "$top" ] || top=` + shellQuote(repo) + `
+common=$(git -C "$top" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || common=""
+case "$PWD" in "$top"|"$top"/*) wd="$PWD" ;; *) wd="$top" ;; esac
 mkdir -p ` + shellQuote(cache) + `
+case "$common" in ""|"$top"/*)
+  # shellcheck disable=SC2086
+  exec ` + run + ` -v "$top:$top" ` + tail + ` ;;
+esac
 # shellcheck disable=SC2086
-exec docker run --rm -i $tty --network host --user "$(id -u):$(id -g)" \
-  -e HOME=/tmp/pier-home -v ` + shellQuote(cache) + `:/tmp/pier-home \
-  -v ` + shellQuote(mount) + `:` + shellQuote(mount) + ` -w "$wd" $envs ` + shellQuote(image) + ` ` + shellQuote(command) + ` "$@"
+exec ` + run + ` -v "$top:$top" -v "$common:$common" ` + tail + `
 `
 }
 
@@ -435,6 +459,11 @@ exec docker run --rm -i $tty --network host --user "$(id -u):$(id -g)" \
 // image built or pulled and its launchers written, the containers running
 // and the ones taken out stopped. It runs in the background.
 func (b *Box) applyEnvironment(from, location string, removed []string) {
+	// One apply of a location at a time: two would race on its launchers
+	// and image.
+	mu, _ := b.envLocks.LoadOrStore(location, &sync.Mutex{})
+	mu.(*sync.Mutex).Lock()
+	defer mu.(*sync.Mutex).Unlock()
 	ctx := context.Background()
 	dir := b.envDir(location)
 	os.MkdirAll(dir, 0o700)
@@ -471,26 +500,35 @@ func (b *Box) applyEnvironment(from, location string, removed []string) {
 		fail(err)
 		return
 	}
+	// The launchers in use stay until new ones are ready: during a build, or
+	// after a failed one, the project keeps its last working environment.
 	bin := filepath.Join(dir, "bin")
-	os.RemoveAll(bin)
+	binNew := bin + ".new"
+	os.RemoveAll(binNew)
 	if env.Runtime != nil {
 		image, commands, err := b.buildRuntime(ctx, log, loc, *env.Runtime)
 		if err != nil {
 			fail(err)
 			return
 		}
-		if err := os.MkdirAll(bin, 0o700); err != nil {
+		if err := os.MkdirAll(binNew, 0o700); err != nil {
 			fail(err)
 			return
 		}
-		mount := filepath.Dir(loc.Path)
 		for _, c := range commands {
-			if err := os.WriteFile(filepath.Join(bin, c), []byte(launcher(image, mount, filepath.Join(dir, "home"), c)), 0o755); err != nil {
+			if err := os.WriteFile(filepath.Join(binNew, c), []byte(launcher(image, loc.Path, filepath.Join(dir, "home"), c)), 0o755); err != nil {
 				fail(err)
 				return
 			}
 		}
 		st.Image, st.Commands = image, commands
+		os.RemoveAll(bin)
+		if err := os.Rename(binNew, bin); err != nil {
+			fail(err)
+			return
+		}
+	} else {
+		os.RemoveAll(bin)
 	}
 	for _, c := range env.Containers {
 		if err := b.startContainer(ctx, log, location, c); err != nil {
@@ -569,10 +607,23 @@ func (b *Box) startContainer(ctx context.Context, log *os.File, location string,
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)
+	// In a file only the box's user reads, not on the command line, where
+	// every user of the machine sees it (ps).
+	var envFile strings.Builder
 	for _, key := range keys {
-		args = append(args, "-e", key+"="+vars[key])
+		if strings.ContainsAny(vars[key], "\n\r") {
+			return badRequest("%s of %s spans lines", key, c.Name)
+		}
+		envFile.WriteString(key + "=" + vars[key] + "\n")
 	}
-	args = append(args, c.Image)
+	envPath := filepath.Join(b.envDir(location), "containers", c.Name+".env")
+	if err := os.MkdirAll(filepath.Dir(envPath), 0o700); err != nil {
+		return err
+	}
+	if err := os.WriteFile(envPath, []byte(envFile.String()), 0o600); err != nil {
+		return err
+	}
+	args = append(args, "--env-file", envPath, c.Image)
 	quoted := make([]string, len(args))
 	for i, a := range args {
 		quoted[i] = shellQuote(a)
@@ -582,7 +633,8 @@ func (b *Box) startContainer(ctx context.Context, log *os.File, location string,
 	if log != nil {
 		fmt.Fprintf(log, "starting %s (%s) on 127.0.0.1:%d\n", c.Name, c.Image, port)
 	}
-	_, err = b.Units.Install(ctx, UnitRequest{Name: unit, Program: loginShell(), Args: []string{"-lc", script}})
+	shArgs, shVar := shInLogin(script)
+	_, err = b.Units.Install(ctx, UnitRequest{Name: unit, Program: loginShell(), Args: shArgs, Env: map[string]string{"PIER_SH": strings.TrimPrefix(shVar, "PIER_SH=")}})
 	return err
 }
 
@@ -671,7 +723,14 @@ var composeFiles = []string{"compose.yaml", "compose.yml", "docker-compose.yml",
 
 // composeService is the service that runs the project's compose file in a
 // worktree, named after it so worktrees never share containers.
-var composeService = WorktreeService{Name: "compose", Run: `docker compose -p "pier-$PIER_WORKTREE_SLUG" up --remove-orphans`, Autostart: true}
+var composeService = WorktreeService{Name: "compose", Run: `docker compose -p "$PIER_COMPOSE_PROJECT" up --remove-orphans`, Autostart: true}
+
+// composeProject is a worktree's compose project name: its location's
+// environment and a hash of its folder, unique on the box.
+func composeProject(location string, wt Worktree) string {
+	sum := sha256.Sum256([]byte(wt.Path))
+	return "pier-" + envKey(location) + "-" + hex.EncodeToString(sum[:3])
+}
 
 func (b *Box) getEnvironment(w http.ResponseWriter, r *http.Request) error {
 	v, err := b.environmentView(r.Context(), r.PathValue("name"))

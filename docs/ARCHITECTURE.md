@@ -257,6 +257,14 @@ every project lives under and the spaces in it (`BoxProjectsSettingsScreen`; the
 Detalhes) picks its language version and its databases. pierd runs them in Docker with launchers first on the
 worktrees' PATH, never in the project (docs/API.md 2.9); rows and cards show the space and an "isolated" mark.
 
+**Accounts, limits, variables, public links**: Ajustes › Projetos also has the box's Claude Code and Codex accounts
+(`AccountsScreen`: add one, sign in from a terminal session in the app, make it the default) and its variables with a
+note each, plus the skills that tell the agents about them (`BoxVariablesScreen`). A project picks its agents' account
+(`ProjectAccountsSection`, on the project's screen and in a worktree's Detalhes; `AccountsCache` loads them). The Home's
+**Limites de uso** (`LimitsWidget`) shows each account's 5-hour and weekly use and switches the box's default with a tap.
+A worktree's Detalhes makes a dev server's **public link** through the box's relay (docs/API.md 2.10–2.12,
+PROTOCOL.md §10.1).
+
 ## Layouts: tabs (compact) and sidebar (regular width, Mac)
 
 `MainLayout` (RootView) picks by horizontal size class: the iPhone's TabView, or `MainSplit` (iPad, Mac Catalyst): a

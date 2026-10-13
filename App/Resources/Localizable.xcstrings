@@ -365,6 +365,26 @@
         }
       }
     },
+    "%@: %lld%% usado" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@: %2$lld%% used"
+          }
+        }
+      }
+    },
+    "%@: o git não conseguiu ler esta worktree" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: git could not read this worktree"
+          }
+        }
+      }
+    },
     "%lld" : {
       "localizations" : {
         "en" : {
@@ -1169,16 +1189,6 @@
         }
       }
     },
-    ":%lld" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : ":%lld"
-          }
-        }
-      }
-    },
     "A IA não respondeu." : {
       "localizations" : {
         "en" : {
@@ -1329,6 +1339,16 @@
         }
       }
     },
+    "A box perdeu o andamento deste clone (o pierd reiniciou?). Veja em Projetos se ele chegou." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The box lost track of this clone (did pierd restart?). Check in Projects whether it arrived."
+          }
+        }
+      }
+    },
     "A box precisa de você" : {
       "localizations" : {
         "en" : {
@@ -1465,6 +1485,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "From"
+          }
+        }
+      }
+    },
+    "A pasta da conta é apagada da box, com o login. Os projetos que a usavam voltam para a conta padrão." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The account’s folder is deleted from the box, login included. Projects that used it go back to the default account."
           }
         }
       }
@@ -1825,6 +1855,16 @@
         }
       }
     },
+    "Adicionar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add"
+          }
+        }
+      }
+    },
     "Adicionar banco ou serviço" : {
       "localizations" : {
         "en" : {
@@ -1841,6 +1881,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Add box"
+          }
+        }
+      }
+    },
+    "Adicionar conta" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add account"
           }
         }
       }
@@ -2221,6 +2271,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Also delete the branch"
+          }
+        }
+      }
+    },
+    "Apagar também o que não é projeto" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Also delete what isn’t a project"
           }
         }
       }
@@ -3065,6 +3125,26 @@
         }
       }
     },
+    "Cada conta é uma pasta própria do Claude Code (CLAUDE_CONFIG_DIR), com login, configurações e histórico separados, como a documentação do Claude Code recomenda para várias contas." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Each account is a Claude Code folder of its own (CLAUDE_CONFIG_DIR), with its own login, settings and history, as Claude Code’s documentation recommends for several accounts."
+          }
+        }
+      }
+    },
+    "Cada conta é uma pasta própria do Codex (CODEX_HOME), com o próprio login." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Each account is a Codex folder of its own (CODEX_HOME), with its own login."
+          }
+        }
+      }
+    },
     "Cada espaço é uma pasta dentro da pasta dos projetos, para manter grupos de projetos separados (um por cliente, por exemplo). Ao clonar, escolha o espaço." : {
       "localizations" : {
         "en" : {
@@ -3225,6 +3305,16 @@
         }
       }
     },
+    "Claude Code" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude Code"
+          }
+        }
+      }
+    },
     "Claude Code, Codex e outros trabalham na sua máquina de desenvolvimento, não no celular." : {
       "localizations" : {
         "en" : {
@@ -3261,6 +3351,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Clone repository"
+          }
+        }
+      }
+    },
+    "Codex" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Codex"
           }
         }
       }
@@ -3565,6 +3665,46 @@
         }
       }
     },
+    "Conta dos agentes" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agents’ account"
+          }
+        }
+      }
+    },
+    "Contas do Claude e do Codex" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude and Codex accounts"
+          }
+        }
+      }
+    },
+    "Contas do Claude e do Codex em %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude and Codex accounts on %@"
+          }
+        }
+      }
+    },
+    "Contas em %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accounts on %@"
+          }
+        }
+      }
+    },
     "Contexto" : {
       "localizations" : {
         "en" : {
@@ -3695,6 +3835,16 @@
         }
       }
     },
+    "Copiar link público" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy public link"
+          }
+        }
+      }
+    },
     "Copiar o comando" : {
       "localizations" : {
         "en" : {
@@ -3781,6 +3931,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Create your first task"
+          }
+        }
+      }
+    },
+    "Criar e entrar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create and sign in"
+          }
+        }
+      }
+    },
+    "Criar link público" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create public link"
           }
         }
       }
@@ -3885,6 +4055,16 @@
         }
       }
     },
+    "Depois de criar, um terminal abre na box para você entrar na conta." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Once it is created, a terminal opens on the box for you to sign in."
+          }
+        }
+      }
+    },
     "Depois, para o iPhone: Ajustes → Levar para o iPhone." : {
       "localizations" : {
         "en" : {
@@ -3975,12 +4155,12 @@
         }
       }
     },
-    "Descartar trabalho não enviado e arquivos soltos" : {
+    "Descartar o trabalho não enviado" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Discard unpushed work and loose files"
+            "value" : "Discard the unpushed work"
           }
         }
       }
@@ -4461,6 +4641,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "End session…"
+          }
+        }
+      }
+    },
+    "Entrar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sign in"
+          }
+        }
+      }
+    },
+    "Entrar de novo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sign in again"
           }
         }
       }
@@ -5783,6 +5983,16 @@
         }
       }
     },
+    "Instaladas em cada conta do Claude Code (skills/) e para o Codex (~/.agents/skills), atualizadas quando as variáveis mudam. Uma skill sua com o mesmo nome não é tocada." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Installed in every Claude Code account (skills/) and for Codex (~/.agents/skills), updated when the variables change. A skill of yours with the same name is left alone."
+          }
+        }
+      }
+    },
     "Instalar o pierd" : {
       "localizations" : {
         "en" : {
@@ -6153,6 +6363,16 @@
         }
       }
     },
+    "Limites de uso" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usage limits"
+          }
+        }
+      }
+    },
     "Limpar" : {
       "localizations" : {
         "en" : {
@@ -6199,6 +6419,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Invalid link. Use a pier:// link generated by “pierd pair”."
+          }
+        }
+      }
+    },
+    "Link público copiado. Vale por 24 horas." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Public link copied. It lasts 24 hours."
           }
         }
       }
@@ -6733,6 +6963,16 @@
         }
       }
     },
+    "Mostrar valor" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show value"
+          }
+        }
+      }
+    },
     "Mover para" : {
       "localizations" : {
         "en" : {
@@ -6829,6 +7069,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Medium"
+          }
+        }
+      }
+    },
+    "NOVA_VARIAVEL" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "NEW_VARIABLE"
           }
         }
       }
@@ -7223,6 +7473,16 @@
         }
       }
     },
+    "Nenhum projeto da box neste espaço." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No box project in this space."
+          }
+        }
+      }
+    },
     "Nenhum projeto da box é um clone de %@." : {
       "localizations" : {
         "en" : {
@@ -7373,6 +7633,16 @@
         }
       }
     },
+    "Nenhuma variável ainda." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No variables yet."
+          }
+        }
+      }
+    },
     "Nenhuma área recente" : {
       "localizations" : {
         "en" : {
@@ -7483,6 +7753,16 @@
         }
       }
     },
+    "Nome (ex.: Trabalho)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Name (e.g. Work)"
+          }
+        }
+      }
+    },
     "Nome aleatório" : {
       "localizations" : {
         "en" : {
@@ -7579,6 +7859,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "New"
+          }
+        }
+      }
+    },
+    "Nova conta" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New account"
           }
         }
       }
@@ -7769,6 +8059,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "New space"
+          }
+        }
+      }
+    },
+    "Novos agentes em %@ usam “%@”." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New agents on %1$@ use “%2$@”."
           }
         }
       }
@@ -8113,6 +8413,16 @@
         }
       }
     },
+    "Não publique servidores com console de depuração ligado (web-console, debug toolbar): quem tem o link chega a eles." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Don’t publish servers with a debug console on (web-console, debug toolbar): anyone with the link reaches it."
+          }
+        }
+      }
+    },
     "Não salvar" : {
       "localizations" : {
         "en" : {
@@ -8339,16 +8649,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dictation isn't available right now. Type the request."
-          }
-        }
-      }
-    },
-    "O espaço está vazio." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The space is empty."
           }
         }
       }
@@ -8739,12 +9039,12 @@
         }
       }
     },
-    "Onde os projetos ficam na box, os espaços que os separam e os ambientes isolados." : {
+    "Onde os projetos ficam na box, os espaços que os separam, os ambientes isolados, as contas dos agentes e as variáveis que todo projeto recebe." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Where projects live on the box, the spaces that keep them apart, and isolated environments."
+            "value" : "Where projects live on the box, the spaces that keep them apart, isolated environments, the agents’ accounts and the variables every project gets."
           }
         }
       }
@@ -8835,6 +9135,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Your dev box's agents in your pocket: see who's working, who needs you, and answer from anywhere."
+          }
+        }
+      }
+    },
+    "Os agentes que começarem neste projeto usam esta conta. Os que já estão rodando continuam na deles." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agents started in this project use this account. Those already running keep theirs."
           }
         }
       }
@@ -9141,6 +9451,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Default"
+          }
+        }
+      }
+    },
+    "Padrão da box (%@)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Box default (%@)"
           }
         }
       }
@@ -10171,6 +10491,16 @@
         }
       }
     },
+    "Público até %@: qualquer pessoa com o link vê a página." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Public until %@: anyone with the link sees the page."
+          }
+        }
+      }
+    },
     "QR code de pareamento" : {
       "localizations" : {
         "en" : {
@@ -10461,6 +10791,16 @@
         }
       }
     },
+    "Remover conta" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove account"
+          }
+        }
+      }
+    },
     "Remover do disco (libera %@)" : {
       "localizations" : {
         "en" : {
@@ -10557,6 +10897,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Remove “%@”"
+          }
+        }
+      }
+    },
+    "Remover “%@”?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove “%@”?"
           }
         }
       }
@@ -11391,6 +11741,16 @@
         }
       }
     },
+    "Skills para Claude e Codex" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skills for Claude and Codex"
+          }
+        }
+      }
+    },
     "Sobre" : {
       "localizations" : {
         "en" : {
@@ -11557,6 +11917,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Also ends another session in this worktree."
+          }
+        }
+      }
+    },
+    "Também são apagados os arquivos que o git ignora (.env, bancos locais, builds) e os dados dos bancos do ambiente isolado." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Files git ignores (.env, local databases, builds) and the isolated environment’s database data are deleted too."
           }
         }
       }
@@ -11747,6 +12117,16 @@
         }
       }
     },
+    "Tirar do ar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Take down"
+          }
+        }
+      }
+    },
     "Todas as alterações não commitadas deste worktree serão perdidas." : {
       "localizations" : {
         "en" : {
@@ -11763,6 +12143,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "All boxes"
+          }
+        }
+      }
+    },
+    "Todo projeto da box recebe estas variáveis (agentes, terminais, serviços). O env do próprio projeto tem prioridade. A nota diz aos agentes para que serve cada uma; o valor nunca vai para as skills." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Every project on the box gets these variables (agents, terminals, services). The project’s own env takes precedence. The note tells agents what each is for; values never go into the skills."
           }
         }
       }
@@ -11813,6 +12203,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tap Customize to choose what shows on Home."
+          }
+        }
+      }
+    },
+    "Tornar padrão" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Make default"
           }
         }
       }
@@ -11897,12 +12297,12 @@
         }
       }
     },
-    "Tudo commitado e enviado: nada se perde." : {
+    "Tudo commitado e enviado." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Everything committed and pushed: nothing is lost."
+            "value" : "Everything committed and pushed."
           }
         }
       }
@@ -12143,12 +12543,52 @@
         }
       }
     },
+    "Variáveis da box" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The box’s variables"
+          }
+        }
+      }
+    },
+    "Variáveis e skills" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Variables and skills"
+          }
+        }
+      }
+    },
+    "Variáveis e skills em %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Variables and skills on %@"
+          }
+        }
+      }
+    },
     "Variáveis nas worktrees" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Variables in the worktrees"
+          }
+        }
+      }
+    },
+    "Variáveis salvas. Valem para os agentes e terminais que começarem agora." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Variables saved. They apply to agents and terminals started from now on."
           }
         }
       }
@@ -12633,6 +13073,16 @@
         }
       }
     },
+    "conectada" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "signed in"
+          }
+        }
+      }
+    },
     "conectando…" : {
       "localizations" : {
         "en" : {
@@ -12873,12 +13323,12 @@
         }
       }
     },
-    "github.com/dono/repositorio" : {
+    "https://github.com/dono/repositorio" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "github.com/owner/repository"
+            "value" : "https://github.com/owner/repository"
           }
         }
       }
@@ -13173,6 +13623,16 @@
         }
       }
     },
+    "para que serve (os agentes leem)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "what it’s for (agents read this)"
+          }
+        }
+      }
+    },
     "para responder" : {
       "localizations" : {
         "en" : {
@@ -13343,6 +13803,16 @@
         }
       }
     },
+    "sem login" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "not signed in"
+          }
+        }
+      }
+    },
     "servidor de dev" : {
       "localizations" : {
         "en" : {
@@ -13389,6 +13859,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "working"
+          }
+        }
+      }
+    },
+    "valor" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "value"
           }
         }
       }

@@ -48,10 +48,10 @@ notifications).
 | Times | RFC 3339 with up to 9 fractional digits (`2026-10-07T19:07:42.53987405Z`). Zero times are omitted. Some fields are Unix milliseconds (transcript); they are named in place. |
 | Omitted fields | Most fields are omitted when empty: absent means zero, false or empty. Model every non-identity field as optional. |
 | Lists | Top-level empty lists are `[]`. Nested lists can be `null` or missing (`branches`, transcript `items`); decode defensively. |
-| Errors | Non-2xx: `{"error": "human text", "code": "..."}`. Branch on `code`, show `error` verbatim. Codes: `not_found` (404), `session_exited` (409), `session_exists` (409), `agent_waiting` (409), `refused` (403, a `before:` hook or a box rule said no), `unsupported` (501), `tmux_missing` (503), `git_failed`, `command_failed`, `too_many` (429), `file_changed` (409), `file_exists` (409), `unsaved_work` (409, 2.8), `space_not_empty` (409, 2.9), `docker_missing` (501), `gh_missing` (501), `gh_auth` (428), `bad_request`, `internal`. Unknown routes answer Go's plain-text `404 page not found` (or 405 for a known path with another method), not JSON: fall back to the raw text. |
+| Errors | Non-2xx: `{"error": "human text", "code": "..."}`. Branch on `code`, show `error` verbatim. Codes: `not_found` (404), `session_exited` (409), `session_exists` (409), `agent_waiting` (409), `refused` (403, a `before:` hook or a box rule said no), `unsupported` (501), `tmux_missing` (503), `git_failed`, `command_failed`, `too_many` (429), `file_changed` (409), `file_exists` (409), `unsaved_work` (409, 2.8), `space_not_empty`, `space_has_files` (409, 2.9), `docker_missing` (501), `gh_missing` (501), `gh_auth` (428), `bad_request`, `internal`. Unknown routes answer Go's plain-text `404 page not found` (or 405 for a known path with another method), not JSON: fall back to the raw text. |
 | Origin header | Optional `X-Pier-Origin: <[a-z0-9][a-z0-9-]{0,31}>` sets the `origin` of the events a call causes (default `pier`). The app sends `ios` (and `ios-push` for push routes). Hooks see a paired client as `client:<name>` whatever the header says. |
 | Gates | Many mutating calls run `before:<action>` hooks the box owner configured (`~/.pier/hooks.json` or a trusted repository config). A refusal is 403 `refused` with the hook's output as `error`. |
-| Capabilities | `GET /v1/info` → `capabilities[]` names optional features: `transcript history diff titles answer session.home session.chat draft journal touched files projects environments`, plus `turns queue ask controls` (turn ledger) and `pair.invite`. |
+| Capabilities | `GET /v1/info` → `capabilities[]` names optional features: `transcript history diff titles answer session.home session.chat draft journal touched files projects environments accounts box.env`, `shares` (with a relay), plus `turns queue ask controls` (turn ledger) and `pair.invite`. |
 
 ### 0.3 Naming and addressing
 
@@ -327,8 +327,11 @@ file). `setup`: `repo`, `detected` or `none`. `DELETE /v1/clones/{id}` forgets a
 ```
 
 `unpushed` counts each local branch's commits no remote-tracking branch has (a repository without a remote: all of
-them). `removable` is false (with `reason`) for a folder that is not a git repository, the home folder or one above
-it, or one holding another location.
+them), and a detached HEAD's commits that are on no branch (`"<worktree> (HEAD)"`). `unreadable` lists worktrees git
+could not read: they count as work that would be lost. Files git ignores (`.env`, local databases) and the isolated
+environment's data are not counted and are deleted too. `removable` is false (with `reason`) for a folder that is not
+the top folder of a git repository, the home folder or one above it, one holding another location, or (with a
+projects folder) a project or worktree outside it.
 
 **Remove from the disk**: `DELETE /v1/locations/{loc}?purge=1[&force=1]` stops the worktrees' services, ends their
 sessions, releases their ports, forgets the location, then deletes the linked worktrees' folders and the repository's.
@@ -352,12 +355,14 @@ clears it; `/` and files are refused; gate `before:settings.change`; event `sett
 project outside it, the folder itself and a space. Locations carry `space` (the folder right under the projects folder
 they are in, absent right under it) and `outside_root: true` for one added before the folder was set.
 
-**Spaces** are the folders right under the projects folder that are not repositories: groups of projects kept apart on
-the disk (`<root>/<space>/<repo>`, worktrees beside the repository, inside the space). `POST /v1/spaces {name}` makes
-one (a valid location name). `DELETE /v1/spaces/{name}[?purge=1[&force=1]]`: an empty space goes; one holding projects
-is refused with 409 `space_not_empty` unless `purge=1`, which removes its projects from the disk with it, each checked
-like 2.8 first (409 `unsaved_work` without `force=1`; all go or none). Files in it that are no project's are deleted
-only with `force=1`. Projects never move out of a space. Answer `{"removed":"acme","freed":…}`; events
+**Spaces** are folders right under the projects folder made as spaces (`POST /v1/spaces {name}`, or a clone naming a
+new `space`): each holds a `.pier-space` marker, and only those count, so a folder that just happens to be there is
+never deleted as one. Groups of projects kept apart on the disk (`<root>/<space>/<repo>`, worktrees beside the
+repository, inside the space). `DELETE /v1/spaces/{name}[?purge=1][&force=1][&delete_files=1]`: an empty space goes;
+one holding projects is refused with 409 `space_not_empty` unless `purge=1`, which removes its projects from the disk
+with it, each checked like 2.8 first (409 `unsaved_work` without `force=1`; all go or none). Anything in it that is no
+project's (an unregistered repository, notes) is refused with 409 `space_has_files` unless `delete_files=1`. Projects
+never move out of a space. The projects folder cannot be the home folder or one holding it. Answer `{"removed":"acme","freed":…}`; events
 `space.added`, `space.removed`; gate `before:space.remove`. `POST /v1/clones` takes `space` (made if new).
 
 **Environment** of a project, the box's own config (never written into the repository): `GET`/`PUT
@@ -382,15 +387,75 @@ only with `force=1`. Projects never move out of a space. Answer `{"removed":"acm
   Redis and Mongo are known: their port and data folder, root password `pier`, database `app`, and the variables the
   worktrees get (`DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, `DATABASE_URL`;
   `REDIS_HOST`/`REDIS_PORT`/`REDIS_URL`; `MONGODB_URI`). Every container also gives `PIER_<NAME>_HOST` and
-  `PIER_<NAME>_PORT`. The project's and the box's own env win over these.
-* `compose: true` adds the service `compose` to every worktree: `docker compose -p "pier-$PIER_WORKTREE_SLUG" up`
-  with the project's own compose file.
+  `PIER_<NAME>_PORT`. The project's and the box's own env win over these. Container variables reach Docker through a
+  0600 env file, never its command line.
+* `compose: true` adds the service `compose` to every worktree: `docker compose -p "$PIER_COMPOSE_PROJECT" up` with
+  the project's own compose file (a name unique to the worktree). Environment names (folders, images, units, volumes)
+  carry a hash of the project's exact name, so `my-app` and `my_app` never share one.
 * `PUT` answers 202 and applies it in the background: `status.state` `building` → `ready` | `failed` (`error` with the
   log's tail); events `environment.changed`, `environment.started`, `environment.ready`, `environment.failed`.
   Containers taken out are stopped (their volume kept). An empty environment removes the launchers and stops the
   containers. 501 `docker_missing` when the box has no Docker. Gate: `before:environment.change`.
 * Removing the project from the disk (2.8, or with its space) also removes its containers, volumes, built image and
   launchers.
+
+### 2.10 Agent accounts and usage limits (capability `accounts`)
+
+More than one Claude Code or Codex subscription on a box, each in a folder of its own: `CLAUDE_CONFIG_DIR` for
+Claude Code (the documented way to keep several accounts apart: code.claude.com/docs/en/authentication), `CODEX_HOME`
+for Codex. The agent's own folder (`~/.claude`, `~/.codex`) is its built-in account.
+
+* `GET /v1/accounts` → `[{id, agent, name, dir, builtin?, created?, signed_in, signed_in_known, default?, projects[],
+  limits?, limits_ready}]`. `signed_in` from the credentials file in the folder (`signed_in_known: false` where it
+  cannot tell: Claude Code on macOS keeps them in the Keychain). `projects`: the locations whose agents use it.
+* `POST /v1/accounts {agent, name}` makes a folder under `~/.pier/box/accounts/<id>` with pierd's hooks (and, for
+  Claude, its status line and the installed skills). `POST /v1/accounts/{id}/login` starts a terminal session on that
+  folder (`claude`, which signs in first; `codex login --device-auth`): open it as a session to sign in.
+  `PATCH /v1/accounts/{id} {name?, default?: true}` renames it or makes it the box's default for its agent.
+  `DELETE /v1/accounts/{id}` deletes an added account's folder, its login with it (projects on it go back to the
+  default); the built-in ones cannot be removed. Events `account.added|changed|removed`; gates `before:account.add`,
+  `before:account.remove`.
+* `PUT /v1/locations/{loc}/accounts {"claude": id, "codex": ""}` sets which account each agent uses in a project
+  (`""`: the box's default; the built-in id picks the agent's own folder even when the default is an added account);
+  locations carry `accounts`. Chats and home terminals use the box's default. The chosen folder reaches every worktree of the project as
+  `CLAUDE_CONFIG_DIR` / `CODEX_HOME`, over anything the box's or the project's env sets. Sessions already running keep
+  theirs.
+* **Limits**: `limits {windows: [{kind, minutes, used_percent, resets_at}], updated, source}`. Claude Code's come from
+  its status line input (`rate_limits.five_hour` / `seven_day`, documented at code.claude.com/docs/en/statusline,
+  claude.ai subscriptions only, after the account's first reply): pierd's status line (`pierd statusline`, put in an
+  account's `settings.json`; a status line already there is kept and run behind it with `--then`) keeps the latest per
+  account in `~/.pier/box/limits/`. `limits_ready: false` means the account's status line is not pierd's yet: `POST
+  /v1/limits/enable` puts it in every Claude account. Codex's come from the last `rate_limits` of the newest session
+  log in the account's folder (`sessions/YYYY/MM/DD/*.jsonl`, `primary` / `secondary` windows; undocumented, read as
+  Codex writes it). A window past its reset is left out.
+
+### 2.11 The box's variables and skills (capability `box.env`)
+
+* `GET`/`PUT /v1/env {env: {NAME: value}, notes: {NAME: what it is for}}`: the box's own variables (`~/.pier/env.json`,
+  mode 0600), which every worktree gets under the project's own env. Names: letters, digits and `_`; `PIER_*`,
+  `PATH`, `HOME`, `SHELL`, `USER` are refused. Other keys in the file are kept. Event `env.changed {names}` (never
+  values); gate `before:env.change`.
+* `GET /v1/skills` → `[{id, name, description, installed, paths}]`; `PUT`/`DELETE /v1/skills/{id}` installs or
+  removes one. `pier-box` tells the agents about the worktree's ports, the project's environment and the box's
+  variables, by name and note (never values); `pier-preview` how to run the dev server on `$PIER_PORT` for the app.
+  They are written to every Claude Code account's `skills/<id>/SKILL.md` and to `~/.agents/skills/<id>/SKILL.md`
+  (Codex), rewritten when the variables or the accounts change. A skill of the same name without pierd's marker is the
+  person's and is never touched. Event `skills.changed`.
+
+### 2.12 Public links (capability `shares`)
+
+A worktree's dev server at a public URL through the box's relay (PROTOCOL.md §10.1), for anyone with the link.
+
+* `POST /v1/shares {location, worktree, port, hours?}` → `{name, url, location, worktree, port, created, expires}`. The
+  page's server sees the visitor's address in `X-Forwarded-For` (PROTOCOL.md §10.1), but its connection comes from
+  this machine: never publish a server whose debug console trusts local connections (Rails' web-console, Django's
+  debug toolbar). Only
+  a port of the worktree's own block (`$PIER_PORT`…) or one its processes listen on; `hours` 24 by default, at most 168.
+  501 without a relay ("this box has no tunnel"), or when the relay serves no links. Gate `before:share.create`.
+* `GET /v1/shares` lists the box's links; `DELETE /v1/shares/{name}` takes one down. Links are kept across restarts
+  (`~/.pier/box/shares.json`) and published again; expired ones go by themselves (`share.expired`). Removing the
+  worktree or the project takes its links down. Events `share.created`, `share.removed`.
+* The capability appears when the box has a relay; whether that relay serves links shows on the first `POST`.
 
 ---
 
@@ -825,7 +890,8 @@ exit_code}` (every client's exec, the app's own background commands included: ne
 `worktree.setup.{started,finished,failed}` and `worktree.archive.{started,finished,failed}` `{location, name,
 path, script, log}` (failures set the envelope `error`), `location.added`, `location.removed` (`purged`, `freed`
 after a removal from the disk), `clone.started|finished|failed` (2.8), `settings.changed`, `space.added|removed`,
-`environment.changed|started|ready|failed` (2.9), `config.changed`,
+`environment.changed|started|ready|failed` (2.9), `account.added|changed|removed`, `location.accounts` (2.10),
+`env.changed`, `skills.changed` (2.11), `share.created|removed|expired` (2.12), `config.changed`,
 `service.started|stopped|failed`, `file.written {location, worktree, path, file, size}` (a save through `PUT
 .../file`, 2.7; `path` is the worktree's folder, `file` the saved file relative to it).
 
@@ -983,8 +1049,8 @@ answers 404/405 (`PairInviteError.unsupported`).
 ## 11. Routes pierd does not serve
 
 Runs and gates (`/v1/runs…`, `run.*` events), `/v1/turns/{id}[/wait]`, terminal attach (`/attach`) and port streams
-(`/v1/tcp`), `/v1/ports`, `/v1/processes`, the memory guard, the phone web app and its token, units, shares, teams,
-flows and webhooks, browsers and visual diffs, `/v1/hooks`, `/v1/env`, secrets, skills, integrations install over
+(`/v1/tcp`), `/v1/ports`, `/v1/processes`, the memory guard, the phone web app and its token, units, teams,
+flows and webhooks, browsers and visual diffs, `/v1/hooks`, secrets, skills, integrations install over
 HTTP, self-upgrade, agent CLI install, session commands/files/subagents/fork/rewind, worktree log/sync/pause/resume/
 rename, and service logs. A client asking for one gets a plain-text 404.
 
@@ -1062,6 +1128,7 @@ with defaults and a tolerant decoder (missing keys, `null` lists).
 | `Models/BoxModels.swift` | `BoxInfo`, `AgentPreset`, `AdapterCaps`, `AgentCLI`, `BoxStats`, `DoctorCheck` |
 | `Models/LocationModels.swift` | `Location`, `Worktree`, `Scripts`, `WorktreeStatus`, `Commit`, `BranchList`, `WorktreeRequest` |
 | `Models/FileModels.swift` | `DirListing`, `FileEntry`, `WorktreeFile`, `FileWrite` |
+| `Models/AccountModels.swift` | `AgentAccount`, `AccountLimits`, `LimitWindow`, `BoxVariables`, `BoxSkill`, `PublicLink` (2.10–2.12) |
 | `Models/EnvironmentModels.swift` | `BoxSettings`, `ProjectSpace`, `DockerState`, `ProjectEnvironment`, `EnvRuntime`, `EnvContainer`, `EnvironmentView` (2.9) |
 | `Models/ProjectModels.swift` | `GitHubRepos`, `GitHubRepo`, `CloneRequest`, `ProjectClone`, `ProjectDisk`, `ProjectPurge`, `WorktreeServiceDetail` (2.8; called through `BoxAPI+Projects.swift`) |
 | `Models/SessionModels.swift` | `Session`, `Ask`, `TaskRequest`, `TaskResult`, `SessionRequest`, `SendResult`, `InterruptResult`, `SessionControls`, `HeldPrompt`, `Turn`, `WaitResult`, `Draft`, `Attachment` |
@@ -1085,5 +1152,6 @@ Use explicit `CodingKeys`, not `.convertFromSnakeCase`: keys are mixed (`oldStar
 | `GitLog`, `FileSearch` | a worktree's history through exec (the log a page at a time with what is not pushed, one commit's message and files, one file's patch in it) and "Abrir rápido" (`git ls-files` once, a fuzzy match) |
 | `FileTree`, `EditorText` | the workspace's file tree (paths, the rows of the open folders, status badges) and the editor's text rules (line and column, indentation, Return, line endings) for 2.7 |
 | `NotificationText`, `DisplayNames` | notification text and names (9) |
+| `Accounts` | a limit window's label (5h, 7d), the tightest window and how worrying it is, the account a project's agents use, which variables are secrets, valid variable names (2.10, 2.11) |
 | `Environments` | the runtimes and service containers the environment screen offers by version, a saved environment read back as those choices, its one-line summary, valid container and space names (2.9) |
 | `Projects` | the project screens' rules for 2.8: what can be sent as a repository link, the GitHub list's search, a repository's location on the box, a worktree's dev servers and their preview URLs, its port block, what removing a project would lose |

@@ -40,6 +40,15 @@ final class HomeStore {
     private(set) var servicesAt: Date?
     private(set) var servicesError: String?
     private(set) var reachable: [String: Bool] = [:]
+    /// Each box's agent accounts with their limits (`GET /v1/accounts`).
+    struct LimitsEntry: Identifiable, Hashable {
+        let box: String
+        let account: AgentAccount
+        var id: String { "\(box)/\(account.id)" }
+    }
+    private(set) var limits: [LimitsEntry] = []
+    private(set) var limitsAt: Date?
+    private(set) var limitsError: String?
     var steps: [String: String] { signals.steps }
     /// Finished turns that still run work in the background (session id -> what runs), so they read as working, not done.
     var background: [String: [BackgroundItem]] { signals.background }
@@ -51,7 +60,7 @@ final class HomeStore {
     @ObservationIgnored private let cacheURL: URL
     @ObservationIgnored private var cachedBoxes: [String]?
 
-    static let interval: [HomeWidgetKind: TimeInterval] = [.prs: 300, .ci: 600, .git: 900, .services: 30]
+    static let interval: [HomeWidgetKind: TimeInterval] = [.prs: 300, .ci: 600, .git: 900, .services: 30, .limits: 120]
 
     init(cacheURL: URL? = nil) {
         self.cacheURL = cacheURL ?? Shared.supportDirectory.appendingPathComponent("home-cache.json")
@@ -97,6 +106,7 @@ final class HomeStore {
         for await h in model.hub.subscribe() {
             let t = h.event.type
             if t.hasPrefix("service.") { Task { await refresh(.services, force: true) } }
+            if t.hasPrefix("account.") { Task { await refresh(.limits, force: true) } }
             if t.hasPrefix("agent.") || t.hasPrefix("session.") { signals.invalidate() }
         }
     }
@@ -108,7 +118,8 @@ final class HomeStore {
         async let c: Void = refresh(.git)
         async let d: Void = refresh(.services)
         async let e: Void = sessionSignals()
-        _ = await (a, b, c, d, e)
+        async let f: Void = refresh(.limits)
+        _ = await (a, b, c, d, e, f)
     }
 
     /// Pull-to-refresh.
@@ -119,7 +130,8 @@ final class HomeStore {
         async let c: Void = refresh(.git, force: true)
         async let d: Void = refresh(.services, force: true)
         async let e: Void = sessionSignals(force: true)
-        _ = await (a, b, c, d, e)
+        async let f: Void = refresh(.limits, force: true)
+        _ = await (a, b, c, d, e, f)
     }
 
     // MARK: targets
@@ -167,6 +179,7 @@ final class HomeStore {
         case .ci: ci.updatedAt
         case .git: git.updatedAt
         case .services: servicesAt
+        case .limits: limitsAt
         default: nil
         }
     }
@@ -185,6 +198,7 @@ final class HomeStore {
         case .ci: await fetchCI(ts)
         case .git: await fetchGit(ts)
         case .services: await fetchServices(ts)
+        case .limits: await fetchLimits(ts)
         default: break
         }
     }
@@ -291,6 +305,26 @@ final class HomeStore {
         }
         reachable = Dictionary(probes, uniquingKeysWith: { $1 })
     }
+
+    // MARK: limits
+
+    private func fetchLimits(_ ts: [Target]) async {
+        let capable = Set(model?.boxes.filter { $0.info?.has("accounts") == true }.map(\.name) ?? [])
+        let results: [(String, [AgentAccount]?)] = await withTaskGroup(of: (String, [AgentAccount]?).self) { g in
+            for t in ts where capable.contains(t.name) {
+                g.addTask { (t.name, try? await BoxAPI(transport: t.raw).accounts()) }
+            }
+            return await gather(&g)
+        }
+        if !capable.isEmpty, !results.contains(where: { $0.1 != nil }) { limitsError = HL("Não foi possível ler os limites."); return }
+        let order = ts.map(\.name)
+        limits = results.flatMap { box, list in (list ?? []).map { LimitsEntry(box: box, account: $0) } }
+            .sorted { (order.firstIndex(of: $0.box) ?? 0, $0.account.agent, $0.account.builtin ? 0 : 1, $0.account.name) < (order.firstIndex(of: $1.box) ?? 0, $1.account.agent, $1.account.builtin ? 0 : 1, $1.account.name) }
+        limitsAt = Date(); limitsError = nil
+    }
+
+    /// After the widget changed something on a box (default account, status line): read the limits again now.
+    func reloadLimits() async { await refresh(.limits, force: true) }
 
     // MARK: live bits of sessions-driven widgets
 

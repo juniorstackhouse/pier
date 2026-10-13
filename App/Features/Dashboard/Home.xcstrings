@@ -44,12 +44,152 @@
         }
       }
     },
+    "Aparecem depois da próxima resposta do Claude Code." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "They show up after Claude Code’s next reply."
+          }
+        }
+      }
+    },
+    "Aparecem depois da próxima sessão do Codex." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "They show up after Codex’s next session."
+          }
+        }
+      }
+    },
+    "As boxes mostram os limites a partir desta versão do pierd." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Boxes show their limits from this version of pierd on."
+          }
+        }
+      }
+    },
+    "Ativar a leitura dos limites" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn on reading the limits"
+          }
+        }
+      }
+    },
+    "Atualize o pierd" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update pierd"
+          }
+        }
+      }
+    },
     "Escolha e ordene o que aparece no início" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Choose and order what Home shows"
+          }
+        }
+      }
+    },
+    "Instale o Claude Code ou o Codex na box." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Install Claude Code or Codex on the box."
+          }
+        }
+      }
+    },
+    "Limites de uso" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usage limits"
+          }
+        }
+      }
+    },
+    "Nenhuma conta" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No accounts"
+          }
+        }
+      }
+    },
+    "Não conectada: entre em Ajustes › Contas." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not signed in: sign in from Settings › Accounts."
+          }
+        }
+      }
+    },
+    "Não foi possível ler os limites" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t read the limits"
+          }
+        }
+      }
+    },
+    "Não foi possível ler os limites." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t read the limits."
+          }
+        }
+      }
+    },
+    "Projetos nesta conta" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Projects on this account"
+          }
+        }
+      }
+    },
+    "Quanto já foi usado das assinaturas do Claude e do Codex, por conta" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How much of each Claude and Codex subscription is used, by account"
+          }
+        }
+      }
+    },
+    "Usar como padrão na box" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use as the box’s default"
           }
         }
       }
@@ -144,6 +284,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Finished turns waiting for you to carry on; archived or ended sessions stay folded"
+          }
+        }
+      }
+    },
+    "padrão" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "default"
           }
         }
       }

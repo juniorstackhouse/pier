@@ -327,12 +327,18 @@ final class MockBox: PierTransport, @unchecked Sendable {
         if let r = talkRoute(method, p, body) { return r }   // Falar's router (block at the end of the file)
         if let r = pairInviteRoute(method, p) { return r }   // "Levar para o iPhone" (block at the end of the file)
         if let r = workspace.route(method, p, query, body) { return r }   // a worktree's files (UITestMockWorkspace.swift)
+        if method == .post, p.count == 4, p[1] == "accounts", p[3] == "login" {
+            // The terminal where the person signs in.
+            let s = Self.session("login-\(p[2])", location: "", dir: "/home/ubuntu", state: "ready", title: "Entrar")
+            sessions.insert(s, at: 0)
+            return (200, Self.json(s))
+        }
         if let r = projects.route(method, p, query, body, locations: MockFixtures.locations) { return r }   // clones, GitHub, removal (UITestMockProjects.swift)
         switch (method, p[1]) {
         case (.get, "info"):
             // pierd with the file routes.
             var info = Self.fixtureObject(MockFixtures.info)
-            info["capabilities"] = ((info["capabilities"] as? [String]) ?? []) + ["files", "projects", "environments"]
+            info["capabilities"] = ((info["capabilities"] as? [String]) ?? []) + ["files", "projects", "environments", "accounts", "box.env", "shares"]
             return (200, Self.json(info))
         case (.get, "doctor"): return (200, Self.json(doctorChecks()))
         case (.get, "stats"): return (200, Self.fixture(MockFixtures.stats))

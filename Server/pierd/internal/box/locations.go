@@ -49,6 +49,9 @@ type Location struct {
 	OutsideRoot bool   `json:"outside_root,omitempty"`
 	// Isolated is set when the project has an environment of its own.
 	Isolated bool `json:"isolated,omitempty"`
+	// Accounts are the agent accounts the project chose (accounts.go), by
+	// agent; an agent missing uses the box's default.
+	Accounts map[string]string `json:"accounts,omitempty"`
 }
 
 type Worktree struct {
@@ -97,6 +100,8 @@ type savedLocation struct {
 	RepoTrust string `json:"repo_trust,omitempty"`
 	// Environment is the project's isolated environment (environment.go).
 	Environment *Environment `json:"environment,omitempty"`
+	// Accounts are the agent accounts it uses (accounts.go).
+	Accounts map[string]string `json:"accounts,omitempty"`
 }
 
 func (l *Locations) Add(ctx context.Context, name, path string) (Location, error) {
@@ -345,7 +350,7 @@ func (l *Locations) RemoveWorktree(ctx context.Context, location, name string, f
 }
 
 func describe(ctx context.Context, s savedLocation) Location {
-	loc := Location{Name: s.Name, Path: s.Path, Scripts: scriptsFor(s), Isolated: s.Environment != nil}
+	loc := Location{Name: s.Name, Path: s.Path, Scripts: scriptsFor(s), Isolated: s.Environment != nil, Accounts: s.Accounts}
 	repo, trust, _ := repoLayer(s)
 	loc.RepoTrust = trust.State
 	out, err := git(ctx, "-C", s.Path, "worktree", "list", "--porcelain")

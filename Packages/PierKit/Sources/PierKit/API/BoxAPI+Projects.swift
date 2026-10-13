@@ -58,8 +58,9 @@ extension BoxAPI {
 
     /// Delete a space. With projects in it the box refuses (409 `space_not_empty`) unless `purge`, which removes them from
     /// the disk with it (409 `unsaved_work` for work no remote has, unless `force`). Its projects never move out of it.
-    public func removeSpace(name: String, purge: Bool, force: Bool) async throws -> ProjectPurge {
-        let path = Self.url("/v1/spaces/\(Self.seg(name))", [("purge", purge ? "1" : nil), ("force", force ? "1" : nil)])
+    /// `deleteFiles` also deletes what in it is no project's (409 `space_has_files` without it).
+    public func removeSpace(name: String, purge: Bool, force: Bool, deleteFiles: Bool = false) async throws -> ProjectPurge {
+        let path = Self.url("/v1/spaces/\(Self.seg(name))", [("purge", purge ? "1" : nil), ("force", force ? "1" : nil), ("delete_files", deleteFiles ? "1" : nil)])
         return try decode(try await call(.delete, path).data)
     }
 
@@ -70,5 +71,71 @@ extension BoxAPI {
     /// Save a project's environment; the box builds and starts it in the background (`status.state` "building").
     public func setEnvironment(location: String, _ env: ProjectEnvironment) async throws -> EnvironmentView {
         try decode(try await call(.put, "/v1/locations/\(Self.seg(location))/environment", body: env).data)
+    }
+}
+
+// Accounts and limits, the box's variables and skills, public links (capabilities `accounts`, `box.env`, `shares`;
+// docs/API.md §2.10–2.12).
+
+extension BoxAPI {
+    public func accounts() async throws -> [AgentAccount] { try await get("/v1/accounts") }
+
+    public func addAccount(agent: String, name: String) async throws -> AgentAccount {
+        struct Body: Encodable { let agent: String; let name: String }
+        return try decode(try await call(.post, "/v1/accounts", body: Body(agent: agent, name: name)).data)
+    }
+
+    public func renameAccount(id: String, name: String) async throws -> AgentAccount {
+        struct Body: Encodable { let name: String }
+        return try decode(try await call(.patch, "/v1/accounts/\(Self.seg(id))", body: Body(name: name)).data)
+    }
+
+    /// Make an account the box's default for its agent.
+    public func makeDefaultAccount(id: String) async throws -> AgentAccount {
+        struct Body: Encodable { let `default` = true }
+        return try decode(try await call(.patch, "/v1/accounts/\(Self.seg(id))", body: Body()).data)
+    }
+
+    public func removeAccount(id: String) async throws {
+        _ = try await call(.delete, "/v1/accounts/\(Self.seg(id))")
+    }
+
+    /// A terminal on the account's folder where the person signs in (open it as a session).
+    public func loginAccount(id: String) async throws -> Session {
+        try decode(try await call(.post, "/v1/accounts/\(Self.seg(id))/login").data)
+    }
+
+    /// Put pierd's status line in the Claude accounts that lack it, so their limits can be read.
+    public func enableLimits() async throws {
+        _ = try await call(.post, "/v1/limits/enable")
+    }
+
+    /// Which account each agent uses in a project (`[agent: id]`, "" for the box's default).
+    public func setProjectAccounts(location: String, _ choice: [String: String]) async throws -> Location {
+        try decode(try await call(.put, "/v1/locations/\(Self.seg(location))/accounts", body: choice).data)
+    }
+
+    public func boxVariables() async throws -> BoxVariables { try await get("/v1/env") }
+
+    public func setBoxVariables(_ v: BoxVariables) async throws -> BoxVariables {
+        try decode(try await call(.put, "/v1/env", body: v).data)
+    }
+
+    public func skills() async throws -> [BoxSkill] { try await get("/v1/skills") }
+
+    public func setSkill(id: String, installed: Bool) async throws -> [BoxSkill] {
+        try decode(try await call(installed ? .put : .delete, "/v1/skills/\(Self.seg(id))").data)
+    }
+
+    public func publicLinks() async throws -> [PublicLink] { try await get("/v1/shares") }
+
+    /// Publish one of a worktree's ports at a public URL for `hours` (24 by default, at most 168).
+    public func createPublicLink(location: String, worktree: String, port: Int, hours: Int? = nil) async throws -> PublicLink {
+        struct Body: Encodable { let location: String; let worktree: String; let port: Int; let hours: Int? }
+        return try decode(try await call(.post, "/v1/shares", body: Body(location: location, worktree: worktree, port: port, hours: hours)).data)
+    }
+
+    public func removePublicLink(name: String) async throws {
+        _ = try await call(.delete, "/v1/shares/\(Self.seg(name))")
     }
 }

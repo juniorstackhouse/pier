@@ -97,8 +97,11 @@ public struct Location: Codable, Sendable, Hashable, Identifiable {
     public let outsideRoot: Bool
     /// It has an isolated environment of its own (`GET …/environment`).
     public let isolated: Bool
+    /// The agent accounts it chose, by agent (`PUT …/accounts`); an agent missing uses the box's default.
+    public let accounts: [String: String]?
 
-    public init(name: String, path: String = "", repo: Bool = false, worktrees: [Worktree]? = nil, remote: String? = nil, slug: String? = nil, defaultBranch: String? = nil, repoTrust: String? = nil, check: String? = nil, checkFrom: String? = nil, agents: [AgentPreset]? = nil, scripts: Scripts? = nil, space: String? = nil, outsideRoot: Bool = false, isolated: Bool = false) {
+    public init(name: String, path: String = "", repo: Bool = false, worktrees: [Worktree]? = nil, remote: String? = nil, slug: String? = nil, defaultBranch: String? = nil, repoTrust: String? = nil, check: String? = nil, checkFrom: String? = nil, agents: [AgentPreset]? = nil, scripts: Scripts? = nil, space: String? = nil, outsideRoot: Bool = false, isolated: Bool = false, accounts: [String: String]? = nil) {
+        self.accounts = accounts
         self.space = space
         self.outsideRoot = outsideRoot
         self.isolated = isolated
@@ -132,6 +135,7 @@ public struct Location: Codable, Sendable, Hashable, Identifiable {
         case space
         case outsideRoot = "outside_root"
         case isolated
+        case accounts
     }
 
     public init(from decoder: Decoder) throws {
@@ -151,6 +155,7 @@ public struct Location: Codable, Sendable, Hashable, Identifiable {
         self.space = try c.decodeIfPresent(String.self, forKey: .space)
         self.outsideRoot = try c.decodeIfPresent(Bool.self, forKey: .outsideRoot) ?? false
         self.isolated = try c.decodeIfPresent(Bool.self, forKey: .isolated) ?? false
+        self.accounts = try c.decodeIfPresent([String: String].self, forKey: .accounts)
     }
 
     public var id: String { name }

@@ -24,6 +24,7 @@ final class WorktreeDetailsStore {
     private(set) var status: WorktreeStatus?
     private(set) var loaded = false
     private(set) var busy: Set<String> = []
+    private(set) var links: [PublicLink] = []
     var error: String?
 
     init(box: String, location: String, worktree: String) {
@@ -39,6 +40,9 @@ final class WorktreeDetailsStore {
         if let s = await svc { services = s }
         if let a = await all { servers = Projects.devServers(a, location: location, worktree: wt) }
         if let s = await st, let mine = s.first(where: { $0.name == worktree }) { status = mine }
+        if conn.info?.has("shares") == true, let all = try? await api.publicLinks() {
+            links = all.filter { $0.location == location && $0.worktree == worktree }
+        }
         loaded = true
         let host = conn.record.host
         var probes: [Int: Bool] = [:]
@@ -47,6 +51,25 @@ final class WorktreeDetailsStore {
             for await (p, ok) in g { probes[p] = ok }
         }
         reachable = probes
+    }
+
+    /// Publishes a port at a public link (24 hours) through the box's relay.
+    func publish(port: Int, model: AppModel) async -> PublicLink? {
+        guard let conn = model.connection(for: box) else { return nil }
+        busy.insert("link-\(port)")
+        defer { busy.remove("link-\(port)") }
+        do {
+            let l = try await BoxAPI(transport: conn.raw).createPublicLink(location: location, worktree: worktree, port: port)
+            links.append(l)
+            error = nil
+            return l
+        } catch { self.error = ComposeErrorText.message(error); return nil }
+    }
+
+    func unpublish(_ l: PublicLink, model: AppModel) async {
+        guard let conn = model.connection(for: box) else { return }
+        do { try await BoxAPI(transport: conn.raw).removePublicLink(name: l.name); links.removeAll { $0.name == l.name } }
+        catch { self.error = ComposeErrorText.message(error) }
     }
 
     func act(_ action: String, on service: String, model: AppModel) async {
@@ -101,11 +124,13 @@ struct WorktreeDetailsView: View {
             preview
             servicesSection
             environment
+            if let project { ProjectAccountsSection(box: box, location: project) }
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
         .pierBackground()
         .refreshable { await store.load(model: model) }
+        .task { await AccountsCache.shared.load(box: box, model: model) }
         .task {
             while !Task.isCancelled {
                 await store.load(model: model)
@@ -151,14 +176,49 @@ struct WorktreeDetailsView: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
                 Image(systemName: "globe").foregroundStyle(Theme.accent)
-                Text(":\(s.port)").font(.body.weight(.semibold).monospacedDigit()).foregroundStyle(Theme.text)
+                Text(verbatim: ":\(s.port)").font(.body.weight(.semibold).monospacedDigit()).foregroundStyle(Theme.text)
+                    .accessibilityIdentifier("preview-\(s.port)")
                 if let p = s.process { Text(p).font(.mono(11)).foregroundStyle(Theme.textDim).lineLimit(1).truncationMode(.middle) }
                 Spacer(minLength: 0)
             }
             if let url { linkLine(url, reachable: store.reachable[s.port]) }
+            publicLinkLine(port: s.port)
         }
         .padding(.vertical, 2)
-        .accessibilityIdentifier("preview-\(s.port)")
+    }
+
+    /// The port's public link, or the button that makes one (boxes with a relay that serves links).
+    @ViewBuilder private func publicLinkLine(port: Int) -> some View {
+        if let l = store.links.first(where: { $0.port == port }), let url = URL(string: l.url) {
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 8) {
+                    Image(systemName: "globe.americas.fill").foregroundStyle(Theme.green).font(.caption)
+                    Text(l.url).font(.mono(11)).foregroundStyle(Theme.text).lineLimit(1).truncationMode(.middle).textSelection(.enabled)
+                    Spacer(minLength: 4)
+                    Button { openURL(url) } label: { Image(systemName: "safari") }.buttonStyle(.borderless)
+                    Button { UIPasteboard.general.string = l.url } label: { Image(systemName: "doc.on.doc") }.buttonStyle(.borderless).accessibilityLabel("Copiar link público")
+                    ShareLink(item: url) { Image(systemName: "square.and.arrow.up") }.buttonStyle(.borderless)
+                    Button(role: .destructive) { Task { await store.unpublish(l, model: model) } } label: { Image(systemName: "xmark.circle.fill") }
+                        .buttonStyle(.borderless).tint(Theme.red).accessibilityLabel("Tirar do ar")
+                }
+                if let e = l.expires { Text("Público até \(e.formatted(date: .abbreviated, time: .shortened)): qualquer pessoa com o link vê a página.").font(.caption2).foregroundStyle(Theme.textFaint) }
+                Text("Não publique servidores com console de depuração ligado (web-console, debug toolbar): quem tem o link chega a eles.").font(.caption2).foregroundStyle(Theme.orange)
+            }
+            .accessibilityIdentifier("public-link-\(port)")
+        } else if conn?.info?.has("shares") == true {
+            Button {
+                Task { if let l = await store.publish(port: port, model: model) { UIPasteboard.general.string = l.url; model.toast = AppToast(text: String(localized: "Link público copiado. Vale por 24 horas."), symbol: "globe") } }
+            } label: {
+                HStack(spacing: 6) {
+                    if store.busy.contains("link-\(port)") { ProgressView().controlSize(.mini) } else { Image(systemName: "globe") }
+                    Text("Criar link público")
+                }
+                .font(.caption.weight(.semibold))
+            }
+            .buttonStyle(.borderless)
+            .disabled(store.busy.contains("link-\(port)"))
+            .accessibilityIdentifier("public-link-create-\(port)")
+        }
     }
 
     private func linkLine(_ url: URL, reachable: Bool?) -> some View {

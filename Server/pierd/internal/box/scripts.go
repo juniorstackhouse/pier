@@ -93,9 +93,10 @@ func runScript(ctx context.Context, script, repo, dir, name, logPath string, tim
 	if shell == "" {
 		shell = "/bin/sh"
 	}
-	cmd := groups.CommandContext(ctx, shell, "-lc", envBinFirst+script)
+	shArgs, shVar := shInLogin(envBinFirst + script)
+	cmd := groups.CommandContext(ctx, shell, shArgs...)
 	cmd.Dir = dir
-	cmd.Env = append(os.Environ(),
+	cmd.Env = append(os.Environ(), shVar,
 		"PIER_ROOT_PATH="+repo, "PIER_WORKTREE_PATH="+dir, "PIER_WORKTREE_NAME="+name,
 		"ORCA_ROOT_PATH="+repo, "ORCA_WORKTREE_PATH="+dir, "ORCA_WORKSPACE_NAME="+name)
 	// A script has no terminal to answer a question in: corepack fetches
@@ -129,4 +130,12 @@ func logTail(path string, lines, max int) string {
 		all = all[len(all)-lines:]
 	}
 	return strings.TrimSpace(strings.Join(all, "\n"))
+}
+
+// shInLogin runs a POSIX sh script under the person's login shell, which
+// puts the programs they installed on PATH: the shell runs /bin/sh on the
+// script, handed over in PIER_SH, so it means the same under bash, zsh or
+// fish. It returns the login shell's arguments and the variable to add.
+func shInLogin(script string) (args []string, envVar string) {
+	return []string{"-lc", `exec /bin/sh -c "$PIER_SH"`}, "PIER_SH=unset PIER_SH; " + script
 }
