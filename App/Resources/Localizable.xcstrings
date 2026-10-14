@@ -1565,6 +1565,16 @@
         }
       }
     },
+    "A sessão termina na box, e o que estiver rodando nela para." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The session ends on the box, and whatever runs in it stops."
+          }
+        }
+      }
+    },
     "A tela do agente está vazia por enquanto." : {
       "localizations" : {
         "en" : {
@@ -3455,6 +3465,16 @@
         }
       }
     },
+    "Comando" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Command"
+          }
+        }
+      }
+    },
     "Comentar" : {
       "localizations" : {
         "en" : {
@@ -3881,6 +3901,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Copy public link"
+          }
+        }
+      }
+    },
+    "Copiar nome da sessão" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy session name"
           }
         }
       }
@@ -4565,6 +4595,16 @@
         }
       }
     },
+    "Ele está rodando “%@”, que para junto. A sessão termina na box." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "It is running “%@”, which stops with it. The session ends on the box."
+          }
+        }
+      }
+    },
     "Ele mostra um QR code. Escaneie aqui." : {
       "localizations" : {
         "en" : {
@@ -4871,12 +4911,32 @@
         }
       }
     },
+    "Enviar (↩)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send (↩)"
+          }
+        }
+      }
+    },
     "Enviar agora" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Send now"
+          }
+        }
+      }
+    },
+    "Enviar comando" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send command"
           }
         }
       }
@@ -5783,6 +5843,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dismiss keyboard"
+          }
+        }
+      }
+    },
+    "Fechar terminal" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close terminal"
+          }
+        }
+      }
+    },
+    "Fechar “%@”?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close “%@”?"
           }
         }
       }
@@ -8193,6 +8273,26 @@
         }
       }
     },
+    "Novo terminal" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New terminal"
+          }
+        }
+      }
+    },
+    "Novo terminal (⌃⇧`)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New terminal (⌃⇧`)"
+          }
+        }
+      }
+    },
     "Novos agentes em %@ usam “%@”." : {
       "localizations" : {
         "en" : {
@@ -8339,6 +8439,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Couldn't open the file"
+          }
+        }
+      }
+    },
+    "Não foi possível abrir um terminal: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not open a terminal: %@"
           }
         }
       }
@@ -8959,6 +9069,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "The program ended. The session takes no more messages."
+          }
+        }
+      }
+    },
+    "O programa terminou. Fechar a aba tira a sessão da box." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The program ended. Closing the tab removes the session from the box."
           }
         }
       }
@@ -11101,6 +11221,16 @@
         }
       }
     },
+    "Renomear terminal" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rename terminal"
+          }
+        }
+      }
+    },
     "Renomear…" : {
       "localizations" : {
         "en" : {
@@ -11217,16 +11347,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Answers"
-          }
-        }
-      }
-    },
-    "Respostas e mensagens esperam esse tempo antes de sair, com “Desfazer” embaixo da tela (Esc ou ⌘Z no teclado)." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Answers and messages wait this long before going out, with “Undo” at the bottom of the screen (Esc or ⌘Z on a keyboard)."
           }
         }
       }
@@ -11687,6 +11807,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "No changes"
+          }
+        }
+      }
+    },
+    "Sem nome, ele volta a ter um número." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Left without a name, it gets a number again."
           }
         }
       }
@@ -12213,6 +12343,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Terminal"
+          }
+        }
+      }
+    },
+    "Terminal %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminal %lld"
           }
         }
       }
@@ -13723,6 +13863,16 @@
         }
       }
     },
+    "o programa terminou" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "the program ended"
+          }
+        }
+      }
+    },
     "o terminal" : {
       "localizations" : {
         "en" : {
@@ -14229,6 +14379,86 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "⚠️ %lld item(s) lose work not sent yet"
+          }
+        }
+      }
+    },
+    "Iniciando %@…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starting %@…"
+          }
+        }
+      }
+    },
+    "Respostas de um toque (permissões, opções, próximos passos) esperam esse tempo antes de sair, com “Desfazer” embaixo da tela (Esc ou ⌘Z no teclado). Mensagens digitadas saem na hora." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "One-tap answers (permissions, options, next steps) wait this long before going out, with “Undo” at the bottom of the screen (Esc or ⌘Z on a keyboard). Typed messages go out at once."
+          }
+        }
+      }
+    },
+    "Ocultar detalhes" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide Details"
+          }
+        }
+      }
+    },
+    "Mostrar detalhes" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show Details"
+          }
+        }
+      }
+    },
+    "Página" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Page"
+          }
+        }
+      }
+    },
+    "Ver conversa" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View Conversation"
+          }
+        }
+      }
+    },
+    "Na fila: vai quando o agente terminar a vez" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Queued: goes in when the agent ends its turn"
+          }
+        }
+      }
+    },
+    "A mensagem não foi enviada." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The message was not sent."
           }
         }
       }

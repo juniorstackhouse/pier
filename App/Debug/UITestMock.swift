@@ -28,6 +28,22 @@ final class MockBox: PierTransport, @unchecked Sendable {
     private let lock = NSLock()
     private var sessions: [JSON] = []
     private var transcripts: [String: [JSON]] = [:]
+    /// A task or chat just started: Claude Code writes its record only once the prompt is in, so for its first seconds the
+    /// box has none to read (`source: "none"`), as on pierd.
+    private var recordAt: [String: Date] = [:]
+    /// Messages sent with `when: idle` while the agent works, held until its turn ends (pierd's queue, docs/API.md 4.3):
+    /// `turn`, `preview`, `length`, `at` as `GET .../queue` answers, plus the whole `text`.
+    private var held: [String: [JSON]] = [:]
+    /// How long the agent takes to answer a message: 1.4 s, or `-mockReplyDelay <s>` (a run that sends while it works).
+    private static var replyDelay: Double {
+        let d = UserDefaults.standard.double(forKey: "mockReplyDelay")
+        return d > 0 ? d : 1.4
+    }
+    /// How long that lasts: 3 s, or `-mockRecordDelay <s>` (a UI test that looks at the chat meanwhile).
+    private static var recordDelay: Double {
+        let d = UserDefaults.standard.double(forKey: "mockRecordDelay")
+        return d > 0 ? d : 3
+    }
     private var seq = 300
     private var off = 1000
 
@@ -83,6 +99,8 @@ final class MockBox: PierTransport, @unchecked Sendable {
     /// The worktrees' files and history (UITestMockWorkspace.swift).
     private var workspace = MockWorkspace()
     private var projects = MockProjects()
+    /// The shells started without an agent (UITestMockTerminals.swift).
+    private var terminals = MockTerminals()
 
     init() {
         // `-uiTestShowcase 1`: the showcase dataset (English, or Portuguese with the app in Portuguese) instead of everything below (UITestShowcase.swift).
@@ -333,6 +351,7 @@ final class MockBox: PierTransport, @unchecked Sendable {
         }
         let p = path.split(separator: "/").map { String($0).removingPercentEncoding ?? String($0) }
         guard p.first == "v1", p.count >= 2 else { return notFound }
+        if method == .post, p.count == 2, p[1] == "sessions", let r = startTerminal(body) { return r }   // a shell, before the PR flow's agents
         if UITestShowcase.enabled, let r = showcaseRoute(method, p, query, body) { return r }   // the showcase block at the end of the file
         if MockPRs.enabled, let r = pullRequestRoute(method, p, body) { return r }
         if let r = talkRoute(method, p, body) { return r }   // Falar's router (block at the end of the file)
@@ -426,13 +445,15 @@ final class MockBox: PierTransport, @unchecked Sendable {
         let s = Self.session(name, location: location, dir: "/home/ubuntu/code/\(location)", state: "running", title: String(prompt.prefix(40)))
         sessions.insert(s, at: 0)
         transcripts[name] = [item("user", text: prompt)]
-        scheduleReply(name, text: "Started. I'll let you know when it's done.")
+        recordAt[name] = Date().addingTimeInterval(Self.recordDelay)
+        scheduleReply(name, text: "Started. I'll let you know when it's done.", after: Self.recordDelay + 2)
         var out = Self.fixtureObject(MockFixtures.taskCreate)
         out["session"] = s
         return (201, Self.json(out))
     }
 
-    /// `POST /v1/sessions` with `chat: true` (the only form the app sends outside the PR flow); anything else is refused.
+    /// `POST /v1/sessions` with `chat: true` (the form the app sends outside the PR flow and the terminals, which
+    /// `startTerminal` takes first); anything else is refused.
     private func startChat(_ body: Data?) -> (Int, Data) {
         let req = (body.flatMap { try? JSONSerialization.jsonObject(with: $0) } as? JSON) ?? [:]
         guard req["chat"] as? Bool == true, req["location"] == nil else { return notFound }
@@ -443,7 +464,8 @@ final class MockBox: PierTransport, @unchecked Sendable {
         s["agent"] = req["agent"] ?? "claude"
         sessions.insert(s, at: 0)
         transcripts[name] = [item("user", text: prompt)]
-        scheduleReply(name, text: "Good question. Let's think it through together.")
+        recordAt[name] = Date().addingTimeInterval(Self.recordDelay)
+        scheduleReply(name, text: "Good question. Let's think it through together.", after: Self.recordDelay + 2)
         return (200, Self.json(s))
     }
 
@@ -468,8 +490,21 @@ final class MockBox: PierTransport, @unchecked Sendable {
             self.lock.withLock {
                 self.transcripts[name, default: []].append(self.item("text", text: text))
                 self.setState(name, "finished")
+                self.deliverHeld(name)
             }
         }
+    }
+
+    /// The turn ended: the first message held for it goes in, typed as pierd types it, and is answered like any other.
+    private func deliverHeld(_ name: String) {
+        guard var queue = held[name], !queue.isEmpty, let i = index(name) else { return }
+        let h = queue.removeFirst()
+        held[name] = queue
+        sessions[i]["queued"] = queue.count
+        let text = h["text"] as? String ?? ""
+        transcripts[name, default: []].append(item("user", text: text))
+        seq += 1
+        scheduleReply(name, text: "Picked up your queued message (\(text.count) characters).", after: Self.replyDelay)
     }
 
     /// The chat lab's reply, as Claude Code writes one: running, the words growing on screen (the draft) for about 5 s,
@@ -500,6 +535,7 @@ final class MockBox: PierTransport, @unchecked Sendable {
         let name = p[2]
         guard let si = index(name) else { return notFound }
         let req = (body.flatMap { try? JSONSerialization.jsonObject(with: $0) } as? JSON) ?? [:]
+        if let r = terminalRoute(method, name, si, p, req) { return r }   // a terminal's pane, lines and keys
         if UITestShowcase.enabled, let r = showcaseSessionRoute(method, name, p, query, req) { return r }
         if p.count == 3 {
             switch method {
@@ -510,6 +546,10 @@ final class MockBox: PierTransport, @unchecked Sendable {
         }
         switch (method, p[3]) {
         case (.get, "transcript") where p.count == 4:
+            if let at = recordAt[name], Date() < at {
+                return (200, Self.json(["source": "none", "items": [JSON](), "crew": [JSON](),
+                                        "reason": "No claude conversation for /home/ubuntu/code/\(name) yet in ~/.claude/projects."]))
+            }
             let all = transcripts[name] ?? []
             // --- Agents board: `before=0` is "the tail" (the board's last reply of a finished turn), as on pierd. ---
             if query["before"] == "0" { return (200, Self.json(["source": "claude", "items": Array(all.suffix(40)), "more": all.count > 40, "next": 0])) }
@@ -560,17 +600,40 @@ final class MockBox: PierTransport, @unchecked Sendable {
             return (200, Self.json(["sent": true, "at": Self.iso(), "seq": seq, "turn": "\(name)#\(seq)"]))
         case (.get, "draft"): return (200, Self.json(["agent": "claude"]))
         case (.get, "controls"): return (200, Self.fixture(MockFixtures.controls))
-        case (.get, "queue"): return (200, Data("[]".utf8))
+        case (.get, "queue") where p.count == 4: return (200, Self.json(held[name] ?? []))
+        case (.delete, "queue") where p.count == 5:
+            held[name]?.removeAll { ($0["turn"] as? String) == p[4] }
+            sessions[si]["queued"] = held[name]?.count ?? 0
+            return (200, Data("{}".utf8))
+        case (.post, "queue") where p.count == 6 && p[5] == "send":
+            guard let h = held[name]?.first(where: { ($0["turn"] as? String) == p[4] }) else { return notFound }
+            held[name]?.removeAll { ($0["turn"] as? String) == p[4] }
+            sessions[si]["queued"] = held[name]?.count ?? 0
+            let text = h["text"] as? String ?? ""
+            transcripts[name, default: []].append(item("user", text: text))
+            seq += 1
+            scheduleReply(name, text: "Picked up your queued message (\(text.count) characters).", after: Self.replyDelay)
+            return (200, Self.json(["sent": true, "at": Self.iso(), "seq": seq, "turn": p[4]]))
         case (.get, "diff"): return (200, Self.fixture(MockFixtures.fileDiff))
         case (.post, "send") where name == Self.mcpSession && !mcpAnswered:
             mcpAnswered = true
             scheduleReply(name, text: "MCP server enabled. Ready.", after: 0.8)
             return (200, Self.json(["sent": true, "at": Self.iso(), "seq": seq, "turn": "\(name)#1"]))
+        case (.post, "send") where (req["when"] as? String) == "idle" && ["running", "waiting"].contains(sessions[si]["agent_state"] as? String ?? ""):
+            // While the agent works the message waits for its turn to end, as on pierd.
+            let text = (req["text"] as? String) ?? ""
+            seq += 1
+            let turn = "\(name)#h\(seq)"
+            held[name, default: []].append(["turn": turn, "preview": String(text.prefix(200)), "length": text.count, "origin": "app",
+                                             "at": Self.iso(), "text": text])
+            sessions[si]["queued"] = held[name]?.count ?? 0
+            return (200, Self.json(["sent": false, "queued": true, "at": Self.iso(), "seq": seq, "turn": turn]))
         case (.post, "send"):
             let text = (req["text"] as? String) ?? ""
             transcripts[name, default: []].append(item("user", text: text))
             seq += 1
-            scheduleReply(name, text: "Got it. I read your message (\(text.count) characters) and I'm on it.\n\n```bash\ngit status --short\n```")
+            scheduleReply(name, text: "Got it. I read your message (\(text.count) characters) and I'm on it.\n\n```bash\ngit status --short\n```",
+                          after: Self.replyDelay)
             return (200, Self.json(["sent": true, "at": Self.iso(), "seq": seq, "turn": "\(name)#\(seq)"]))
         case (.post, "keys"), (.post, "answer"):
             scheduleReply(name, text: "Thanks, continuing.", after: 1.0)
@@ -578,6 +641,65 @@ final class MockBox: PierTransport, @unchecked Sendable {
         case (.post, "interrupt"): setState(name, "finished"); return (200, Self.json(["interrupted": true]))
         default: return notFound
         }
+    }
+
+    // MARK: terminals
+
+    /// `POST /v1/sessions` with neither `agent`, `chat` nor `home`: a shell at the location (with `command`, that command),
+    /// named and listed as pierd does (UITestMockTerminals.swift); nil for any other request.
+    private func startTerminal(_ body: Data?) -> (Int, Data)? {
+        let req = (body.flatMap { try? JSONSerialization.jsonObject(with: $0) } as? JSON) ?? [:]
+        guard req["agent"] == nil, req["chat"] as? Bool != true, req["home"] as? Bool != true,
+              let location = req["location"] as? String, !location.isEmpty else { return nil }
+        guard let dir = folder(of: location) else { return (404, Self.json(["error": "no location named \(location)", "code": "not_found"])) }
+        let command = (req["command"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+        let name = (req["name"] as? String) ?? MockTerminals.defaultName(location: location, command: command)
+        guard index(name) == nil else { return (409, Self.json(["error": "session \(name) already exists", "code": "session_exists"])) }
+        terminals.start(name, ref: location, dir: dir, command: command)
+        var s: JSON = ["name": name, "location": location, "dir": dir, "created": Self.iso(), "attached": 0, "exited": terminals.exited(name)]
+        if let command { s["command"] = command }
+        if let title = req["title"] as? String, !title.isEmpty { s["title"] = title }
+        sessions.append(s)
+        return (200, Self.json(s))
+    }
+
+    /// A terminal's pane, its lines and keys, and its end; nil for an agent's session and for what a terminal shares with
+    /// one (a rename).
+    private func terminalRoute(_ method: BoxClient.Method, _ name: String, _ si: Int, _ p: [String], _ req: JSON) -> (Int, Data)? {
+        guard terminals.has(name) else { return nil }
+        defer { if index(name) == si, terminals.exited(name) { sessions[si]["exited"] = true } }
+        switch (method, p.count > 3 ? p[3] : "") {
+        case (.delete, ""):
+            sessions.remove(at: si)
+            terminals.remove(name)
+            return (200, Self.json(["removed": name]))
+        case (.get, "screen"):
+            return (200, Self.json(["screen": terminals.screen(name)]))
+        case (.get, "transcript"):
+            return (200, Self.json(["source": "none", "items": [JSON](), "crew": [JSON]()]))
+        case (.post, "send"), (.post, "keys"):
+            guard !terminals.exited(name) else { return (409, Self.json(["error": "the program in \(name) has ended", "code": "session_exited"])) }
+            if p[3] == "send" {
+                terminals.type(name, text: (req["text"] as? String) ?? "", enter: (req["enter"] as? Bool) ?? true)
+                return (200, Self.json(["sent": true, "at": Self.iso()]))
+            }
+            terminals.press(name, keys: (req["keys"] as? [String]) ?? [])
+            return (200, Self.json(["sent": true]))
+        default:
+            return nil
+        }
+    }
+
+    /// Where a ref ("loc", or "loc/wt") is on the box: its worktree's folder in the locations the mock lists.
+    private func folder(of ref: String) -> String? {
+        let data = UITestShowcase.enabled ? Data(UITestShowcase.locations.utf8) : projects.locations(MockFixtures.locations)
+        let locations = (try? JSONSerialization.jsonObject(with: data)) as? [JSON] ?? []
+        let parts = ref.split(separator: "/", maxSplits: 1).map(String.init)
+        guard let l = locations.first(where: { $0["name"] as? String == parts.first }) else { return nil }
+        let worktrees = l["worktrees"] as? [JSON] ?? []
+        let w = parts.count > 1 ? worktrees.first(where: { $0["name"] as? String == parts[1] })
+                                : worktrees.first(where: { $0["main"] as? Bool == true }) ?? worktrees.first
+        return w?["path"] as? String ?? (parts.count == 1 ? l["path"] as? String : nil)
     }
 }
 

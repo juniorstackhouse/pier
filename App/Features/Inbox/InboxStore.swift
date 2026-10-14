@@ -110,6 +110,15 @@ final class InboxStore {
     /// Something acted on a box outside the Inbox's own path (a notification button): read it again for a moment.
     func noteActed(box: String) { followUps[box] = Date().addingTimeInterval(20) }
 
+    /// A message reached the agent from elsewhere (the Mac panel's agent screen): its card counts as answered, as it would
+    /// replied from here.
+    func markAnswered(_ i: InboxItem, model: AppModel) {
+        withAnimation(.snappy) { handled[i.id] = i.since }
+        signals.invalidate()
+        model.connection(for: i.item.box)?.scheduleRefresh(sessions: true)
+        noteActed(box: i.item.box)
+    }
+
     /// The session screen's model for a card (created once, kept while the card exists).
     func vm(_ i: InboxItem, model: AppModel) -> SessionViewModel? {
         if let v = vms[i.id] { return v }
@@ -173,7 +182,9 @@ final class InboxStore {
     /// (`PendingActions`): "Desfazer" brings the card back and nothing is sent. The window's token when it was scheduled
     /// (the Mac's Inbox card follows it to show "Enviando…" and then the receipt), nil when nothing happened.
     @discardableResult
-    func perform(_ action: InboxAction, on i: InboxItem, model: AppModel) async -> PendingActions.Token? {
+    /// `typed`: words written in a reply field, which go out at once like any message; a pick (an answer, a next step)
+    /// waits the undo window.
+    func perform(_ action: InboxAction, on i: InboxItem, model: AppModel, typed: Bool = false) async -> PendingActions.Token? {
         guard vm(i, model: model) != nil, !busy.contains(i.id) else { return nil }
         let label: String
         switch action {
@@ -181,7 +192,7 @@ final class InboxStore {
         case .send(let text): label = text
         }
         withAnimation(.snappy) { handled[i.id] = i.since }
-        return PendingActions.shared.schedule(label: label, perform: { [weak self] in
+        return PendingActions.shared.schedule(label: label, after: typed ? .zero : nil, perform: { [weak self] in
             guard let self else { return }
             if !(await self.execute(action, on: i, model: model)) { withAnimation(.snappy) { self.handled[i.id] = nil } }
         }, onUndo: { [weak self] in

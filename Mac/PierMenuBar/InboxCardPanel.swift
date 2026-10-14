@@ -43,6 +43,8 @@ import AppKit
         let label: String
         let start: Date
         let deadline: Date
+        /// Waiting an undo window (a typed reply goes out at once: nothing to undo).
+        var undoable: Bool { deadline > start }
     }
 
     let send: (String) -> Void
@@ -101,7 +103,7 @@ import AppKit
     /// agent in the panel; Esc while an answer waits undoes it (otherwise the panel's own Esc).
     func key(_ e: NSEvent) -> Bool {
         guard let chars = e.charactersIgnoringModifiers, !e.modifierFlags.contains(.command) else { return false }
-        if e.keyCode == 53, pending != nil { send("card:undo"); return true }
+        if e.keyCode == 53, pending?.undoable == true { send("card:undo"); return true }
         if chars == "k" { send("card:page:-1"); return true }
         if e.keyCode == 124 || chars == "j" { send("card:page:1"); return true }
         if e.keyCode == 36, let c = card { send("panel:show:agent:\(c.id)"); return true }
@@ -331,13 +333,14 @@ final class CardView: NSView, NSTextFieldDelegate {
             }
         }
         replyBox.placeholder = card.replyPlaceholder
-        // Bottom row: open the session; Revisar / Arquivar for a finished turn, Dispensar for a question.
+        // Bottom row: the whole conversation, here in the panel (the app is a click away from it, "Abrir no Pier");
+        // Revisar / Arquivar for a finished turn, Dispensar for a question.
         func pill(_ key: String, _ symbol: String, _ color: NSColor, _ action: String) {
             let b = PillButton(title: strings[key] ?? key, symbol: symbol, color: color)
             b.onClick = { [weak self] in self?.onAction?(action) }
             addSubview(b); bottomButtons.append(b); built.append(b)
         }
-        pill("cardOpen", "arrow.up.forward.app", PanelStyle.accent, "card:open:\(card.id)")
+        pill("cardConversation", "bubble.left.and.text.bubble.right", PanelStyle.accent, "panel:show:agent:\(card.id)")
         if card.kind == "finished" {
             if card.canReview { pill("review", "doc.text.magnifyingglass", PanelStyle.accent, "card:review:\(card.id)") }
             pill("archive", "archivebox", PanelStyle.textDim, "card:clear:\(card.id)")
@@ -838,13 +841,15 @@ final class HintPill: NSView {
             let ring = RingView()
             ring.frame.size = NSSize(width: 14, height: 14)
             segments = [ring, text(strings["sending"] ?? "Enviando…", color: PanelStyle.text, weight: .semibold)]
-            let undo = text(strings["undoEsc"] ?? "Esc desfaz", color: PanelStyle.accent, weight: .semibold)
-            let button = ClickableView(frame: NSRect(origin: .zero, size: undo.frame.size))
-            button.addSubview(undo)
-            button.onClick = { [weak self] in self?.onUndo?() }
-            button.accessibilityTitle = undo.stringValue
-            undoButton = button
-            segments.append(button)
+            if pending?.undoable == true {
+                let undo = text(strings["undoEsc"] ?? "Esc desfaz", color: PanelStyle.accent, weight: .semibold)
+                let button = ClickableView(frame: NSRect(origin: .zero, size: undo.frame.size))
+                button.addSubview(undo)
+                button.onClick = { [weak self] in self?.onUndo?() }
+                button.accessibilityTitle = undo.stringValue
+                undoButton = button
+                segments.append(button)
+            }
         } else if count > 0 {
             segments = [text(strings["hintPress"] ?? "Pressione")]
             let n = min(count, 9)
