@@ -1995,6 +1995,26 @@
         }
       }
     },
+    "Agentes nesta worktree" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agents in this worktree"
+          }
+        }
+      }
+    },
+    "Agentes neste projeto" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agents in this project"
+          }
+        }
+      }
+    },
     "Agentes, terminais e serviços do projeto recebem estas variáveis (o .env do projeto pode ler DB_HOST, DB_PORT, DATABASE_URL…). O env do próprio projeto tem prioridade." : {
       "localizations" : {
         "en" : {
@@ -3325,6 +3345,16 @@
         }
       }
     },
+    "Checkout principal" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Main checkout"
+          }
+        }
+      }
+    },
     "Checks" : {
       "localizations" : {
         "en" : {
@@ -3805,6 +3835,16 @@
         }
       }
     },
+    "Control C, interromper" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Control C, interrupt"
+          }
+        }
+      }
+    },
     "Conversa" : {
       "localizations" : {
         "en" : {
@@ -4251,6 +4291,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Describe the task"
+          }
+        }
+      }
+    },
+    "Descreva a tarefa, o bug ou a ideia…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Describe the task, the bug or the idea…"
           }
         }
       }
@@ -5361,6 +5411,16 @@
         }
       }
     },
+    "Esta sessão terminou na box." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This session ended on the box."
+          }
+        }
+      }
+    },
     "Esta worktree está limpa em relação a %@." : {
       "localizations" : {
         "en" : {
@@ -5613,6 +5673,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Expand"
+          }
+        }
+      }
+    },
+    "Explique como este projeto está organizado e como rodá-lo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Explain how this project is organized and how to run it"
           }
         }
       }
@@ -6109,6 +6179,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Start %@"
+          }
+        }
+      }
+    },
+    "Iniciar (⌘↩)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start (⌘↩)"
           }
         }
       }
@@ -6639,6 +6719,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "More"
+          }
+        }
+      }
+    },
+    "Mais %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld more"
           }
         }
       }
@@ -7353,6 +7443,16 @@
         }
       }
     },
+    "Na worktree %@ (%@)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In the worktree %1$@ (%2$@)"
+          }
+        }
+      }
+    },
     "Nada além da main nesta worktree: nada se perde." : {
       "localizations" : {
         "en" : {
@@ -7863,6 +7963,16 @@
         }
       }
     },
+    "Nesta worktree" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In this worktree"
+          }
+        }
+      }
+    },
     "Neste Mac" : {
       "localizations" : {
         "en" : {
@@ -7899,6 +8009,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "In Pier on the Mac: Settings → Take it to iPhone."
+          }
+        }
+      }
+    },
+    "No checkout principal (%@)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In the main checkout (%@)"
           }
         }
       }
@@ -8319,6 +8439,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "In a new worktree"
+          }
+        }
+      }
+    },
+    "Numa worktree nova a partir de %@, isolada do resto" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In a new worktree from %@, apart from the rest"
+          }
+        }
+      }
+    },
+    "Numa worktree nova, isolada desta" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In a new worktree, apart from this one"
           }
         }
       }
@@ -9155,6 +9295,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "What needs to change?"
+          }
+        }
+      }
+    },
+    "O que vamos fazer em %@?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What are we working on in %@?"
           }
         }
       }
@@ -10981,6 +11131,16 @@
         }
       }
     },
+    "Reconectando…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reconnecting…"
+          }
+        }
+      }
+    },
     "Reiniciar %@" : {
       "localizations" : {
         "en" : {
@@ -11421,6 +11581,16 @@
         }
       }
     },
+    "Revise as mudanças ainda não commitadas e aponte problemas" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Review the uncommitted changes and point out problems"
+          }
+        }
+      }
+    },
     "Revisão pendente" : {
       "localizations" : {
         "en" : {
@@ -11517,6 +11687,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Run `gh auth login` on the box to see pull requests and CI."
+          }
+        }
+      }
+    },
+    "Rode os testes e corrija o que estiver falhando" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Run the tests and fix whatever fails"
           }
         }
       }
@@ -11987,6 +12167,46 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sessions in this worktree"
+          }
+        }
+      }
+    },
+    "Seta para a direita" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Right arrow"
+          }
+        }
+      }
+    },
+    "Seta para a esquerda" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Left arrow"
+          }
+        }
+      }
+    },
+    "Seta para baixo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Down arrow"
+          }
+        }
+      }
+    },
+    "Seta para cima" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Up arrow"
           }
         }
       }
@@ -13099,6 +13319,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Worktree %@ ready"
+          }
+        }
+      }
+    },
+    "Worktree nova" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New worktree"
           }
         }
       }

@@ -17,6 +17,12 @@ configFiles:
 packages:
   PierKit:
     path: Packages/PierKit
+  # Ghostty's terminal (libghostty: the VT engine, Metal renderer, keyboard and selection) for the worktree's terminal
+  # tabs, fed by the box's terminal stream (POST /v1/sessions/{name}/tty). A prebuilt XCFramework; pinned exactly, since
+  # its releases follow Ghostty's main every week.
+  GhosttyKit:
+    url: https://github.com/Lakr233/libghostty-spm.git
+    exactVersion: 2.2.2026101301
 targets:
   Pier:
     type: application
@@ -26,6 +32,8 @@ targets:
     dependencies:
       - package: PierKit
         product: PierKit
+      - package: GhosttyKit
+        product: GhosttyTerminal
       # The widget extension: Home Screen widgets and Live Activities on iPhone/iPad, desktop / Notification Center widgets
       # on the Mac (built for Mac Catalyst like the app; ActivityKit stays iOS-only inside it).
       - target: PierWidgets

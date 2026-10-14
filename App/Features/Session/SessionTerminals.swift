@@ -27,6 +27,12 @@ final class SessionTerminals {
     var focusTarget: String?
     /// Why opening, closing or renaming failed, or a line or key did not go.
     var banner: BannerMessage?
+    /// The live terminals shown last (the latest at the end): they stay mounted (hidden) when another tab is picked, so
+    /// picking one again shows it at once, still streaming. A few only: each holds one of the box's terminals.
+    private(set) var shown: [String] = []
+    private static let kept = 4
+    /// Every live terminal shown here, for letting go of those the box no longer has.
+    @ObservationIgnored private var seen: Set<String> = []
     @ObservationIgnored private var feeds: [String: TerminalFeed] = [:]
     /// What each terminal's last screen shows running, read once per screen (the tabs ask on every redraw).
     @ObservationIgnored private var runningCache: [String: (screen: String, command: String?)] = [:]
@@ -84,6 +90,21 @@ final class SessionTerminals {
     /// The terminal on screen; nil: Conversa.
     func current(in list: [Session]) -> Session? { list.first { $0.name == selected } }
 
+    /// The box streams its terminals (capability `tty`): each is a live terminal (LiveTerminal.swift); else its screen
+    /// is read every second and lines are sent (TerminalFeed).
+    var live: Bool { LiveTerminal.supported(box: box, model: model) }
+
+    /// A terminal's live terminal, made the first time it shows.
+    func liveTerminal(for s: Session) -> LiveTerminal { LiveTerminal.of(box: box, name: s.name, model: model) }
+
+    /// `name` was picked: it joins the terminals kept mounted, the oldest of them leaving past `kept`.
+    func show(_ name: String) {
+        seen.insert(name)
+        shown.removeAll { $0 == name }
+        shown.append(name)
+        if shown.count > Self.kept { shown.removeFirst(shown.count - Self.kept) }
+    }
+
     /// A terminal's feed, made the first time it shows and kept for the run.
     func feed(for s: Session) -> TerminalFeed? {
         if let f = feeds[s.name] { return f }
@@ -97,7 +118,9 @@ final class SessionTerminals {
 
     /// What a terminal runs now, read from the last screen its feed has; nil before it first showed.
     func running(_ s: Session) -> String? {
-        guard !s.exited, let vm = feeds[s.name]?.vm, vm.screenLoaded else { return nil }
+        guard !s.exited else { return nil }
+        if let t = LiveTerminal.existing(box: box, name: s.name) { return t.running }
+        guard let vm = feeds[s.name]?.vm, vm.screenLoaded else { return nil }
         let screen = vm.screen
         if let c = runningCache[s.name], c.screen == screen { return c.command }
         let command = WorktreeTerminals.runningCommand(in: screen)
@@ -117,6 +140,9 @@ final class SessionTerminals {
             feeds[name] = nil
             runningCache[name] = nil
         }
+        LiveTerminal.forget(box: box, keeping: live, among: Array(seen))
+        seen.formIntersection(live)
+        shown.removeAll { !live.contains($0) }
     }
 
     /// A new shell in the worktree, on screen with its command line ready (the toolbar, the ⋯ menu, ⌃⇧`, the tabs' +).
@@ -309,9 +335,11 @@ struct SessionTerminalTabs<Conversation: View>: View {
             #endif
     }
 
-    /// The strip (once there is a terminal), and Conversa or the terminal picked.
+    /// The strip (once there is a terminal), and Conversa or the terminal picked. Live terminals shown once stay
+    /// mounted under the one on screen, still streaming, so going back to one is instant.
     private func content(_ list: [Session]) -> some View {
         let current = terminals.current(in: list)
+        let live = terminals.live
         return VStack(spacing: 0) {
             if !list.isEmpty { strip(list, current: current?.name) }
             ZStack {
@@ -320,10 +348,30 @@ struct SessionTerminalTabs<Conversation: View>: View {
                     .allowsHitTesting(current == nil)
                     .disabled(current != nil)
                     .accessibilityHidden(current != nil)
-                if let current { surface(current) }
+                if live {
+                    ForEach(list.filter { terminals.shown.contains($0.name) || $0.name == current?.name }, id: \.name) { s in
+                        liveSurface(s, visible: s.name == current?.name)
+                    }
+                } else if let current {
+                    surface(current)
+                }
             }
             .frame(maxHeight: .infinity)
         }
+        .onChange(of: current?.name, initial: true) { _, name in
+            if let name, live { terminals.show(name) }
+        }
+    }
+
+    private func liveSurface(_ s: Session, visible: Bool) -> some View {
+        LiveTerminalSurface(terminal: terminals.liveTerminal(for: s), exited: s.exited, visible: visible,
+                            focus: visible && terminals.focusTarget == s.name,
+                            onFocused: { if terminals.focusTarget == s.name { terminals.focusTarget = nil } },
+                            onClose: { ask(close: s) })
+            .opacity(visible ? 1 : 0)
+            .allowsHitTesting(visible)
+            .accessibilityHidden(!visible)
+            .zIndex(visible ? 1 : 0)
     }
 
     @ViewBuilder private func surface(_ s: Session) -> some View {
@@ -517,6 +565,42 @@ private struct TerminalTab: View {
 
 // MARK: - one terminal
 
+/// One live terminal (LiveTerminal.swift) and, once its program ended, the bar that closes its tab.
+private struct LiveTerminalSurface: View {
+    let terminal: LiveTerminal
+    let exited: Bool
+    let visible: Bool
+    let focus: Bool
+    let onFocused: () -> Void
+    let onClose: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            LiveTerminalView(terminal: terminal, visible: visible, focus: focus, onFocused: onFocused, showsKeys: !Platform.isMac && !exited)
+            if exited { TerminalClosedBar(onClose: onClose) }
+        }
+    }
+}
+
+/// The program ended: closing the tab takes the session off the box.
+private struct TerminalClosedBar: View {
+    let onClose: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "poweroff").foregroundStyle(Theme.gray)
+            Text("O programa terminou. Fechar a aba tira a sessão da box.")
+                .font(.system(size: Density.small + 1)).foregroundStyle(Theme.textDim)
+            Spacer(minLength: 8)
+            Button("Fechar", action: onClose).buttonStyle(.bordered).controlSize(.small)
+        }
+        .padding(.horizontal, 12)
+        .frame(height: Platform.isMac ? 34 : 44)
+        .background(Theme.bg)
+        .overlay(alignment: .top) { Rectangle().fill(Theme.stroke).frame(height: 1) }
+    }
+}
+
 /// One terminal: its lines (`TerminalPane`, as the session screen draws an agent's), the command line and the keys bar.
 /// Its feed reads the box only while it shows.
 private struct TerminalSurface: View {
@@ -536,7 +620,7 @@ private struct TerminalSurface: View {
         VStack(spacing: 0) {
             TerminalPane(vm: vm)
             if vm.session.exited {
-                closedBar
+                TerminalClosedBar(onClose: onClose)
             } else {
                 commandLine
                 // Its keys go through the view model; the feed reads the screen again right after any of them.
@@ -577,20 +661,6 @@ private struct TerminalSurface: View {
         .padding(.leading, 12).padding(.trailing, 6)
         .frame(height: Platform.isMac ? 34 : 44)
         .background { ZStack { Theme.card; Theme.terminalBg } }
-        .overlay(alignment: .top) { Rectangle().fill(Theme.stroke).frame(height: 1) }
-    }
-
-    private var closedBar: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "poweroff").foregroundStyle(Theme.gray)
-            Text("O programa terminou. Fechar a aba tira a sessão da box.")
-                .font(.system(size: Density.small + 1)).foregroundStyle(Theme.textDim)
-            Spacer(minLength: 8)
-            Button("Fechar", action: onClose).buttonStyle(.bordered).controlSize(.small)
-        }
-        .padding(.horizontal, 12)
-        .frame(height: Platform.isMac ? 34 : 44)
-        .background(Theme.bg)
         .overlay(alignment: .top) { Rectangle().fill(Theme.stroke).frame(height: 1) }
     }
 
@@ -676,15 +746,28 @@ private struct TerminalCommandField: UIViewRepresentable {
     }
 }
 
-/// The field's text field: hands ⌃C to the shell, and ↑, ↓ and Esc while nothing is typed; every other key types.
+/// The field's text field: hands ⌃C to the shell (a key command), and ↑, ↓ and Esc while nothing is typed; every other
+/// key types.
 final class CommandTextField: UITextField {
     var onKey: ((ControlKey) -> Void)?
+
+    /// ⌃C as a key command, ahead of the system: a text field's input system takes Ctrl+letter for its own (emacs-style)
+    /// bindings before `pressesBegan` sees the letter, on the Mac above all, and ⌃C never reached the shell.
+    private static let interrupt: UIKeyCommand = {
+        let c = UIKeyCommand(input: "c", modifierFlags: .control, action: #selector(interruptCommand))
+        c.wantsPriorityOverSystemBehavior = true
+        return c
+    }()
+
+    override var keyCommands: [UIKeyCommand]? { (super.keyCommands ?? []) + [Self.interrupt] }
+
+    @objc private func interruptCommand() { onKey?(.interrupt) }
+
     /// Presses taken here, kept from the text field's own handling to their end.
     private var taken: Set<UIPress> = []
 
     private func control(for key: UIKey) -> ControlKey? {
         let mods = key.modifierFlags.intersection([.control, .command, .alternate, .shift])
-        if key.keyCode == .keyboardC, mods == .control { return .interrupt }
         guard mods.isEmpty, (text ?? "").isEmpty else { return nil }
         switch key.keyCode {
         case .keyboardUpArrow: return .up

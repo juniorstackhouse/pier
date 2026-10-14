@@ -215,6 +215,31 @@ public actor BoxClient {
         }
     }
 
+    /// One request whose body and answer both stream (``H2Connection/duplex(method:path:headers:body:)``), on the
+    /// box's connection: no retry and no deadline, the stream lives as long as both ends keep it.
+    public nonisolated func duplex(_ method: Method, path: String, contentType: String, body: AsyncStream<Data>) -> AsyncThrowingStream<Data, Error> {
+        AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    let conn = try await self.current()
+                    let headers = self.headers + [("content-type", contentType)]
+                    for try await chunk in conn.duplex(method: method.rawValue, path: path, headers: headers, body: body) {
+                        continuation.yield(chunk)
+                    }
+                    continuation.finish()
+                } catch let e as PierError {
+                    if e.isTransient { await self.dropIfDead() }
+                    continuation.finish(throwing: e)
+                } catch is CancellationError {
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: PierError.transport("\(error)"))
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
     private func dropIfDead() {
         if let c = connection, !c.isActive { invalidate(c) }
     }

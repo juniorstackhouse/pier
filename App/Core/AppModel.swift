@@ -170,11 +170,13 @@ final class AppModel {
         push.begin()
         Task { await notifications.refreshStatus() }
         #if DEBUG
-        if let name = UserDefaults.standard.string(forKey: "openSession") {
-            // Test hook: `-openSession <name>` opens that session on the first box.
+        if let spec = UserDefaults.standard.string(forKey: "openSession") {
+            // Test hook: `-openSession <name>` opens that session on the first box, `-openSession <box>/<name>` on that box.
             Task {
                 try? await Task.sleep(for: .seconds(3))
-                if let c = boxes.first { openSession(box: c.name, name: name) }
+                let parts = spec.split(separator: "/", maxSplits: 1).map(String.init)
+                if parts.count == 2 { openSession(box: parts[0], name: parts[1]) }
+                else if let c = boxes.first { openSession(box: c.name, name: spec) }
             }
         }
         runLaunchHooks()

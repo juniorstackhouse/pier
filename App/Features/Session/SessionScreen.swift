@@ -27,6 +27,16 @@ struct SessionScreen: View {
 
     private var session: Session { vm.session }
     private var boxSession: BoxSession { BoxSession(box: route.box, session: session) }
+    /// A shell (no agent) on a box that streams terminals: a live terminal, typed into directly (LiveTerminal.swift).
+    private var liveShell: Bool { !session.isAgent && LiveTerminal.supported(box: route.box, model: model) }
+    /// A shell whose box has not said yet whether it streams terminals (its info still loading): neither the live
+    /// terminal nor the command line yet, so nothing shows and goes away again. A box out of reach gets the command
+    /// line (and its screen as last read).
+    private var shellPending: Bool {
+        guard !session.isAgent, let conn = model.connection(for: route.box) else { return false }
+        return conn.info == nil && conn.state == .connecting
+    }
+
     private var title: String {
         if let o = vm.titleOverride, !o.isEmpty { return o }
         return session.displayTitle
@@ -42,6 +52,10 @@ struct SessionScreen: View {
             SessionTerminalTabs(vm: vm) {
                 Group {
                     switch vm.mode {
+                    case .terminal where shellPending:
+                        ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity).background(Theme.terminalBg)
+                    case .terminal where liveShell:
+                        LiveTerminalView(terminal: LiveTerminal.of(box: route.box, name: session.name, model: model), focus: Platform.isMac)
                     case .terminal: TerminalPane(vm: vm)
                     case .conversation:
                         if vm.transcriptUnavailable || (!session.isAgent && vm.loaded) { ConversationFallback(vm: vm) } else { ConversationView(vm: vm) }
@@ -61,8 +75,9 @@ struct SessionScreen: View {
                         .frame(maxWidth: readableColumn + 8)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
-                if vm.mode == .terminal, !vm.isClosed { KeysBar(vm: vm) }
-                ComposerBar(vm: vm)
+                // A live shell takes its keys itself (and has its own keys bar on the phone and the iPad).
+                if vm.mode == .terminal, !vm.isClosed, !liveShell, !shellPending { KeysBar(vm: vm) }
+                if !((liveShell || shellPending) && vm.mode == .terminal) { ComposerBar(vm: vm) }
             }
         }
         .animation(.snappy(duration: 0.3), value: vm.showsCard)
@@ -75,6 +90,9 @@ struct SessionScreen: View {
         .toolbar { toolbar }
         .overlay(alignment: .top) { toastView }
         .onAppear { router.visibleSession = boxSession.id }
+        // A live shell's screen comes over its own stream: the session's loop does not read it again every second
+        // (it does for the conversation view of it, the screen's last message).
+        .onChange(of: liveShell && vm.mode == .terminal, initial: true) { _, streams in vm.streamsScreen = streams }
         .onDisappear { if router.visibleSession == boxSession.id { router.visibleSession = nil } }
         // Looking at a finished turn here is seeing it: the Inbox badge stops counting it (the card stays until archived).
         .onChange(of: session.agentState == .finished ? session.stateSince : nil, initial: true) { _, since in
@@ -228,10 +246,12 @@ struct SessionScreen: View {
                     label: { Label("Revisar mudanças", systemImage: "doc.text.magnifyingglass") }
                 }
                 Divider()
-                Button { vm.setMode(vm.mode == .terminal ? .conversation : .terminal) } label: {
-                    vm.mode == .terminal
-                        ? Label("Ver como conversa", systemImage: "bubble.left.and.text.bubble.right")
-                        : Label("Ver terminal", systemImage: "terminal")
+                if !liveShell || vm.mode != .terminal {
+                    Button { vm.setMode(vm.mode == .terminal ? .conversation : .terminal) } label: {
+                        vm.mode == .terminal
+                            ? Label("Ver como conversa", systemImage: "bubble.left.and.text.bubble.right")
+                            : Label("Ver terminal", systemImage: "terminal")
+                    }
                 }
                 SessionTerminalMenuItem(vm: vm)
                 if session.isAgent && !vm.isClosed && model.liveActivities.areEnabled {

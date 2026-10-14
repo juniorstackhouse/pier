@@ -51,7 +51,7 @@ notifications).
 | Errors | Non-2xx: `{"error": "human text", "code": "..."}`. Branch on `code`, show `error` verbatim. Codes: `not_found` (404), `session_exited` (409), `session_exists` (409), `agent_waiting` (409), `refused` (403, a `before:` hook or a box rule said no), `unsupported` (501), `tmux_missing` (503), `git_failed`, `command_failed`, `too_many` (429), `file_changed` (409), `file_exists` (409), `unsaved_work` (409, 2.8), `space_not_empty`, `space_has_files` (409, 2.9), `docker_missing` (501), `gh_missing` (501), `gh_auth` (428), `bad_request`, `internal`. Unknown routes answer Go's plain-text `404 page not found` (or 405 for a known path with another method), not JSON: fall back to the raw text. |
 | Origin header | Optional `X-Pier-Origin: <[a-z0-9][a-z0-9-]{0,31}>` sets the `origin` of the events a call causes (default `pier`). The app sends `ios` (and `ios-push` for push routes). Hooks see a paired client as `client:<name>` whatever the header says. |
 | Gates | Many mutating calls run `before:<action>` hooks the box owner configured (`~/.pier/hooks.json` or a trusted repository config). A refusal is 403 `refused` with the hook's output as `error`. |
-| Capabilities | `GET /v1/info` → `capabilities[]` names optional features: `transcript history diff titles answer session.home session.chat draft journal touched files projects environments accounts box.env`, `shares` (with a relay), plus `turns queue ask controls` (turn ledger) and `pair.invite`. |
+| Capabilities | `GET /v1/info` → `capabilities[]` names optional features: `transcript history diff titles answer session.home session.chat draft journal touched files projects environments accounts box.env`, `shares` (with a relay), `tty` (a terminal stream, 4.8; boxes with pseudo-terminals), plus `turns queue ask controls` (turn ledger) and `pair.invite`. |
 
 ### 0.3 Naming and addressing
 
@@ -653,9 +653,29 @@ Answer: `{"sent":true, "queued":false, "duplicate":false, "turn":"name#4", "seq"
   your send. Timeout default 10 minutes.
 * Long polls only help in the foreground; the event stream (7) is the main channel.
 
-### 4.8 Raw terminal
+### 4.8 Terminal (capability `tty`)
 
-Not served: pierd has no terminal attach stream. The app reads `screen` and drives the session with `send` and `keys`.
+`POST /v1/sessions/{name}/tty?cols=C&rows=R[&history=N]` is a terminal on the session, both ways over one request
+(HTTP/2; over the local socket, HTTP/1.1 in full duplex). The box attaches a tmux client to the session on a
+pseudo-terminal of its own (`TERM=xterm-256color`, 24-bit color), as a terminal on the box would be:
+
+* The answer (200, `application/octet-stream`) is what that terminal prints, raw bytes for a VT/xterm emulator: tmux's
+  drawing of the pane at `cols`×`rows` (default 80×24; 2–1000 × 2–500), until the session ends (the answer ends) or
+  the client ends its body. It starts with up to `history` lines of the session's scrollback (default 2000, at most
+  10000, `0` for none), each ending in `ESC[0m CR LF`, then a screenful of new lines and `ESC[H`: the scrollback ends up
+  above the screen tmux then draws, in the emulator's own scrollback.
+* The request body is NDJSON, one object per line (≤ 3 MB): `{"data":"<base64>"}` for bytes typed (keys as the
+  emulator encodes them, a paste, its answers to the terminal's queries) and `{"cols":C,"rows":R}` when the terminal
+  changes size. Ending the body detaches the terminal; what runs in the session goes on.
+* For it, the session gets no prefix key (Ctrl-B reaches the program) and no mouse of tmux's own; pierd's tmux
+  server, no alternate screen for `xterm-256color` (what scrolls off the top lands in the emulator's scrollback),
+  24-bit color and `escape-time 10`.
+* Before the answer starts: 404 `not_found`, 403 `refused` (gate `before:session.send` with `terminal: true`: typing
+  is sending), 429 `too_many` (16 terminals open on the box), 400 (size, history), 501 `unsupported` on a system
+  without pseudo-terminals (no `tty` capability there).
+
+A box without `tty` (an older pierd) has no terminal: read `screen` (4.2) and drive the session with `send` and `keys`
+(4.3, 4.4).
 
 ### 4.9 Attachments (photos)
 
@@ -1056,7 +1076,8 @@ answers 404/405 (`PairInviteError.unsupported`).
 
 ## 11. Routes pierd does not serve
 
-Runs and gates (`/v1/runs…`, `run.*` events), `/v1/turns/{id}[/wait]`, terminal attach (`/attach`) and port streams
+Runs and gates (`/v1/runs…`, `run.*` events), `/v1/turns/{id}[/wait]`, terminal attach (`/attach`; the terminal is
+`/tty`, 4.8) and port streams
 (`/v1/tcp`), `/v1/ports`, `/v1/processes`, the memory guard, the phone web app and its token, units, teams,
 flows and webhooks, browsers and visual diffs, `/v1/hooks`, secrets, skills, integrations install over
 HTTP, self-upgrade, agent CLI install, session commands/files/subagents/fork/rewind, worktree log/sync/pause/resume/
@@ -1097,8 +1118,9 @@ against a live box with `pierctl selftest` and against captured fixtures (`Tests
 ### 13.1 Transport and errors
 
 * `BoxClient` (one paired box: TLS dial, pinned HTTP/2 connection, `X-Pier-Origin`) conforms to `PierTransport`
-  (`send(method, path, body) -> (status, data)`, `stream(path)`, `reset()`). It also has `requestStatus(...)` (the
-  2xx status, e.g. 200 vs 202) and `ping()`.
+  (`send(method, path, body) -> (status, data)`, `stream(path)`, `duplex(method, path, contentType, body)` (a
+  request body sent while the answer streams back, 4.8), `reset()`). It also has `requestStatus(...)` (the 2xx status,
+  e.g. 200 vs 202) and `ping()`.
 * `BoxAPI(client:)` / `BoxAPI(transport:)` is the concrete `PierBoxClient`.
 * Errors: `BoxError(status, error, code)` for box-level failures (JSON `{"error","code"}` or a plain-text body, with
   `kind` mapping `code`); `PierError` for the rest: `.unauthorized` (401, revoked), `.pinMismatch`, `.rateLimited`,
@@ -1114,7 +1136,7 @@ against a live box with `pierctl selftest` and against captured fixtures (`Tests
 | Locations | `locations()`, `worktreeStatuses(location:)`, `branches(location:)`, `createWorktree(location:_:)`, `removeWorktree(location:worktree:force:deleteBranch:)` → `WorktreeRemoval` (`.removed` / `.archiving`) |
 | Files | `files(location:worktree:path:)` → `DirListing`, `file(location:worktree:path:statOnly:)` → `WorktreeFile`, `writeFile(location:worktree:path:_:)` → `WorktreeFile` (2.7) |
 | Agents | `createTask(_:)`, `startSession(_:)`, `installableAgents()` |
-| Sessions | `sessions()`, `screen(session:history:)`, `draft(session:)`, `send(session:_:)`, `keys(session:_:)`, `interrupt(session:)`, `kill(session:)`, `rename(session:title:)`, `controls(session:)`, `setMode(session:mode:)`, `heldPrompts`, `cancelHeld`, `sendHeldNow`, `turns`, `waitForSession`, `uploadAttachment` |
+| Sessions | `sessions()`, `screen(session:history:)`, `draft(session:)`, `send(session:_:)`, `keys(session:_:)`, `interrupt(session:)`, `kill(session:)`, `rename(session:title:)`, `controls(session:)`, `setMode(session:mode:)`, `heldPrompts`, `cancelHeld`, `sendHeldNow`, `turns`, `waitForSession`, `uploadAttachment`, `terminal(session:cols:rows:history:)` → `TerminalStream` (4.8) |
 | Needs you | `answerQuestions(session:tool:answers:)` |
 | Transcript | `transcript(session:since:gen:)`, `transcriptBefore(session:before:limit:)`, `toolDetail(session:id:)` |
 | Events | `events(since:)` → `AsyncThrowingStream<PierEvent, Error>` |

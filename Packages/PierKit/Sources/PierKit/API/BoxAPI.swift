@@ -72,7 +72,7 @@ public final class BoxAPI: PierBoxClient, Sendable {
         return items.isEmpty ? path : path + "?" + items.joined(separator: "&")
     }
 
-    private func sessionPath(_ s: String, _ tail: String = "") -> String { "/v1/sessions/\(Self.seg(s))\(tail)" }
+    func sessionPath(_ s: String, _ tail: String = "") -> String { "/v1/sessions/\(Self.seg(s))\(tail)" }
 
     // MARK: 1 info & health
 

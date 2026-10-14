@@ -163,6 +163,7 @@ func (b *Box) Mount(s *wire.Server) {
 	route("POST /v1/sessions/{name}/attachments", b.sessionAttachment)
 	route("POST /v1/sessions/{name}/send", b.sendToSession)
 	route("POST /v1/sessions/{name}/keys", b.sessionKeys)
+	route("POST /v1/sessions/{name}/tty", b.sessionTTY)
 	route("POST /v1/sessions/{name}/interrupt", b.interruptSession)
 	route("POST /v1/sessions/{name}/answer", b.answerSession)
 	route("GET /v1/sessions/{name}/controls", b.sessionControls)

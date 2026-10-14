@@ -29,6 +29,16 @@ enum DashState: CaseIterable, Hashable {
         }
     }
 
+    /// A live agent's column on the board, as a state (closed has none: ready).
+    init(_ column: AgentBoard.Column) {
+        switch column {
+        case .needsYou: self = .needsYou
+        case .working: self = .working
+        case .yourTurn: self = .done
+        case .ready, .closed: self = .ready
+        }
+    }
+
     init?(_ s: Session) {
         guard s.isAgent, !s.exited else { return nil }
         switch s.agentState {

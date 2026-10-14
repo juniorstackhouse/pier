@@ -323,6 +323,49 @@ final class MockBox: PierTransport, @unchecked Sendable {
 
     func reset() async {}
 
+    /// `POST /v1/sessions/{name}/tty`: a shell's terminal (UITestMockTerminals.swift), what is typed echoed and run as a
+    /// shell would; a program that ends by itself gives the prompt back a moment later. The program ending leaves the
+    /// stream open, as tmux keeps a dead pane on screen; the session going ends it.
+    func duplex(_ method: BoxClient.Method, path: String, contentType: String, body: AsyncStream<Data>) -> AsyncThrowingStream<Data, Error> {
+        let parts = (path.split(separator: "?").first ?? "").split(separator: "/").map(String.init)
+        guard parts.count == 4, parts[1] == "sessions", parts[3] == "tty", let name = parts[2].removingPercentEncoding,
+              lock.withLock({ terminals.has(name) }) else {
+            return AsyncThrowingStream { $0.finish(throwing: PierError.api(status: 404, message: "no session with that name", code: "not_found")) }
+        }
+        return AsyncThrowingStream { continuation in
+            let start = self.lock.withLock { self.terminals.ttyStart(name) }
+            continuation.yield(start)
+            let ticker = Task {
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .milliseconds(400))
+                    let (out, gone) = self.lock.withLock { (self.terminals.ttyTick(name), !self.terminals.has(name)) }
+                    if !out.isEmpty { continuation.yield(out) }
+                    if gone { continuation.finish(); return }
+                }
+            }
+            let reader = Task {
+                for await chunk in body {
+                    for line in chunk.split(separator: UInt8(ascii: "\n")) {
+                        guard let f = try? JSONSerialization.jsonObject(with: Data(line)) as? JSON,
+                              let b64 = f["data"] as? String, let bytes = Data(base64Encoded: b64) else { continue }
+                        let out = self.lock.withLock { () -> Data in
+                            let out = self.terminals.ttyInput(name, bytes)
+                            if self.terminals.exited(name), let i = self.index(name) { self.sessions[i]["exited"] = true }
+                            return out
+                        }
+                        if !out.isEmpty { continuation.yield(out) }
+                    }
+                }
+                ticker.cancel()
+                continuation.finish()
+            }
+            continuation.onTermination = { _ in
+                reader.cancel()
+                ticker.cancel()
+            }
+        }
+    }
+
     func send(_ method: BoxClient.Method, path: String, body: Data?) async throws -> (status: Int, data: Data) {
         if Self.isAITitle(path, body) { try? await Task.sleep(for: .seconds(3)) }   // the model takes a moment (see the AI title block)
         let (status, data) = lock.withLock { handle(method, path, body) }
@@ -369,6 +412,8 @@ final class MockBox: PierTransport, @unchecked Sendable {
             // pierd with the file routes.
             var info = Self.fixtureObject(MockFixtures.info)
             info["capabilities"] = ((info["capabilities"] as? [String]) ?? []) + ["files", "projects", "environments", "accounts", "box.env", "shares"]
+                // Terminals stream (`-mockTTY 0`: a box before them, its screen read every second).
+                + (UserDefaults.standard.string(forKey: "mockTTY") == "0" ? [] : ["tty"])
             return (200, Self.json(info))
         case (.get, "doctor"): return (200, Self.json(doctorChecks()))
         case (.get, "stats"): return (200, Self.fixture(MockFixtures.stats))
@@ -452,10 +497,12 @@ final class MockBox: PierTransport, @unchecked Sendable {
         return (201, Self.json(out))
     }
 
-    /// `POST /v1/sessions` with `chat: true` (the form the app sends outside the PR flow and the terminals, which
-    /// `startTerminal` takes first); anything else is refused.
+    /// `POST /v1/sessions` with an agent (a shell, with none, is `startTerminal`'s, taken first): a chat (`chat: true`, no
+    /// location) or an agent in a worktree that exists (`sandbox`, `sandbox/subtract`: a project's Agentes tab, Nesta
+    /// worktree); anything else is refused.
     private func startChat(_ body: Data?) -> (Int, Data) {
         let req = (body.flatMap { try? JSONSerialization.jsonObject(with: $0) } as? JSON) ?? [:]
+        if req["chat"] as? Bool != true, let location = req["location"] as? String { return startAgent(req, in: location) }
         guard req["chat"] as? Bool == true, req["location"] == nil else { return notFound }
         let prompt = (req["prompt"] as? String) ?? ""
         seq += 1
@@ -466,6 +513,30 @@ final class MockBox: PierTransport, @unchecked Sendable {
         transcripts[name] = [item("user", text: prompt)]
         recordAt[name] = Date().addingTimeInterval(Self.recordDelay)
         scheduleReply(name, text: "Good question. Let's think it through together.", after: Self.recordDelay + 2)
+        return (200, Self.json(s))
+    }
+
+    /// An agent started in a worktree that exists ("sandbox" for the main checkout, "sandbox/subtract"), as pierd's
+    /// `POST /v1/sessions` starts one: its record comes after the start-up delay, then it answers the prompt.
+    private func startAgent(_ req: JSON, in location: String) -> (Int, Data) {
+        let parts = location.split(separator: "/", maxSplits: 1).map(String.init)
+        let listed = (try? JSONSerialization.jsonObject(with: projects.locations(MockFixtures.locations))) as? [JSON] ?? []
+        guard let project = listed.first(where: { $0["name"] as? String == parts.first }), !removedWorktrees.contains(location),
+              parts.count == 1 || ((project["worktrees"] as? [JSON]) ?? []).contains(where: { $0["name"] as? String == parts[1] })
+        else { return notFound }
+        let agent = (req["agent"] as? String) ?? "claude"
+        let prompt = (req["prompt"] as? String) ?? ""
+        seq += 1
+        let flat = location.replacingOccurrences(of: "/", with: "-")
+        let name = "\(flat)-\(agent)-n\(seq)"
+        var s = Self.session(name, location: location, dir: "/home/ubuntu/code/\(flat)", state: "running",
+                             title: (req["title"] as? String) ?? String(prompt.prefix(40)))
+        s["agent"] = agent
+        s["preset"] = agent
+        sessions.insert(s, at: 0)
+        transcripts[name] = [item("user", text: prompt)]
+        recordAt[name] = Date().addingTimeInterval(Self.recordDelay)
+        scheduleReply(name, text: "On it: I'll work in this worktree and tell you when it's done.", after: Self.recordDelay + 2)
         return (200, Self.json(s))
     }
 

@@ -101,11 +101,15 @@ public enum WorktreeTerminals {
     /// The command typed at the shell's latest prompt while that prompt has not come back: what the terminal runs right
     /// now ("npm run dev"). nil at an idle prompt, and when no prompt can be read on the screen's last 400 lines (a
     /// full-screen program, a prompt of an unusual shape): the tab then keeps its name.
-    public static func runningCommand(in screen: String) -> String? {
+    ///
+    /// `typing`: a live terminal where the person is typing a line not yet entered (keys since the last Enter). A prompt
+    /// on the last line is then that line being typed, not a command that runs.
+    public static func runningCommand(in screen: String, typing: Bool = false) -> String? {
         let lines = screen.components(separatedBy: "\n")
         var i = lines.count - 1
         while i >= 0, lines[i].isBlank { i -= 1 }
         guard i >= 0 else { return nil }
+        if typing, promptInput(lines[i]) != nil { return nil }
         // Output with no line break at its end puts the prompt after it, on the same line ("doneubuntu@devbox:~$").
         if Rx.promptAtEnd.test(lines[i].trimmedEnd) { return nil }
         let floor = max(0, i - 400)
