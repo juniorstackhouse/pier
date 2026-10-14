@@ -2,11 +2,14 @@ import SwiftUI
 import PierKit
 
 /// What the sidebar opens for a project or one of its worktrees on the iPad and the Mac: the worktree's workspace, one
-/// worktree at a time (the picker in the toolbar), in four tabs:
+/// worktree at a time (the picker in the toolbar), in tabs:
+/// - **Agentes**, the first: a box to start an agent here, as Claude's and Codex's home screens open on one, and the
+///   agents of the project (`StartPane`);
 /// - **Arquivos**: the file tree and an editor with tabs (`FilesPane`), saved to the box (`PUT …/file`);
 /// - **Alterações**: the review of the worktree, its changed files beside their patches, commit / push / PR;
 /// - **Histórico**: the log, a commit's message, files and patches;
-/// - **Visão geral**: the project, its worktrees and the sessions running here.
+/// - **Visão geral**: the project, its worktrees and the sessions running here;
+/// - **Detalhes**: the worktree's details.
 /// A status bar at the bottom tells the branch, what is not pushed and not committed, and the editor's line and column.
 /// The state of each worktree (open files, unsaved edits, the tab) lives in `WorkspaceState`, so it outlives this view.
 struct ProjectWorkspace: View {
@@ -84,6 +87,7 @@ private struct WorkspaceContent: View {
             tabBar
             Group {
                 switch state.tab {
+                case .start: StartPane(project: project, worktree: worktree, ref: ref, compose: state.compose)
                 case .files: FilesPane(state: state)
                 case .changes: ChangesPane(ref: ref, store: review, onOpenFile: openFile)
                 case .history: HistoryPane(store: state.history, ref: ref, onOpenFile: openFile)
@@ -169,17 +173,18 @@ private struct WorkspaceContent: View {
         }
     }
 
+    /// Which tabs show their names: all of them, only the one picked, or none.
+    private enum TabTitles { case all, picked, none }
+
     /// The tabs, and the worktree on screen with the others to switch to: a bar of its own under the toolbar (the
     /// Mac's toolbar has no room in the middle beside the split view's).
     private var tabBar: some View {
-        HStack(spacing: 2) {
-            ForEach(WorkspaceTab.allCases) { t in
-                WorkspaceTabButton(tab: t, selected: state.tab == t, count: t == .changes ? changes : 0) {
-                    withAnimation(.snappy(duration: 0.15)) { state.tab = t }
-                }
-            }
-            Spacer(minLength: 12)
-            worktreeMenu
+        // Six named tabs and the worktree's picker don't fit everywhere (an iPad upright, a narrow window): then only the
+        // tab picked keeps its name, and past that none does.
+        ViewThatFits(in: .horizontal) {
+            tabRow(.all)
+            tabRow(.picked)
+            tabRow(.none)
         }
         .padding(.horizontal, 8)
         .frame(height: Platform.isMac ? 34 : 44)
@@ -187,6 +192,19 @@ private struct WorkspaceContent: View {
         .overlay(alignment: .bottom) { Rectangle().fill(Theme.stroke).frame(height: 1) }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("workspace-tabs")
+    }
+
+    private func tabRow(_ titles: TabTitles) -> some View {
+        HStack(spacing: 2) {
+            ForEach(WorkspaceTab.allCases) { t in
+                WorkspaceTabButton(tab: t, selected: state.tab == t, titled: titles == .all || (titles == .picked && state.tab == t),
+                                   count: t == .changes ? changes : 0) {
+                    withAnimation(.snappy(duration: 0.15)) { state.tab = t }
+                }
+            }
+            Spacer(minLength: 12)
+            worktreeMenu
+        }
     }
 
     /// The worktree on screen and the others of the project to switch to.
@@ -304,6 +322,7 @@ private struct WorkspaceContent: View {
 
     private func loadTab() async {
         switch state.tab {
+        case .start: break
         case .files: if state.tree.listings.isEmpty || state.tree.state != .loaded { await state.tree.loadRoot() }
         case .changes: await review.load()
         case .history: if state.history.state != .loaded { await state.history.load() }
@@ -316,6 +335,7 @@ private struct WorkspaceContent: View {
     private func refresh(quiet: Bool = false) async {
         await loadStatus()
         switch state.tab {
+        case .start: await conn?.refreshSessions()
         case .files: await state.tree.refresh()
         case .changes: await review.load()
         case .history: await state.history.load()
@@ -330,6 +350,8 @@ private struct WorkspaceContent: View {
 private struct WorkspaceTabButton: View {
     let tab: WorkspaceTab
     let selected: Bool
+    /// Its name beside its icon (else the icon alone, the name in its tooltip and for VoiceOver).
+    var titled = true
     var count = 0
     let action: () -> Void
     @State private var hovering = false
@@ -338,7 +360,9 @@ private struct WorkspaceTabButton: View {
         Button(action: action) {
             HStack(spacing: 5) {
                 Image(systemName: tab.symbol).font(.system(size: Density.small))
-                Text(tab.title).font(.system(size: Density.small + 1, weight: selected ? .semibold : .regular))
+                if titled {
+                    Text(tab.title).font(.system(size: Density.small + 1, weight: selected ? .semibold : .regular)).lineLimit(1)
+                }
                 if count > 0 {
                     Text("\(count)").font(.system(size: Density.small - 1, weight: .bold).monospacedDigit())
                         .padding(.horizontal, 5).padding(.vertical, 1)
@@ -353,6 +377,8 @@ private struct WorkspaceTabButton: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
+        .help(Text(tab.title))
+        .accessibilityLabel(count > 0 ? Text(tab.title) + Text(verbatim: ", \(count)") : Text(tab.title))
         .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
         .accessibilityIdentifier("workspace-tab-\(tab.rawValue)")
     }

@@ -179,15 +179,33 @@ Its quality targets and the commands that measure them: `docs/CHAT-QUALITY.md`.
   name of its own). Every session of the worktree that is no agent and no service has a tab, whoever opened it
   (`WorktreeTerminals`, PierKit, tested: by its ref, or by the closest worktree folder for one with no location). A tab
   says what runs at its prompt, read from its screen ("npm run dev", the glyph green), else its number, unless the person
-  named it (Renomear, `PATCH`; empty gives the number back). Picking one shows its lines (`TerminalPane`), a command line
-  (a UITextField: no smart quotes or dashes; Return sends the line with Enter, an empty one is Enter alone; ⌃C, and ↑ ↓ Esc
-  on an empty line, go to the shell) and the keys bar. The composer and the needs-you card belong to Conversa, which stays
-  underneath as it was (an orange dot on its tab while the agent waits). Only the terminal on screen reads the box, with a
-  loop of its own (`TerminalFeed`: the screen and 300 lines of history every second, at once after a line or a key; not the
-  conversation's transcript, held prompts or review). × ends the session, asked first unless its program ended; the
-  tab picked and each terminal's lines are kept per session for the app's run. Chats have none. A prompt's icon-font
-  glyphs (Nerd Fonts, Powerline: Unicode's private use areas) are drawn as spaces (`ANSI.plainGlyphs`, PierKit), not as
-  missing-glyph boxes.
+  named it (Renomear, `PATCH`; empty gives the number back). The composer and the needs-you card belong to Conversa,
+  which stays underneath as it was (an orange dot on its tab while the agent waits). × ends the session, asked first
+  unless its program ended; the tab picked is kept per session for the app's run. Chats have none.
+- **A real terminal** (`LiveTerminal.swift`, on a box with the `tty` capability, docs/API.md 4.8): a terminal tab, and a
+  shell's own screen, is libghostty (Ghostty's VT engine and Metal renderer, through the `GhosttyTerminal` package with
+  its in-memory backend) fed by `BoxAPI.terminal`: the app is a tmux client of the session, so colors, the cursor, a
+  full-screen program, the session's scrollback and every key (⌃C, the arrows, Tab completion, a paste, the Mac's
+  keyboard as it is) work as in a terminal on the box. The stream lives while the terminal shows (on the iPhone and the
+  iPad, while the app is in front), starts again after a drop (a full reset, then the box's scrollback and screen
+  again; a stream that ends at once waits longer each time), and says when the session ended or the box refused it.
+  The four terminals shown last stay mounted under the tab on screen, still streaming, so going back to one is
+  instant (each holds one of the box's 16 terminals); one put away lets go of the keyboard. `LiveTerminal.of` keeps one
+  per session for the app's run, and a newer view of it takes the stream over from an older one.
+  The tab's name comes from its screen (`WorktreeTerminals.runningCommand`, not while a line is being typed); VoiceOver
+  reads the screen's text. On the iPhone and the iPad a keys bar (Esc, Tab, ⌃C, the arrows, Enter) shows while the
+  keyboard is down; with it up, Ghostty's own bar takes over (a tap on the terminal toggles the keyboard). Fonts are
+  JetBrains Mono, with Nerd Font symbols. Ghostty's first start sets the process's C locale to the person's
+  (`setlocale(LC_ALL, "")`); `LiveTerminal` puts `LC_NUMERIC` back to C right after, because with a decimal comma
+  (pt-BR) UIKit's SF Symbols came out about 3 points wide for the rest of the run (blank buttons, and an abort when one
+  was drawn at that size).
+- **On an older box** (no `tty`): picking one shows its lines (`TerminalPane`), a command line (a UITextField: no smart
+  quotes or dashes; Return sends the line with Enter, an empty one is Enter alone; ⌃C, a key command ahead of the
+  system's own bindings, and ↑ ↓ Esc on an empty line go to the shell) and the keys bar. Only the terminal on screen
+  reads the box, with a loop of its own (`TerminalFeed`: the screen and 300 lines of history every second, at once
+  after a line or a key; not the conversation's transcript, held prompts or review); each terminal's lines are kept for
+  the app's run. A prompt's icon-font glyphs (Nerd Fonts, Powerline: Unicode's private use areas) are drawn as spaces
+  (`ANSI.plainGlyphs`, PierKit), not as missing-glyph boxes.
 
 - Startup dialogs no hook announces (Claude Code's "New MCP server found", trust) are read from the screen. The box reports
   the agent as `running` meanwhile. Current Claude Code draws them **without numbers** (a `❯` on the selected option, "Enter
@@ -359,12 +377,25 @@ projects, a box still connecting). "Nova seção" (the footer, where the Mac kee
 "Renomear…" edit in place: Return keeps the name, Esc drops it, a click elsewhere keeps it. The footer also holds the
 Faxina and Ajustes.
 
+Above every section, under Início / Inbox / Quadro / Projetos, **Agentes** lists each live agent a row of its own
+(`SidebarRules.agents`, PierKit, tested: the board's columns, those that need the person first with the longest wait on
+top, then those at work, then "Sua vez", then the idle ones): the agent's glyph with its state, the session's title,
+what it is doing (the current step while it works) and where (project / worktree, the box when there are several). A
+click opens the conversation, whatever section its project sits in; the agents stay in their projects too. Eight show,
+the rest behind "Mais N"; a "Sua vez" row can be archived from its menu.
+
 ## The project workspace (iPad, Mac)
 
 `App/Features/Workspace`: `ProjectWorkspace` shows one worktree of a project (the picker on its bar switches through the
-router, so the sidebar's highlight follows) in four tabs, with a status bar (branch, ↑/↓, changes, sessions, port; the
+router, so the sidebar's highlight follows) in six tabs, with a status bar (branch, ↑/↓, changes, sessions, port; the
 editor's line, column, language and line ending):
 
+- **Agentes** (`StartPane`, the tab a project opens on): a box to start an agent, as Claude's and Codex's home screens
+  open on one ("O que vamos fazer em sandbox?"): the prompt, the agent with its model and effort, where it runs (a new
+  worktree from the main checkout by default, or here) and ⌘↩; a few suggestions while it is empty; below, the
+  project's agents (the worktree's, outside the main checkout), the ones that need the person first, a click from their
+  conversation. It is a `ComposeModel` kept per worktree (`WorkspaceState.compose`), so what was typed stays for the
+  app's run, apart from the composer screen's draft; Start opens the new session in the projects' tree.
 - **Arquivos** (`FilesPane`): the tree loads a folder at a time (`GET …/files`, docs/API.md §2.7) with git's word per
   entry (the status letter, a dot on a folder with changes, ignored entries faint and hideable); "Abrir rápido" (⇧⌘O)
   matches every file of the worktree (`FileSearch`: `git ls-files` through exec, read again after the box changed, a
@@ -394,7 +425,7 @@ What each worktree holds (open files with their unsaved text, the folders open, 
 `WorkspaceState` for the app's run (`WorkspaceRegistry`), so opening a session or another project and coming back finds it
 as it was; the sidebar and the Projetos cards mark projects with unsaved files. A worktree removed (`worktree.removed`, or
 Remover worktree, which warns of unsaved files) takes its state with it. The menu bar adds ⌘S, ⇧⌘O (Ir), ⌘R (read the
-box again) and ⌥⌘1–5 (the tabs), handed to the workspace in front as requests on its `WorkspaceState`. Projetos itself is
+box again) and ⌥⌘1–6 (the tabs), handed to the workspace in front as requests on its `WorkspaceState`. Projetos itself is
 a grid of project cards on regular width; a location that is not a git repository keeps its project screen.
 
 On the iPhone the worktree screen has **Arquivos** and **Histórico**, the same stores one screen at a time
@@ -403,7 +434,7 @@ files, a file's patch (`WorkspaceUITests` covers both).
 
 Keyboard (iPad hardware keyboard, Mac menu "Ir", `PierCommands`; the palette lists the same): ⌘1 Início, ⌘2 Inbox,
 ⌘3 the agents board, ⌘4 Projetos (the order of the tabs and the sidebar), ⌘, Ajustes, ⌘N new task, ⌘K / ⌘P the palette, ⇧⌘L Faxina, ⇧⌘Space Falar;
-in a workspace ⌘S, ⇧⌘O, ⌘R and ⌥⌘1–4; beside a session in a worktree ⌃⇧` a new terminal. Sheets answer Return (or ⌘Return
+in a workspace ⌘S, ⇧⌘O, ⌘R and ⌥⌘1–6; beside a session in a worktree ⌃⇧` a new terminal. Sheets answer Return (or ⌘Return
 where Return writes a line) and Esc.
 
 ## Live Activity details
@@ -419,7 +450,7 @@ follows it); only an exit (`ended`) ends the activity. Debug `-openLink pier://�
 
 ## DEBUG launch arguments (simulator automation)
 
-`-pairLink <pier://…>`, `-openSession <name>` (with `-sessionNewTerminal 1`: a terminal tab opens beside it),
+`-pairLink <pier://…>`, `-openSession [<box>/]<name>` (with `-sessionNewTerminal 1`: a terminal tab opens beside it),
 `-openFirstSession 1`, `-openCompose 1 -composeProject <loc>
 -composePrompt <text> -composeNoFocus 1 -composeOptions 1 -composeSheet project|worktree|base -composeSubmit 1`,
 `-startTab inbox|board|projects|settings`, `-seedSections 1`, `-snapshotTo <file.png> [-snapshotAfter <s>]`, `-homeCustomize 1`, `-homeScrollTo <widget>`, `-sessionExpandAll 1`,
@@ -430,7 +461,7 @@ the open conversation, scrolled and while a reply streams: `CHAT-PERF {...}` on 
 `-debugStartActivity 1`, `-debugActivitySession <name>` (a Live Activity for that one session, a finished turn's to see its
 reply on the Lock Screen; `LiveActivityShots` with `TEST_RUNNER_ACTIVITY_SHOTS=<dir>` locks the simulator and saves it),
 `-widgetGallery home|lock|activity|island|all`, `-openTalk 1 [-talkText "…" -talkRoute 1]`,
-`-openPalette 1`, `-openFaxina 1`, `-openGitHubRepos 1` (with `-startTab projects`: the GitHub list), `-openProject <loc>[/<worktree>] [-workspaceTab files|changes|history|overview|details]
+`-openPalette 1`, `-openFaxina 1`, `-openGitHubRepos 1` (with `-startTab projects`: the GitHub list), `-openProject <loc>[/<worktree>] [-workspaceTab start|files|changes|history|overview|details]
 [-openFile <path>]` (a project's workspace); Mac: `-macSurfaceDebug <commands>`, `-macFakeShot <png>`, `-macWindowSize 1280x800`,
 and for the alerts through iCloud (`CloudAlerts`, docs/PUSH.md 8) `-cloudAlertsDiagnose 1` (logs every device's
 subscription), `-cloudAlertsTest 1` (a test alert for the iPhone and iPad), `-cloudAlertsSeed 1` (every field in
@@ -445,12 +476,14 @@ the iPad in landscape. `UITests/PierUITests/StoreShots.swift` (skipped unless `T
 its side. The hooks above run with the mock as with real boxes (`AppModel.runLaunchHooks`).
 `-uiTestMock 1` swaps the paired boxes for one in-memory box (`App/Debug/UITestMock.swift`, fixtures generated from
 `Packages/PierKit/Tests/PierKitTests/Fixtures` into `App/Debug/UITestMockFixtures.swift`): no network, keychain or push.
-It answers like pierd for the endpoints the app uses and is stateful for send, answer and create task; its worktrees
+It answers like pierd for the endpoints the app uses and is stateful for send, answer, create task and an agent started in a worktree; its worktrees
 have files and a history (`App/Debug/UITestMockWorkspace.swift`: the file routes with sha checks, `GitLog` and
 `FileSearch` commands), and saves stick for the run. `POST /v1/sessions` with no agent starts a shell at the location
 (`App/Debug/UITestMockTerminals.swift`: a prompt in the worktree's folder, `ubuntu@devbox:~/code/sandbox-subtract$`; it
 answers `ls`, `pwd`, `cd`, `git status`/`log`, the tests, `echo`, `clear`; `npm run dev` serves until ⌃C, `sleep` for its
-time, `exit` ends the session; `DELETE` removes it). Its projects come and go too (`App/Debug/UITestMockProjects.swift`:
+time, `exit` ends the session; `DELETE` removes it). Its shells stream as terminals (`tty`, through `duplex`: the keys
+echoed and edited as a terminal's line discipline does, ⌃C, Enter running the line); `-mockTTY 0` leaves the capability
+out, for the screen read every second and the command line (`LiveTerminalUITests` covers both). Its projects come and go too (`App/Debug/UITestMockProjects.swift`:
 a GitHub account's repositories, clones that are ready after about 3 s, disk use and removal, with `sandbox` holding
 unsaved work, and each worktree's `dev` service, which can be stopped and started), and so do its projects folder (a
 space "clientes" once one is set), spaces and environments (each "building" for 2 s, then ready). On the Mac a mock run shares the installed app's container and App

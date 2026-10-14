@@ -90,7 +90,8 @@ func (b *Box) handleInfo(w http.ResponseWriter, r *http.Request) error {
 // is configured); projects: POST /v1/clones, GET /v1/github/repos, GET
 // …/locations/{name}/disk and DELETE /v1/locations/{name}?purge=1;
 // environments: GET/PUT /v1/settings (the projects folder), /v1/spaces and
-// GET/PUT …/locations/{name}/environment.
+// GET/PUT …/locations/{name}/environment; tty: POST …/sessions/{name}/tty,
+// a terminal on a session (where the box can open a pseudo-terminal).
 func (b *Box) Capabilities() []string {
 	caps := []string{"transcript", "history", "diff", "titles", "answer", "session.home", "session.chat", "draft", "journal", "touched", "files", "projects", "environments", "accounts", "box.env"}
 	if b.Turns != nil {
@@ -101,6 +102,9 @@ func (b *Box) Capabilities() []string {
 	}
 	if b.Publisher != nil {
 		caps = append(caps, "shares")
+	}
+	if ptySupported {
+		caps = append(caps, "tty")
 	}
 	return caps
 }

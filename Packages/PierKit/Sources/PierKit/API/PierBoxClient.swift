@@ -43,6 +43,8 @@ public protocol PierBoxClient: Sendable {
     func turns(session: String, limit: Int) async throws -> [Turn]
     func waitForSession(_ session: String, states: [AgentState], after: Date?, timeout: Duration) async throws -> WaitResult
     func uploadAttachment(session: String, name: String, data: Data) async throws -> Attachment
+    /// A terminal on the session (capability `tty`): its output as it comes, and a way to type and resize.
+    func terminal(session: String, cols: Int, rows: Int, history: Int?) -> TerminalStream   // POST /v1/sessions/{n}/tty
 
     // 5 Needs you
     func answerQuestions(session: String, tool: String, answers: [QuestionAnswer]) async throws -> [String]

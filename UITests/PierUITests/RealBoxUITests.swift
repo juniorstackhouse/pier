@@ -47,6 +47,41 @@ final class RealBoxUITests: XCTestCase {
         if let dir = env["REAL_OUT"] { try? app.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: dir + "/real-chat.png")) }
     }
 
+    /// A real shell through pierd's terminal stream (skipped unless `TEST_RUNNER_REAL_TERMINAL` names a shell session on
+    /// the paired box, as `<box>/<session>`): a line typed runs, ⌃C from the keyboard stops `sleep`, and the shell answers
+    /// the next line. The screen is the terminal's accessibility value.
+    func testRealLiveTerminal() throws {
+        let env = ProcessInfo.processInfo.environment
+        guard let session = env["REAL_TERMINAL"], !session.isEmpty else { throw XCTSkip("REAL_TERMINAL not set") }
+        let app = XCUIApplication()
+        app.launchArguments = ["-openSession", session, "-AppleLanguages", "(pt-BR)", "-AppleLocale", "pt_BR"]
+        app.launch()
+        let term = app.descendants(matching: .any).matching(identifier: "live-terminal").firstMatch
+        XCTAssertTrue(term.waitForExistence(timeout: 30), "the live terminal did not open")
+        func waitFor(_ text: String, _ timeout: TimeInterval = 10) -> Bool {
+            let found = NSPredicate { _, _ in (term.value as? String)?.contains(text) == true }
+            return XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: found, object: nil)], timeout: timeout) == .completed
+        }
+        term.tap()
+        sleep(1)
+        let n = Int.random(in: 100...899)
+        app.typeText("echo pier-$((\(n)+1))\n")
+        XCTAssertTrue(waitFor("pier-\(n + 1)"), "the line's answer never showed: \(term.value as? String ?? "")")
+        app.typeText("sleep 30\n")
+        sleep(1)
+        let t0 = Date()
+        app.typeKey("c", modifierFlags: .control)
+        // The answer differs from the line typed: only the shell, back at its prompt, prints it.
+        app.typeText("echo after-$((\(n)+2))\n")
+        XCTAssertTrue(waitFor("after-\(n + 2)"), "⌃C did not stop sleep: \(term.value as? String ?? "")")
+        let line = "ctrl-c-and-echo=\(Date().timeIntervalSince(t0))\n"
+        let timing = XCTAttachment(string: line); timing.name = "terminal-latency"; timing.lifetime = .keepAlways; add(timing)
+        if let dir = env["REAL_OUT"] {
+            try? line.write(toFile: dir + "/real-terminal.txt", atomically: true, encoding: .utf8)
+            try? app.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: dir + "/real-terminal.png"))
+        }
+    }
+
     /// Revisar -> Aprovar on the real box: the commit message must come from the box's Haiku (not the session title).
     /// Cancels without committing.
     func testRealApproveDraft() throws {

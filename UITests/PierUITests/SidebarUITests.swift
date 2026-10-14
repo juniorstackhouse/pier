@@ -47,8 +47,9 @@ final class SidebarUITests: XCTestCase {
         let project = element("sidebar-project-atlas-ios")
         XCTAssertTrue(project.waitForExistence(timeout: 10))
         project.tap()
-        // A project opens its workspace (files, changes, history) on its main worktree.
+        // A project opens its workspace on its main worktree, on Agentes: a box to start an agent there.
         XCTAssertTrue(element("workspace-tabs").waitForExistence(timeout: 5), "the project did not open in the detail")
+        XCTAssertTrue(element("start-prompt").waitForExistence(timeout: 5), "the project did not open on Agentes")
         XCTAssertTrue(app.buttons["Nova tarefa aqui"].exists, "the workspace has no new task button")
         XCTAssertTrue(element("workspace-worktree").label.contains("atlas-ios"), "the workspace is not on the main worktree")
         shot("sidebar-project")
@@ -80,6 +81,8 @@ final class SidebarUITests: XCTestCase {
         XCTAssertTrue(worktree.waitForExistence(timeout: 5))
         worktree.tap()
         // Arquivos: the tree with git's status, a file in the editor.
+        XCTAssertTrue(element("workspace-tab-files").waitForExistence(timeout: 5))
+        element("workspace-tab-files").tap()
         let file = element("file-calc.py")
         XCTAssertTrue(file.waitForExistence(timeout: 10), "the file tree did not load")
         XCTAssertTrue(element("file-node_modules").exists, "ignored folders are not listed")
@@ -112,6 +115,26 @@ final class SidebarUITests: XCTestCase {
         element("workspace-tab-changes").tap()
         XCTAssertTrue(element("changes-approve").waitForExistence(timeout: 10), "the changes did not load")
         shot("workspace-changes")
+    }
+
+    /// Agentes, the project's first tab: typed in its box, Start runs the agent in this worktree and opens its
+    /// conversation; the worktree's agents are listed under the box, a click from theirs.
+    func testAgentesTabStartsAnAgentInTheWorktree() {
+        let worktree = element("sidebar-worktree-sandbox/subtract")
+        if !worktree.waitForExistence(timeout: 10) { element("sidebar-project-sandbox").tap() }
+        XCTAssertTrue(worktree.waitForExistence(timeout: 5))
+        worktree.tap()
+        let prompt = element("start-prompt")
+        XCTAssertTrue(prompt.waitForExistence(timeout: 5), "the worktree did not open on Agentes")
+        XCTAssertTrue(element("start-agent-sandbox-subtract-claude-6s1").exists, "the worktree's agent is not listed under the box")
+        XCTAssertEqual(element("start-target").label.contains("Nesta worktree"), true, "a worktree's box does not run the agent there")
+        shot("workspace-agentes")
+        prompt.tap()
+        prompt.typeText("Adicione uma função multiply com teste")
+        element("start-submit").tap()
+        XCTAssertTrue(element("composer-field").waitForExistence(timeout: 15), "Start did not open the new agent's conversation")
+        XCTAssertTrue(app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "multiply")).firstMatch
+                        .waitForExistence(timeout: 5), "the conversation does not start with the prompt")
     }
 
     func testNewSectionIsNamedInPlace() {
@@ -214,24 +237,27 @@ final class SidebarUITests: XCTestCase {
         XCTAssertTrue(element("sidebar-project-atlas-ios").waitForExistence(timeout: 5), "clearing the search did not bring the list back")
     }
 
-    func testWorkingSectionPinsTheLiveWorktreesAboveTheProjects() {
-        let working = element("sidebar-section-Trabalhando")
-        XCTAssertTrue(working.waitForExistence(timeout: 10), "no Trabalhando section")
-        let waiting = element("sidebar-active-devbox/sandbox")
-        let running = element("sidebar-active-devbox/acme-web")
-        XCTAssertTrue(waiting.waitForExistence(timeout: 5), "the worktree that needs the person is not under Trabalhando")
-        XCTAssertTrue(running.exists, "the working worktree is not under Trabalhando")
-        // A finished turn is the person's turn, not work in progress.
-        XCTAssertFalse(element("sidebar-active-devbox/sandbox/subtract").exists, "a finished turn is listed as working")
-        // Needs-you first, and the whole section above the person's sections.
+    /// Every live agent sits at the top, a row each, above the person's sections (and still in its project): the one
+    /// that needs the person first, then the one at work, then the one whose turn ended. A row opens its conversation.
+    func testAgentsSectionListsTheLiveAgentsAboveTheProjects() {
+        let agents = element("sidebar-section-Agentes")
+        XCTAssertTrue(agents.waitForExistence(timeout: 10), "no Agentes section")
+        let waiting = element("sidebar-agent-devbox/sandbox-claude-w9q")
+        let running = element("sidebar-agent-devbox/acme-web-claude-a1b")
+        let finished = element("sidebar-agent-devbox/sandbox-subtract-claude-6s1")
+        XCTAssertTrue(waiting.waitForExistence(timeout: 5), "the agent that needs the person is not under Agentes")
+        XCTAssertTrue(running.exists, "the agent at work is not under Agentes")
+        XCTAssertTrue(finished.exists, "an agent whose turn ended (it still runs) is not under Agentes")
         XCTAssertLessThan(waiting.frame.minY, running.frame.minY, "needs-you is not first")
-        XCTAssertLessThan(running.frame.minY, element("sidebar-section-Acme").frame.minY, "Trabalhando is not above the projects")
-        shot("sidebar-working")
+        XCTAssertLessThan(running.frame.minY, finished.frame.minY, "the agent at work is not above the one whose turn ended")
+        XCTAssertLessThan(finished.frame.minY, element("sidebar-section-Acme").frame.minY, "Agentes is not above the projects")
+        shot("sidebar-agents")
 
-        // One agent there: the row opens its session.
-        waiting.tap()
-        XCTAssertTrue(element("composer-field").waitForExistence(timeout: 10), "the working row did not open its session")
-        XCTAssertTrue(element("needs-you-card").waitForExistence(timeout: 10), "opened the wrong session")
+        // A row opens its conversation, the project's tree still has it too.
+        finished.tap()
+        XCTAssertTrue(element("composer-field").waitForExistence(timeout: 10), "the agent's row did not open its conversation")
+        XCTAssertTrue(element("sidebar-session-sandbox-subtract-claude-6s1").exists || element("sidebar-worktree-sandbox/subtract").exists,
+                      "the agent left its project in the tree")
     }
 
     func testNewTaskAndChatFromTheSidebar() {

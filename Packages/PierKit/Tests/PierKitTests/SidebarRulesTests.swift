@@ -21,32 +21,30 @@ import Testing
         #expect(SidebarRules.isListed(s("a", .waiting), archived: false, background: false))
     }
 
-    @Test func workingGroupsByWorktreeNeedsYouFirst() {
+    /// The sidebar's top lists every live agent, one each, the one that needs the person first and an agent whose turn
+    /// ended too (it still runs, waiting for the next message): that is the one the person goes back to most.
+    @Test func agentsListsEveryLiveOneUrgentFirst() {
         let items = [
-            item(s("run-main", .running, location: "web", ago: 10)),
-            item(s("run-wt", .running, location: "web/login", ago: 50)),
-            item(s("wait-wt", .waiting, location: "web/login", ago: 20)),
-            item(s("done", .finished, location: "api")),
+            item(s("run-new", .running, location: "web", ago: 10)),
+            item(s("run-old", .running, location: "web/login", ago: 50)),
+            item(s("wait-new", .waiting, location: "web/login", ago: 20)),
+            item(s("wait-old", .waiting, location: "docs", ago: 400)),
+            item(s("done-old", .finished, location: "api", ago: 300)),
+            item(s("done-new", .finished, location: "api/jobs", ago: 30)),
             item(s("bg", .finished, location: "api/jobs", ago: 5)),
-            item(s("old-wait", .waiting, location: "docs", ago: 400)),
-            item(s("archived-run", .running, location: "ops")),
-            item(s("chat", .running, location: "", ago: 30)),
+            item(s("idle", .idle, location: "ops", ago: 1)),
+            item(s("archived", .finished, location: "ops")),
+            item(s("gone", .running, location: "ops", exited: true)),
+            item(s("shell", nil, location: "ops", agent: nil)),
+            item(s("chat", .finished, location: "", ago: 100)),
         ]
-        let w = SidebarRules.working(items, archived: { $0.session.name == "archived-run" }, background: ["devbox/bg"])
-        // Waits first, oldest on top; then the newest activity. An archive wins only over a finished turn: "archived-run"
-        // still runs, so it is working.
-        #expect(w.map(\.id) == ["devbox/docs", "devbox/web/login", "devbox/api/jobs", "devbox/web", "devbox/chat", "devbox/ops"])
-        let login = w[1]
-        #expect(login.location == "web" && login.worktree == "login")
-        #expect(login.items.map(\.session.name) == ["wait-wt", "run-wt"])
-        #expect(login.needsYou)
-        #expect(w[3].worktree == nil && !w[3].needsYou)
-        #expect(w[4].isChat)
-    }
-
-    @Test func workingSeparatesBoxes() {
-        let items = [item(s("a", .running, location: "web"), box: "one"), item(s("b", .running, location: "web"), box: "two")]
-        #expect(Set(SidebarRules.working(items, archived: { _ in false }, background: []).map(\.id)) == ["one/web", "two/web"])
+        let a = SidebarRules.agents(items, archived: { $0.session.name == "archived" }, background: ["devbox/bg"])
+        #expect(a.map(\.item.session.name) == ["wait-old", "wait-new", "bg", "run-new", "run-old", "done-new", "chat", "done-old", "idle"])
+        #expect(a.first?.column == .needsYou)
+        #expect(a.first { $0.item.session.name == "bg" }?.column == .working)
+        #expect(a.first { $0.item.session.name == "chat" }?.column == .yourTurn)
+        #expect(a.last?.column == .ready)
+        #expect(SidebarRules.agents([], archived: { _ in false }, background: []).isEmpty)
     }
 
     @Test func archivedIsClosedNewestFirst() {

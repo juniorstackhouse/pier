@@ -64,6 +64,8 @@ final class SessionViewModel {
     // View mode
     var mode: SessionViewMode = .conversation
     @ObservationIgnored private var modeChosen = false
+    /// The screen comes over a terminal stream (a live shell, LiveTerminal.swift): the loop does not read it.
+    @ObservationIgnored var streamsScreen = false
 
     /// The worktree's uncommitted changes (from the box's review list), for the "Revisar" card when this turn edited nothing itself.
     var uncommitted: TurnChanges?
@@ -351,7 +353,8 @@ final class SessionViewModel {
         // The screen feeds the terminal, the needs-you card, the fallback conversation and (every few seconds) the "doing" line.
         // Not running: also look for a menu no hook announces (startup dialogs), right after a state change, then every ~9 s.
         let idleLook = s.agentState != .running && !s.exited && (tickCount % 6 == 0 || s.stateSince != screenLookedAt)
-        let wantScreen = mode == .terminal || s.needsYou || !hasTranscript || (s.agentState == .running && tickCount % 3 == 0) || idleLook
+        let wantScreen = !streamsScreen
+            && (mode == .terminal || s.needsYou || !hasTranscript || (s.agentState == .running && tickCount % 3 == 0) || idleLook)
         if idleLook { screenLookedAt = s.stateSince }
         let wantHeld = (s.queued ?? 0) > 0 || !held.isEmpty
         let since = store.since, gen = store.gen

@@ -17,6 +17,9 @@ final class ComposeModel {
     var target: Target
     /// A chat (capability `session.chat`): the agent runs on the box tied to no project, in a folder of its own.
     var chat: Bool
+    /// The composer screen's draft (kept across launches) is what this sends: a start clears it. Not for a project's
+    /// Agentes box, which has its own text.
+    var sendsComposerDraft = true
     var prompt = ""
     var title = ""
     var worktreeName = ""
@@ -252,7 +255,7 @@ final class ComposeModel {
         }
         stage = .idle
         Haptic.success()
-        app?.prefs.setComposeDraft("")
+        if sendsComposerDraft { app?.prefs.setComposeDraft("") }
         app?.prefs.noteComposed(box: box, location: loc.name, pick: .init(agent: agent.id, model: modelArg, effort: effortArg))
         conn.scheduleRefresh(sessions: true, locations: true)
         if let session {   // the Live Activity manager follows new tasks

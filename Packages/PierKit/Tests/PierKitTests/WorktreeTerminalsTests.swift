@@ -125,6 +125,20 @@ import Testing
         #expect(WorktreeTerminals.runningCommand(in: "\n\n  \n") == nil)
     }
 
+    /// A live terminal shows the line as it is typed: until Enter, a prompt with text on the last line is that line, not
+    /// a command that runs (the tab read "n" while "npm run dev" was being typed).
+    @Test func aLineBeingTypedIsNoCommand() {
+        let typing = "ubuntu@devbox:~/code/sandbox-subtract$ ls\ncalc.py\nubuntu@devbox:~/code/sandbox-subtract$ n"
+        #expect(WorktreeTerminals.runningCommand(in: typing, typing: true) == nil)
+        // Entered: it runs until the prompt comes back.
+        #expect(WorktreeTerminals.runningCommand(in: typing + "pm run dev\n", typing: false) == "npm run dev")
+        // Typing into a program that runs (answering it): still that program.
+        let answering = "ubuntu@devbox:~$ npm init\npackage name: (app) my-a"
+        #expect(WorktreeTerminals.runningCommand(in: answering, typing: true) == "npm init")
+        // At an empty prompt either way: nothing runs.
+        #expect(WorktreeTerminals.runningCommand(in: "ubuntu@devbox:~$ ", typing: true) == nil)
+    }
+
     @Test func promptShapes() {
         let cases: [(String, String?)] = [
             ("ubuntu@devbox:~/code/sandbox$ npm test", "npm test"),

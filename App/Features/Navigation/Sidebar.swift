@@ -4,8 +4,9 @@ import UniformTypeIdentifiers
 
 /// The regular-width sidebar (iPad, Mac), top to bottom:
 /// - "Nova tarefa" / "Nova conversa" and the app's sections;
-/// - **Trabalhando**: every worktree with an agent that needs the person or is working, pinned above the rest
-///   (`SidebarRules.working`), so the live work is one click away whatever section its project sits in;
+/// - **Agentes**: every live agent, a row each, pinned above the rest (`SidebarRules.agents`): those that need the
+///   person, those at work, those whose turn ended; a click opens the conversation, whatever section its project sits in
+///   (the agents stay in their projects too);
 /// - Conversas (agents tied to no project);
 /// - the projects in the person's sections, each expandable to its worktrees and their sessions. Each section orders its
 ///   projects by hand, by name or by recent activity (its menu); projects are dragged to reorder them or into another
@@ -42,6 +43,9 @@ struct Sidebar: View {
 
     /// Archived sessions listed before "Ver todas no Quadro".
     private let archivedLimit = 25
+    /// Live agents listed at the top before "Mais N".
+    private let agentsLimit = 8
+    @State private var allAgents = false
 
     private var searching: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
     private func hit(_ text: String?) -> Bool {
@@ -89,13 +93,13 @@ struct Sidebar: View {
         let hidden = all.first { if case .hidden = $0.kind { true } else { false } }?.entries
             .filter { !searching || hit(prefs.displayName(box: $0.box, location: $0.location.name)) || hit($0.location.name) } ?? []
         let sessions = items
-        let working = searching ? [] : SidebarRules.working(sessions, archived: isArchived, background: Set(signals.background.keys))
+        let agents = searching ? [] : SidebarRules.agents(sessions, archived: isArchived, background: Set(signals.background.keys))
         let archived = SidebarRules.archived(sessions, archived: isArchived)
             .filter { !searching || hit($0.session.title) || hit($0.session.name) || hit($0.location) }
         VStack(spacing: 0) {
             ScrollViewReader { proxy in
                 ScrollView {
-                    content(entries: entries, groups: groups, hidden: hidden, working: working, archived: archived)
+                    content(entries: entries, groups: groups, hidden: hidden, agents: agents, archived: archived)
                 }
                 .scrollIndicators(.never)   // the Mac would otherwise keep a bar visible whenever a mouse is connected
                 .refreshable { await model.refreshAll() }
@@ -141,12 +145,12 @@ struct Sidebar: View {
     }
 
     private func content(entries: [ProjectEntry], groups: [ProjectGroup], hidden: [ProjectEntry],
-                         working: [SidebarRules.ActiveWorktree], archived: [AgentBoard.Item]) -> some View {
+                         agents: [SidebarRules.LiveAgent], archived: [AgentBoard.Item]) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             if !searching {
                 quickActions
                 navRows
-                if !working.isEmpty { workingSection(working) }
+                if !agents.isEmpty { agentsSection(agents) }
             }
             chatsSection
             if searching && groups.isEmpty && chatSessions.isEmpty && archived.isEmpty && hidden.isEmpty {
@@ -219,81 +223,88 @@ struct Sidebar: View {
         }
     }
 
-    // MARK: Trabalhando
+    // MARK: Agentes
 
-    private func workingSection(_ working: [SidebarRules.ActiveWorktree]) -> some View {
-        let open = isOpen("working")
+    /// The live agents, a row each above every section (they stay in their projects too): the agent with its state,
+    /// the session's title, what it is doing and where. A row opens its conversation. The first eight show, the rest a
+    /// click away.
+    private func agentsSection(_ agents: [SidebarRules.LiveAgent]) -> some View {
+        let open = isOpen("agents")
+        let shown = allAgents ? agents : Array(agents.prefix(agentsLimit))
         return VStack(alignment: .leading, spacing: 0) {
-            SidebarHeader(id: "sidebar-section-Trabalhando", open: open, toggle: { toggle("working") }) {
-                LiveDot(color: working.contains(where: \.needsYou) ? Theme.orange : Theme.accent)
-                Text("Trabalhando")
-                CountCapsule(count: working.count)
+            SidebarHeader(id: "sidebar-section-Agentes", open: open, toggle: { toggle("agents") }) {
+                if agents.contains(where: { $0.column == .needsYou || $0.column == .working }) {
+                    LiveDot(color: agents.contains(where: { $0.column == .needsYou }) ? Theme.orange : Theme.accent)
+                }
+                Text("Agentes")
+                CountCapsule(count: agents.count)
             } trailing: { EmptyView() }
-            if open { ForEach(working) { activeRow($0) } }
+            if open {
+                ForEach(shown) { agentRow($0) }
+                if agents.count > agentsLimit {
+                    SidebarRow(id: "sidebar-agents-more", selected: false, hovered: $hovered, action: { withAnimation(.snappy) { allAgents.toggle() } }) {
+                        Image(systemName: allAgents ? "chevron.up" : "ellipsis").font(.system(size: Density.small, weight: .semibold))
+                            .foregroundStyle(Theme.textDim).frame(width: Density.glyph + 2)
+                        Text(allAgents ? S("Mostrar menos") : S("Mais \(agents.count - agentsLimit)"))
+                            .font(.system(size: Density.small + 1)).foregroundStyle(Theme.textDim)
+                        Spacer(minLength: 0)
+                    }
+                }
+            }
         }
     }
 
-    /// A worktree at work: its project's glyph with the state, the worktree (or the chat), and what is going on there
-    /// ("Precisa de você", the agent's current step). One agent opens its session; several open the worktree and are
-    /// listed under it.
-    @ViewBuilder private func activeRow(_ a: SidebarRules.ActiveWorktree) -> some View {
-        let conn = model.connection(for: a.box)
-        let all = conn?.sessions ?? []
-        let first = a.items[0]
-        let project = a.isChat ? String(localized: "Conversa") : prefs.displayName(box: a.box, location: a.location)
-        let route = worktreeRoute(box: a.box, location: a.location, worktree: a.worktree)
-        let single = a.items.count == 1
-        let item: SidebarItem? = a.isChat ? nil : single ? .session(route, name: first.session.name) : .worktree(route)
-        let title = a.isChat ? DisplayNames.sessionName(first.session, among: all) : route.worktree
-        SidebarRow(id: "sidebar-active-\(a.id)", selected: item.map { router.sidebarSelection == $0 } ?? (router.visibleSession == first.id),
-                   hovered: $hovered, height: Density.row + 14, action: {
-            if a.isChat { router.openSession(box: a.box, session: first.session) } else if let item { router.select(item, session: single ? first.session : nil) }
+    private func agentRow(_ a: SidebarRules.LiveAgent) -> some View {
+        let it = a.item, s = it.session
+        let all = model.connection(for: it.box)?.sessions ?? []
+        let isChat = s.chat || it.location.isEmpty
+        let project = isChat ? String(localized: "Conversa") : prefs.displayName(box: it.box, location: it.location)
+        let route = isChat ? nil : worktreeRoute(box: it.box, location: it.location, worktree: it.worktree)
+        let item: SidebarItem? = route.map { .session($0, name: s.name) }
+        var place = project
+        if !isChat, let wt = it.worktree { place += " / " + wt }
+        if multiBox { place += " · " + it.box }
+        return SidebarRow(id: "sidebar-agent-\(it.id)", selected: item.map { router.sidebarSelection == $0 } ?? (router.visibleSession == it.id),
+                          hovered: $hovered, height: Density.row + 14, action: {
+            if let item { router.select(item, session: s) } else { router.openSession(box: it.box, session: s) }
         }) {
             ZStack(alignment: .bottomTrailing) {
-                if a.isChat { AgentGlyph(agent: DisplayNames.agent(of: first.session), size: Density.glyph + 2) }
-                else { ProjectGlyph(name: project, size: Density.glyph + 2) }
-                StateDot(state: a.needsYou ? .needsYou : .working)
-                    .padding(1.5).background(Circle().fill(Theme.bg)).offset(x: 3, y: 3)
+                AgentGlyph(agent: DisplayNames.agent(of: s), size: Density.glyph + 2)
+                StateDot(state: DashState(a.column)).padding(1.5).background(Circle().fill(Theme.bg)).offset(x: 3, y: 3)
             }
             VStack(alignment: .leading, spacing: 1) {
-                Text(title).font(.system(size: Density.text, weight: .medium)).lineLimit(1)
+                Text(DisplayNames.sessionName(s, among: all)).font(.system(size: Density.text, weight: .medium)).lineLimit(1)
                 HStack(spacing: 4) {
-                    // The main worktree goes by the project's name already: no "sandbox · sandbox".
-                    if !a.isChat && title != project { Text(project).foregroundStyle(Theme.textFaint); Text("·").foregroundStyle(Theme.textFaint) }
-                    activity(of: a)
+                    status(of: a)
+                    Text("·").foregroundStyle(Theme.textFaint)
+                    Text(verbatim: place).foregroundStyle(Theme.textFaint)
                 }
                 .font(.system(size: Density.small)).lineLimit(1)
             }
             Spacer(minLength: 4)
-            if !single { CountCapsule(count: a.items.count) }
         }
         .contextMenu {
-            if !a.isChat {
+            if let route {
                 Button { router.select(.worktree(route)) } label: { Label("Abrir worktree", systemImage: "arrow.triangle.branch") }
-                Button { newTask(box: a.box, location: a.location, worktree: a.worktree) } label: { Label("Nova tarefa nesta worktree", systemImage: "plus.bubble") }
+                Button { newTask(box: it.box, location: it.location, worktree: it.worktree) } label: { Label("Nova tarefa nesta worktree", systemImage: "plus.bubble") }
             }
-        }
-        if !single {
-            ForEach(a.items) { it in
-                SidebarRow(id: "sidebar-active-session-\(it.session.name)", selected: router.sidebarSelection == .session(route, name: it.session.name),
-                           hovered: $hovered, indent: 1, action: { router.select(.session(route, name: it.session.name), session: it.session) }) {
-                    AgentGlyph(agent: DisplayNames.agent(of: it.session), size: Density.glyph - 2)
-                    Text(DisplayNames.sessionName(it.session, among: all)).font(.system(size: Density.small + 1)).lineLimit(1)
-                    Spacer(minLength: 4)
-                    if let st = DashState(it.session) { StateDot(state: st) }
-                }
+            if a.column == .yourTurn {
+                Divider()
+                Button { prefs.setClosed(true, box: it.box, session: s.name) } label: { Label("Arquivar (terminei aqui)", systemImage: "archivebox") }
             }
         }
     }
 
-    /// "Precisa de você" in orange, or the first working agent's current step (from the screen), or "Trabalhando".
-    @ViewBuilder private func activity(of a: SidebarRules.ActiveWorktree) -> some View {
-        if a.needsYou {
-            Text("Precisa de você").foregroundStyle(Theme.orange)
-        } else if let step = a.items.lazy.compactMap({ signals.steps[$0.id] }).first, !step.isEmpty {
-            Text(step).foregroundStyle(Theme.textDim)
-        } else {
-            Text("Trabalhando").foregroundStyle(Theme.accent)
+    /// "Precisa de você" in orange; at work, the agent's current step (from its screen) or "Trabalhando"; "Sua vez" in
+    /// green; "Pronto".
+    @ViewBuilder private func status(of a: SidebarRules.LiveAgent) -> some View {
+        switch a.column {
+        case .needsYou: Text("Precisa de você").foregroundStyle(Theme.orange)
+        case .working:
+            if let step = signals.steps[a.id], !step.isEmpty { Text(step).foregroundStyle(Theme.textDim) }
+            else { Text("Trabalhando").foregroundStyle(Theme.accent) }
+        case .yourTurn: Text("Sua vez").foregroundStyle(Theme.green)
+        default: Text("Pronto").foregroundStyle(Theme.textDim)
         }
     }
 

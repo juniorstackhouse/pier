@@ -200,6 +200,67 @@ final class H2Connection: Sendable {
     }
 }
 
+extension H2Connection {
+    /// A request whose body and answer both stream (a terminal): `body`'s chunks go out as they come, and the request
+    /// ends when `body` does; the answer's chunks arrive as the box sends them. A non-2xx answer or a failure ends the
+    /// result with its error; cancelling the result resets the stream.
+    func duplex(method: String, path: String, headers: [(String, String)], body: AsyncStream<Data>) -> AsyncThrowingStream<Data, Error> {
+        AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    let stream = try await self.openStream()
+                    let head = self.head(method: method, path: path, extra: headers, bodyLength: nil)
+                    try await stream.executeThenClose { inbound, outbound in
+                        try await outbound.write(.head(head))
+                        try await withThrowingTaskGroup(of: Void.self) { group in
+                            group.addTask {
+                                for await chunk in body {
+                                    var buf = ByteBufferAllocator().buffer(capacity: chunk.count)
+                                    buf.writeBytes(chunk)
+                                    try await outbound.write(.body(.byteBuffer(buf)))
+                                }
+                                // The body ended: the request does too (the box then ends the answer). Not when the
+                                // answer ended first and this was cancelled: the stream is closing anyway.
+                                if !Task.isCancelled { try? await outbound.write(.end(nil)) }
+                            }
+                            var status = 0
+                            var errBody = Data()
+                            for try await part in inbound {
+                                switch part {
+                                case .head(let h): status = Int(h.status.code)
+                                case .body(let b):
+                                    if (200..<300).contains(status) {
+                                        continuation.yield(Data(b.readableBytesView))
+                                    } else if errBody.count < Self.maxErrorBytes {
+                                        errBody.append(contentsOf: b.readableBytesView.prefix(Self.maxErrorBytes - errBody.count))
+                                    }
+                                case .end:
+                                    group.cancelAll()
+                                    if !(200..<300).contains(status) { throw mapHTTPError(status: status, body: errBody) }
+                                    return
+                                }
+                            }
+                            group.cancelAll()
+                            try Task.checkCancellation()
+                            throw PierError.transport("stream closed before the response completed")
+                        }
+                    }
+                    continuation.finish()
+                } catch let e as StreamOpenError {
+                    continuation.finish(throwing: PierError.transport("\(e.underlying)"))
+                } catch let e as PierError {
+                    continuation.finish(throwing: e)
+                } catch is CancellationError {
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: PierError.transport("\(error)"))
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+}
+
 struct StreamOpenError: Error { let underlying: Error }
 
 private final class MuxBox: @unchecked Sendable {

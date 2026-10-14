@@ -1,12 +1,13 @@
 import SwiftUI
 import PierKit
 
-/// The tabs of a project's workspace.
+/// The tabs of a project's workspace; the first, Agentes, starts an agent there (StartPane.swift).
 enum WorkspaceTab: String, CaseIterable, Identifiable {
-    case files, changes, history, overview, details
+    case start, files, changes, history, overview, details
     var id: String { rawValue }
     var title: LocalizedStringKey {
         switch self {
+        case .start: "Agentes"
         case .files: "Arquivos"
         case .changes: "Alterações"
         case .history: "Histórico"
@@ -16,6 +17,7 @@ enum WorkspaceTab: String, CaseIterable, Identifiable {
     }
     var symbol: String {
         switch self {
+        case .start: "sparkles"
         case .files: "doc.text"
         case .changes: "plusminus"
         case .history: "clock.arrow.circlepath"
@@ -44,7 +46,16 @@ struct WorkspaceRef: Hashable {
 @MainActor @Observable
 final class WorkspaceState {
     let ref: WorkspaceRef
-    var tab: WorkspaceTab = .files
+    /// The project opens on Agentes, a box to start an agent there.
+    var tab: WorkspaceTab = .start
+    /// Agentes' box: what was typed stays while the app runs. From the main checkout an agent gets a worktree of its
+    /// own (the composer's default); from a worktree it runs there.
+    @ObservationIgnored private(set) lazy var compose: ComposeModel = {
+        let m = ComposeModel(route: ComposeRoute(box: ref.box, location: ref.location,
+                                                 worktree: ref.execLocation == ref.location ? nil : ref.worktree))
+        m.sendsComposerDraft = false
+        return m
+    }()
     let tree: FileTreeStore
     let editor: EditorStore
     let history: HistoryStore

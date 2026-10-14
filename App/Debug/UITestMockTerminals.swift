@@ -20,6 +20,11 @@ struct MockTerminals {
         /// When the program in the foreground ends by itself.
         var until: Date?
         var exited = false
+        /// Attached as a terminal (`POST …/tty`): the line being typed, how many of `lines` it printed, and the start
+        /// of an escape sequence or of a character split between two writes.
+        var edit = ""
+        var printed = 0
+        var pending: [UInt8] = []
 
         var prompt: String {
             let shown = dir == Self.home ? "~" : dir.hasPrefix(Self.home + "/") ? "~" + dir.dropFirst(Self.home.count) : dir
@@ -97,6 +102,123 @@ struct MockTerminals {
             }
         }
         shells[name] = s
+    }
+
+    // MARK: the terminal stream
+
+    /// A terminal attached (`POST …/tty`): the lines so far and the prompt, as tmux draws a pane on attach.
+    mutating func ttyStart(_ name: String) -> Data {
+        guard var s = shells[name] else { return Data() }
+        settle(&s)
+        s.pending = []
+        let shown = s.lines.suffix(300)
+        var out = shown.map { $0 + "\r\n" }.joined()
+        s.printed = s.lines.count
+        if s.running == nil, !s.exited, !s.oneCommand { out += s.prompt + s.edit }
+        shells[name] = s
+        return Data(out.utf8)
+    }
+
+    /// Bytes typed into the terminal, as a shell's line editing takes them: characters are echoed, ⌫ takes one back,
+    /// Enter runs the line, ⌃C stops what runs (or drops the line), ⌃L clears the screen, ⌃D on an empty line logs out;
+    /// escape sequences (the arrows) do nothing here. Answers what the terminal prints.
+    mutating func ttyInput(_ name: String, _ bytes: Data) -> Data {
+        guard var s = shells[name], !s.exited else { return Data() }
+        settle(&s)
+        var out = ""
+        var buf = s.pending + Array(bytes)
+        s.pending = []
+        var i = 0
+        while i < buf.count {
+            let b = buf[i]
+            if b == 0x1B {
+                // ESC [ … final, ESC O x, or a lone Esc: skipped whole; one cut short waits for the rest.
+                guard i + 1 < buf.count else { s.pending = Array(buf[i...]); break }
+                if buf[i + 1] == UInt8(ascii: "[") {
+                    var j = i + 2
+                    while j < buf.count, !(0x40...0x7E).contains(buf[j]) { j += 1 }
+                    guard j < buf.count else { s.pending = Array(buf[i...]); break }
+                    i = j + 1
+                } else if buf[i + 1] == UInt8(ascii: "O") {
+                    guard i + 2 < buf.count else { s.pending = Array(buf[i...]); break }
+                    i += 3
+                } else {
+                    i += 1
+                }
+                continue
+            }
+            switch b {
+            case 0x0D, 0x0A:
+                out += "\r\n"
+                let line = s.edit
+                s.edit = ""
+                if s.running != nil || s.oneCommand {
+                    s.lines.append(line)
+                    s.printed = s.lines.count
+                } else {
+                    let before = s.lines.count
+                    s.lines.append(s.prompt + line)
+                    run(line, in: &s)
+                    if s.lines.count < before {
+                        // `clear`.
+                        out += "\u{1b}[H\u{1b}[2J"
+                    } else {
+                        out += s.lines[(before + 1)...].map { $0 + "\r\n" }.joined()
+                    }
+                    s.printed = s.lines.count
+                    if !s.exited, s.running == nil { out += s.prompt }
+                }
+            case 0x03:
+                out += "^C\r\n"
+                s.edit = ""
+                if s.running != nil {
+                    s.lines.append("^C")
+                    s.running = nil
+                    s.until = nil
+                    if s.oneCommand { s.exited = true }
+                } else if !s.oneCommand {
+                    s.lines.append(s.prompt + "^C")
+                }
+                s.printed = s.lines.count
+                if !s.exited, !s.oneCommand { out += s.prompt }
+            case 0x04 where s.edit.isEmpty && s.running == nil && !s.oneCommand:
+                out += "logout\r\n"
+                s.lines.append(s.prompt)
+                s.lines.append("logout")
+                s.printed = s.lines.count
+                s.exited = true
+            case 0x0C:
+                out += "\u{1b}[H\u{1b}[2J" + (s.running == nil && !s.oneCommand ? s.prompt + s.edit : "")
+            case 0x7F, 0x08:
+                if !s.edit.isEmpty {
+                    s.edit.removeLast()
+                    out += "\u{8} \u{8}"
+                }
+            case 0x20...0x7E, 0x80...0xFF:
+                // A character, whole: a multi-byte one cut between two writes waits for its last byte.
+                let n = b < 0x80 ? 1 : b >= 0xF0 ? 4 : b >= 0xE0 ? 3 : 2
+                guard i + n <= buf.count else { s.pending = Array(buf[i...]); i = buf.count; continue }
+                let ch = String(decoding: buf[i..<(i + n)], as: UTF8.self)
+                s.edit += ch
+                out += ch
+                i += n
+                continue
+            default:
+                break
+            }
+            i += 1
+        }
+        buf = []
+        shells[name] = s
+        return Data(out.utf8)
+    }
+
+    /// A program in front that ended by itself (a `sleep`): the prompt it gives back to the terminal.
+    mutating func ttyTick(_ name: String) -> Data {
+        guard var s = shells[name], s.running != nil, let until = s.until, Date() >= until else { return Data() }
+        settle(&s)
+        shells[name] = s
+        return Data((s.running == nil && !s.exited && !s.oneCommand ? s.prompt : "").utf8)
     }
 
     /// A program whose time is up ends: the prompt comes back (a command session ends with it).

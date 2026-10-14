@@ -41,9 +41,9 @@ struct KeysBar: View {
     private struct K: Identifiable { var id: String { label }; let label: String; let keys: [ControlKey]; var tint: Color? = nil; var a11y: String? = nil }
     private let ks: [K] = [
         K(label: "Esc", keys: [.escape]), K(label: "↵", keys: [.enter], a11y: "Enter"), K(label: "Tab", keys: [.tab]),
-        K(label: "↑", keys: [.up], a11y: "Cima"), K(label: "↓", keys: [.down], a11y: "Baixo"),
-        K(label: "←", keys: [.left], a11y: "Esquerda"), K(label: "→", keys: [.right], a11y: "Direita"),
-        K(label: "⌃C", keys: [.interrupt], tint: Theme.red, a11y: "Control C, interromper"),
+        K(label: "↑", keys: [.up], a11y: S("Seta para cima")), K(label: "↓", keys: [.down], a11y: S("Seta para baixo")),
+        K(label: "←", keys: [.left], a11y: S("Seta para a esquerda")), K(label: "→", keys: [.right], a11y: S("Seta para a direita")),
+        K(label: "⌃C", keys: [.interrupt], tint: Theme.red, a11y: S("Control C, interromper")),
         K(label: "1", keys: [.k1]), K(label: "2", keys: [.k2]), K(label: "3", keys: [.k3]), K(label: "4", keys: [.k4]),
         K(label: "y", keys: [.y]), K(label: "n", keys: [.n]),
     ]
