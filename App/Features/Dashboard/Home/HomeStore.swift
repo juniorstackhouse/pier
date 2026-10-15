@@ -62,6 +62,8 @@ final class HomeStore {
 
     static let interval: [HomeWidgetKind: TimeInterval] = [.prs: 300, .ci: 600, .git: 900, .services: 30, .limits: 120]
 
+    static let shared = HomeStore()
+
     init(cacheURL: URL? = nil) {
         self.cacheURL = cacheURL ?? Shared.supportDirectory.appendingPathComponent("home-cache.json")
         if let d = try? Data(contentsOf: self.cacheURL), let c = try? Self.decoder.decode(Cache.self, from: d) {
@@ -76,6 +78,9 @@ final class HomeStore {
         guard now != cachedBoxes else { return }
         cachedBoxes = now
         prs = Remote(); ci = Remote(); git = Remote()
+        // The store lives for the app's run (`shared`): the old boxes' services and limits go too, and come back fresh.
+        services = []; servicesAt = nil; servicesError = nil; reachable = [:]
+        limits = []; limitsAt = nil; limitsError = nil
         saveCache()
     }
 

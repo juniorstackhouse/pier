@@ -48,8 +48,9 @@ enum NotificationChoices {
         }
         actions.append(UNNotificationAction(identifier: openAction, title: strings.open, options: [.foreground],
                                             icon: UNNotificationActionIcon(systemImageName: "arrow.up.forward.app")))
-        return UNNotificationCategory(identifier: categoryID(for: options), actions: actions, intentIdentifiers: [],
-                                      hiddenPreviewsBodyPlaceholder: strings.hidden, options: [])
+        return UNNotificationCategory(identifier: categoryID(for: options), actions: actions,
+                                      intentIdentifiers: CommunicationNotification.intentIdentifiers,
+                                      hiddenPreviewsBodyPlaceholder: strings.hidden, options: CommunicationNotification.categoryOptions)
     }
 
     /// Registers the category for `options` next to what is registered already (the app's fixed categories, recent

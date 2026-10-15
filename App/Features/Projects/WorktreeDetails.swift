@@ -41,21 +41,22 @@ final class WorktreeDetailsStore {
         async let svc = try? api.worktreeServiceDetails(location: location, worktree: worktree)
         async let all = try? api.services()
         async let st = try? conn.client.worktreeStatuses(location: location)
-        if let s = await svc { services = s }
-        if let a = await all { servers = Projects.devServers(a, location: location, worktree: wt) }
-        if let s = await st, let mine = s.first(where: { $0.name == worktree }) { status = mine }
-        if conn.info?.has("prepare") == true, let p = try? await api.prepareStatus(location: location, worktree: worktree) { prepare = p }
+        if let s = await svc, s != services { services = s }
+        if let a = await all { let v = Projects.devServers(a, location: location, worktree: wt); if v != servers { servers = v } }
+        if let s = await st, let mine = s.first(where: { $0.name == worktree }), mine != status { status = mine }
+        if conn.info?.has("prepare") == true, let p = try? await api.prepareStatus(location: location, worktree: worktree), p != prepare { prepare = p }
         if conn.info?.has("shares") == true, let all = try? await api.publicLinks() {
-            links = all.filter { $0.location == location && $0.worktree == worktree }
+            let mine = all.filter { $0.location == location && $0.worktree == worktree }
+            if mine != links { links = mine }
         }
-        loaded = true
+        if !loaded { loaded = true }
         let host = conn.record.host
         var probes: [Int: Bool] = [:]
         await withTaskGroup(of: (Int, Bool).self) { g in
             for p in Set(servers.map(\.port)) { g.addTask { (p, await PortProbe.reachable(host: host, port: p)) } }
             for await (p, ok) in g { probes[p] = ok }
         }
-        reachable = probes
+        if probes != reachable { reachable = probes }
     }
 
     /// Publishes a port at a public link (24 hours) through the box's relay.
@@ -151,7 +152,8 @@ struct WorktreeDetailsView: View {
         .task {
             while !Task.isCancelled {
                 await store.load(model: model)
-                try? await Task.sleep(for: .seconds(6))
+                // The box's events bring changes at once (services, setup, preparation); this only catches the rest.
+                try? await Task.sleep(for: .seconds(15))
             }
         }
         .task {

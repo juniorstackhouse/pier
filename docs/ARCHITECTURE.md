@@ -455,7 +455,7 @@ follows it); only an exit (`ended`) ends the activity. Debug `-openLink pier://�
 -composePrompt <text> -composeNoFocus 1 -composeOptions 1 -composeSheet project|worktree|base -composeSubmit 1`,
 `-startTab inbox|board|projects|settings`, `-seedSections 1`, `-snapshotTo <file.png> [-snapshotAfter <s>]`, `-homeCustomize 1`, `-homeScrollTo <widget>`, `-sessionExpandAll 1`,
 `-sessionDetails 1`, `-sessionTerminal 1`, `-uiTestChatLab 1` (with the mock: a long chat of hard Markdown that streams a
-reply like Claude Code's when sent to; `ChatQualityUITests`), `-chatPerfProbe 1 [-sessionSend <text>]` (frame pacing of
+reply like Claude Code's when sent to; `ChatQualityUITests`), `-navPerfProbe 1 [-navPerfProbeLoops <n>] [-navPerfProbeOnly tabs|sessions|projects]` (walks the Home, sessions, Inbox, Board, projects and worktrees of the paired boxes or the mock, 2.5 s a step: `NAV-PERF {...}` per step with the first frame and hitch time, the footprint between walks; with Time Profiler attached it shows what each screen costs), `-carPlaySelfTest 1` (docs/CARPLAY.md), `-chatPerfProbe 1 [-sessionSend <text>]` (frame pacing of
 the open conversation, scrolled and while a reply streams: `CHAT-PERF {...}` on stderr and Documents/chat-perf.json), `-openInstallHelp 1` (the onboarding's "Outros jeitos de instalar" sheet),
 `-runIntent postNotif|notifAction|notifDelivered …` (App/Intents/DebugIntentRunner.swift), `-openLink <pier://…>`,
 `-debugStartActivity 1`, `-debugActivitySession <name>` (a Live Activity for that one session, a finished turn's to see its

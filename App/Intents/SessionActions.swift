@@ -96,6 +96,47 @@ enum SessionActions {
         }
     }
 
+    /// A reply said to Siri (CarPlay, a notification's "Responder"), checked against the session first: an agent waiting
+    /// on a permission menu takes only Permitir / Negar (no words are typed into a menu); one waiting on a question gets
+    /// the words as its answer (the question's own form when the record holds it, else typed as an answer); anything
+    /// else gets them as the next prompt, held until the agent is free (`when: idle`).
+    static func reply(box: String, session: String, text: String) async -> Result<Void, Failure> {
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.isEmpty else { return .failure(.failed(String(localized: "A mensagem está vazia."))) }
+        do {
+            let client = try HeadlessBoxes.box(box).client
+            guard let s = try await client.sessions().first(where: { $0.name == session }) else {
+                return .failure(.failed(HeadlessError.sessionNotFound(session).localizedDescription))
+            }
+            guard s.needsYou else {
+                _ = try await client.send(session: session, SendRequest(text: t, enter: true, when: .idle))
+                return .success(())
+            }
+            if Ask.classify(s.ask) == .permission {
+                return .failure(.failed(String(localized: "Esse agente espera Permitir ou Negar: responda pelos botões.")))
+            }
+            if let page = try? await client.transcript(session: session, since: 0, gen: nil),
+               let q = QuestionHelpers.openQuestion(in: page.items), let qs = q.questions, qs.count == 1, qs[0].multi != true,
+               (try? await client.answerQuestions(session: session, tool: q.tool ?? "AskUserQuestion", answers: [QuestionAnswer(other: t)])) != nil {
+                await SessionActivityBridge.answered(box: box, session: session)
+                return .success(())
+            }
+            // A question only on screen (Claude Code writes it to its record once answered): its "Type something." row,
+            // then the words, as pierd answers in the person's own words. No such row, no typing into the menu.
+            let screen = try await client.screen(session: session, history: 0)
+            guard let key = MenuParser.typeSomethingKey(in: screen) else {
+                return .failure(.failed(String(localized: "Essa pergunta só aceita uma das opções: escolha pelos botões.")))
+            }
+            _ = try await client.send(session: session, SendRequest(text: key, enter: false, when: .now, force: true))
+            try? await Task.sleep(for: .milliseconds(400))   // the row opens its text field
+            _ = try await client.send(session: session, SendRequest(text: t, enter: true, when: .now, force: true))
+            await SessionActivityBridge.answered(box: box, session: session)
+            return .success(())
+        } catch {
+            return .failure(.failed(describe(error)))
+        }
+    }
+
     static func describe(_ error: Error) -> String {
         if let e = error as? SessionIntentError { return String(localized: e.localizedStringResource) }
         if let e = error as? LocalizedError, let d = e.errorDescription { return d }

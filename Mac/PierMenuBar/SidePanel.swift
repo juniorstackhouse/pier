@@ -341,6 +341,14 @@ final class PanelRootView: NSView {
 
     override init(frame: NSRect) {
         super.init(frame: frame)
+        // The shadow is the layer's, along the shape's path: Core Animation draws it without re-blurring it on the CPU
+        // (an NSShadow in draw() blurred the whole panel's outline at every redraw, every streamed update included).
+        wantsLayer = true
+        layer?.masksToBounds = false
+        layer?.shadowColor = NSColor.black.cgColor
+        layer?.shadowOpacity = 0.5
+        layer?.shadowRadius = 8
+        layer?.shadowOffset = CGSize(width: 0, height: -6)
         back.onBlack = true; close.onBlack = true
         back.onClick = { [weak self] in self?.onBack?() }
         close.onClick = { [weak self] in self?.onClose?() }
@@ -416,6 +424,9 @@ final class PanelRootView: NSView {
         if scroll.scrollerStyle != .overlay { scroll.scrollerStyle = .overlay }
     }
 
+    /// The shape the layer's shadow path was made for.
+    private var shadowShape: (NSRect, CGFloat, EdgeSide)?
+
     override func draw(_ dirtyRect: NSRect) {
         let r = NSRect(x: shapeX, y: Self.margin, width: panelWidth, height: panelHeight)
         let shape = NSBezierPath(roundedRect: r, xRadius: PanelStyle.radius, yRadius: PanelStyle.radius)
@@ -432,15 +443,12 @@ final class PanelRootView: NSView {
         }
         p.close()
         shape.append(p)
-        NSGraphicsContext.saveGraphicsState()
-        let shadow = NSShadow()
-        shadow.shadowColor = NSColor.black.withAlphaComponent(0.5)
-        shadow.shadowBlurRadius = 16
-        shadow.shadowOffset = NSSize(width: 0, height: -6)
-        shadow.set()
+        if shadowShape.map({ $0.0 != r || $0.1 != cy || $0.2 != edge }) ?? true {
+            shadowShape = (r, cy, edge)
+            layer?.shadowPath = shape.cgPath
+        }
         PanelStyle.bg.setFill()
         shape.fill()
-        NSGraphicsContext.restoreGraphicsState()
         PanelStyle.hairline.setStroke()
         shape.lineWidth = 1
         shape.stroke()

@@ -6,5 +6,9 @@ PIER_BUNDLE_ID = dev.pier.app
 // The keychain service the identity and the pairings are stored under.
 PIER_KEYCHAIN_SERVICE = $(PIER_BUNDLE_ID)
 
+// The iPhone/iPad entitlements of a device build. Set to App/Resources/Pier-carplay.entitlements in Config/Signing.xcconfig
+// once Apple granted the App ID the CarPlay communication entitlement (docs/CARPLAY.md); simulator builds always carry it.
+PIER_IOS_ENTITLEMENTS = App/Resources/Pier.entitlements
+
 // Local overrides (team, bundle id): Config/Signing.xcconfig, gitignored. A missing file is fine (simulator builds).
 #include? "Signing.xcconfig"

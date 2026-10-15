@@ -91,6 +91,9 @@ final class LocalPrefs {
     }
 
     private(set) var data = Data()
+    /// The compose draft lives apart from `data`: it changes on every keystroke, and every view reading any pref (the
+    /// sidebar, the Home, the menu bar's payload, the Mac's main menu) would redraw with it. Saved with `data`.
+    private(set) var composeDraft = ""
     private var url: URL
 
     init(url: URL? = nil) {
@@ -98,9 +101,25 @@ final class LocalPrefs {
         load()
         // A mock run is a test or a screenshot: it starts with no prompt draft a previous run left behind (one test typed
         // a long prompt and the next found it in Nova tarefa). Within a run the draft comes back as ever.
-        if UITestMock.enabled, !data.composeDraft.isEmpty { data.composeDraft = "" }
+        if UITestMock.enabled { data.composeDraft = "" }
+        composeDraft = data.composeDraft
         // The widgets' copy follows these prefs from the start, whatever changed it meanwhile.
         if url == nil { mirrorForWidgets() }
+    }
+
+    /// The archive marks ("box/session" -> date) as saved, read without a prefs object (CarPlay and Siri run without the
+    /// app's window and must not write the file the app keeps).
+    nonisolated static func savedClosedMarks() async -> [String: Date] {
+        let url = await MainActor.run { defaultURL }
+        guard let d = try? Foundation.Data(contentsOf: url),
+              let v = try? JSONDecoder().decode(Data.self, from: d) else { return [:] }
+        return v.closed
+    }
+
+    /// Whether the marks say the person closed this turn (`isClosed`, from saved marks).
+    nonisolated static func isClosed(_ marks: [String: Date], box: String, session: Session) -> Bool {
+        guard let at = marks["\(box)/\(session.name)"] else { return false }
+        return at >= (session.stateSince ?? session.created)
     }
 
     static var defaultURL: URL {
@@ -117,6 +136,8 @@ final class LocalPrefs {
         url = Self.defaultURL
         data = Data()
         load()
+        draftSave?.cancel()
+        composeDraft = data.composeDraft
     }
 
     static func key(box: String, location: String) -> String { "\(box)/\(location)" }
@@ -274,12 +295,11 @@ final class LocalPrefs {
         if let a = pick.agent { data.lastAgent = a }
         save()
     }
-    var composeDraft: String { data.composeDraft }
     @ObservationIgnored private var draftSave: Task<Void, Never>?
     /// Kept while typing; written to disk a moment after the last keystroke (the file is rewritten whole).
     func setComposeDraft(_ text: String) {
-        guard data.composeDraft != text else { return }
-        data.composeDraft = text
+        guard composeDraft != text else { return }
+        composeDraft = text
         draftSave?.cancel()
         draftSave = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(text.isEmpty ? 0 : 800))
@@ -372,7 +392,9 @@ final class LocalPrefs {
     private func save() {
         let fm = FileManager.default
         try? fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        if let d = try? JSONEncoder().encode(data) { try? d.write(to: url, options: .atomic) }
+        var out = data
+        out.composeDraft = composeDraft
+        if let d = try? JSONEncoder().encode(out) { try? d.write(to: url, options: .atomic) }
         mirrorForWidgets()
     }
 

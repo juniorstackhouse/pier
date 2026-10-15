@@ -158,6 +158,25 @@ public enum MenuParser {
         choices(in: screen).map(\.label).filter { !ownRow.test($0) }
     }
 
+    /// The number of a question's own "Type something." row (Claude Code's free-text answer), read from every numbered row
+    /// at the foot of the screen (a question can offer four choices, so the row may be the fifth): nil when the screen
+    /// shows no such row, so words are never typed into a menu that has no place for them. Pressing it, then typing the
+    /// words with Enter, is how pierd answers in the person's own words (`box/answer.go`, typeOther).
+    public static func typeSomethingKey(in screen: String) -> String? {
+        if questionForm(in: screen) { return nil }
+        let lines = stripPanel(screen).split(separator: "\n", omittingEmptySubsequences: false).suffix(20)
+        var keys: [String] = []
+        var found: String?
+        for l in lines {
+            guard let m = option.match(String(l)), let key = m[1], let label = m[2], !keys.contains(key) else { continue }
+            keys.append(key)
+            if found == nil, Rx(#"^(type something|other)\b"#, ignoreCase: true).test(label.jsTrimmed) { found = key }
+        }
+        // A real list counts up from 1, with the row after at least two choices.
+        guard keys.first == "1", let found, let n = Int(found), n >= 3 else { return nil }
+        return found
+    }
+
     private static let cursorLine = Rx(#"^(\s*)[❯›]\s+(\S.*)$"#)
 
     /// An unnumbered menu at the foot of the screen: a `❯ option` line with sibling options at the same text column and a

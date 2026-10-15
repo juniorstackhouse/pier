@@ -317,6 +317,26 @@
         }
       }
     },
+    "%@ terminou · toque para ouvir" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ is done · tap to listen"
+          }
+        }
+      }
+    },
+    "%@ trabalhando · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ working · %2$@"
+          }
+        }
+      }
+    },
     "%@ · %@" : {
       "localizations" : {
         "en" : {
@@ -895,6 +915,16 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$lld/%2$lld"
+          }
+        }
+      }
+    },
+    "(código)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(code)"
           }
         }
       }
@@ -2091,6 +2121,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Waiting for: %@"
+          }
+        }
+      }
+    },
+    "Ainda está trabalhando." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Still working."
           }
         }
       }
@@ -4485,6 +4525,16 @@
         }
       }
     },
+    "Diga a resposta para o Siri" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tell Siri your reply"
+          }
+        }
+      }
+    },
     "Diga a um agente o que fazer" : {
       "localizations" : {
         "en" : {
@@ -5361,6 +5411,16 @@
         }
       }
     },
+    "Essa pergunta só aceita uma das opções: escolha pelos botões." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This question only takes one of its options: pick it with the buttons."
+          }
+        }
+      }
+    },
     "Essa sessão já terminou" : {
       "localizations" : {
         "en" : {
@@ -5377,6 +5437,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "That session has ended and is no longer on the box."
+          }
+        }
+      }
+    },
+    "Esse agente espera Permitir ou Negar: responda pelos botões." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This agent waits for Allow or Deny: answer with the buttons."
           }
         }
       }
@@ -6043,6 +6113,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Filter"
+          }
+        }
+      }
+    },
+    "Fora de alcance" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Out of reach"
           }
         }
       }
@@ -7993,6 +8073,16 @@
         }
       }
     },
+    "Nenhuma box pareada" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No box paired"
+          }
+        }
+      }
+    },
     "Nenhuma box pareada." : {
       "localizations" : {
         "en" : {
@@ -9679,6 +9769,16 @@
         }
       }
     },
+    "Os agentes que precisarem de você aparecem aqui." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agents that need you show up here."
+          }
+        }
+      }
+    },
     "Os commits reaplicados em cima de %@, sem commit de merge." : {
       "localizations" : {
         "en" : {
@@ -10181,6 +10281,16 @@
         }
       }
     },
+    "Pareie uma box no Pier do iPhone." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pair a box in Pier on the iPhone."
+          }
+        }
+      }
+    },
     "Pareie uma box para receber push." : {
       "localizations" : {
         "en" : {
@@ -10277,6 +10387,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ask the login agent to add an empty-password test"
+          }
+        }
+      }
+    },
+    "Pede uma permissão." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Asks for a permission."
           }
         }
       }
@@ -10657,6 +10777,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Needs you"
+          }
+        }
+      }
+    },
+    "Precisa de você." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Needs you."
           }
         }
       }
@@ -11137,6 +11267,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Wrap lines"
+          }
+        }
+      }
+    },
+    "Quer permissão para %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wants permission for %@"
           }
         }
       }
@@ -11651,6 +11791,16 @@
         }
       }
     },
+    "Responder por voz" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reply by voice"
+          }
+        }
+      }
+    },
     "Resposta" : {
       "localizations" : {
         "en" : {
@@ -12057,6 +12207,46 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "No pending changes: only push / PR of the existing commits."
+          }
+        }
+      }
+    },
+    "Sem conexão com %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No connection to %@"
+          }
+        }
+      }
+    },
+    "Tem uma pergunta para você." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Has a question for you."
+          }
+        }
+      }
+    },
+    "Tentando de novo…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trying again…"
+          }
+        }
+      }
+    },
+    "Terminou." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done."
           }
         }
       }

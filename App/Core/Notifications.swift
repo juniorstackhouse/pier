@@ -2,6 +2,9 @@ import Foundation
 import SwiftUI
 import UserNotifications
 import PierKit
+#if os(iOS) && !targetEnvironment(macCatalyst)
+import Intents
+#endif
 
 /// Action identifiers of the actionable categories (see docs/PUSH.md).
 enum NotificationAction {
@@ -51,12 +54,14 @@ final class Notifications: NSObject, UNUserNotificationCenterDelegate {
                                                     textInputPlaceholder: String(localized: "Mensagem para o agente"))
         let hidden = String(localized: "Um agente precisa de você")
         var set: Set<UNNotificationCategory> = [
-            UNNotificationCategory(identifier: NotificationCategoryID.needsYouPermission, actions: [allow, deny, answer], intentIdentifiers: [],
-                                   hiddenPreviewsBodyPlaceholder: hidden, options: []),
-            UNNotificationCategory(identifier: NotificationCategoryID.needsYouQuestion, actions: [open], intentIdentifiers: [],
-                                   hiddenPreviewsBodyPlaceholder: hidden, options: []),
-            UNNotificationCategory(identifier: NotificationCategoryID.finished, actions: [review, message], intentIdentifiers: [],
-                                   hiddenPreviewsBodyPlaceholder: String(localized: "Um agente terminou"), options: []),
+            UNNotificationCategory(identifier: NotificationCategoryID.needsYouPermission, actions: [allow, deny, answer], intentIdentifiers: CommunicationNotification.intentIdentifiers,
+                                   hiddenPreviewsBodyPlaceholder: hidden, options: CommunicationNotification.categoryOptions),
+            UNNotificationCategory(identifier: NotificationCategoryID.needsYouQuestion, actions: [open], intentIdentifiers: CommunicationNotification.intentIdentifiers,
+                                   hiddenPreviewsBodyPlaceholder: hidden, options: CommunicationNotification.categoryOptions),
+            UNNotificationCategory(identifier: NotificationCategoryID.finished, actions: [review, message],
+                                   intentIdentifiers: CommunicationNotification.intentIdentifiers,
+                                   hiddenPreviewsBodyPlaceholder: String(localized: "Um agente terminou"),
+                                   options: CommunicationNotification.categoryOptions),
         ]
         // NEEDS_YOU_CHOICE_n: a question's choices as numbered buttons, the body numbering them the same way. What pierd
         // names when it read the choices; the service extension replaces it with a category whose buttons carry the words.
@@ -65,8 +70,9 @@ final class Notifications: NSObject, UNUserNotificationCenterDelegate {
                 UNNotificationAction(identifier: NotificationChoices.actionPrefix + String(i), title: String(i + 1), options: [],
                                      icon: UNNotificationActionIcon(systemImageName: "\(i + 1).circle"))
             }
-            set.insert(UNNotificationCategory(identifier: NotificationCategoryID.needsYouChoice(n), actions: numbered + [open], intentIdentifiers: [],
-                                              hiddenPreviewsBodyPlaceholder: hidden, options: []))
+            set.insert(UNNotificationCategory(identifier: NotificationCategoryID.needsYouChoice(n), actions: numbered + [open],
+                                              intentIdentifiers: CommunicationNotification.intentIdentifiers,
+                                              hiddenPreviewsBodyPlaceholder: hidden, options: CommunicationNotification.categoryOptions))
         }
         return set
     }
@@ -84,11 +90,28 @@ final class Notifications: NSObject, UNUserNotificationCenterDelegate {
 
     func refreshStatus() async {
         status = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
+        #if os(iOS) && !targetEnvironment(macCatalyst)
+        // Someone who allowed notifications before Siri was asked for: asked once now (the agents' messages, by voice).
+        if status == .authorized, INPreferences.siriAuthorizationStatus() == .notDetermined {
+            INPreferences.requestSiriAuthorization { _ in }
+        }
+        #endif
     }
 
     @discardableResult
     func requestAuthorization() async -> Bool {
-        let ok = (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])) ?? false
+        // `.carPlay`: the agents' messages show in the car too (read aloud and answered by voice, CarPlay/CarPlayScene.swift).
+        var options: UNAuthorizationOptions = [.alert, .sound, .badge]
+        #if os(iOS) && !targetEnvironment(macCatalyst)
+        options.insert(.carPlay)
+        #endif
+        let ok = (try? await UNUserNotificationCenter.current().requestAuthorization(options: options)) ?? false
+        #if os(iOS) && !targetEnvironment(macCatalyst)
+        // Siri reads the agents' messages and takes spoken replies only for an app it was allowed to work with.
+        if ok, INPreferences.siriAuthorizationStatus() == .notDetermined {
+            _ = await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in INPreferences.requestSiriAuthorization { _ in c.resume() } }
+        }
+        #endif
         await refreshStatus()
         return ok
     }
@@ -135,7 +158,11 @@ final class Notifications: NSObject, UNUserNotificationCenterDelegate {
         c.userInfo = info
         c.threadIdentifier = "\(box)/\(session.name)"
         let id = "\(box)/\(session.name)/\(state?.rawValue ?? "")/\(Int(session.stateSince?.timeIntervalSince1970 ?? 0))"
-        try? await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: id, content: c, trigger: nil))
+        // A message from the agent in the session's conversation: Siri reads it in the car and takes a spoken reply.
+        let stateWord = state == .waiting ? String(localized: "Precisa de você") : String(localized: "Terminou")
+        let content = await CommunicationNotification.apply(to: c, box: box, session: session.name, agent: CarDigest.agentName(session),
+                                                            conversation: CarDigest.title(session), state: stateWord)
+        try? await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: id, content: content, trigger: nil))
     }
 
     /// `box` + `session` (+ `location` "loc/wt" for Review, `hasMenu` for permission prompts); mirrored by the push payload.

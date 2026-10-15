@@ -25,8 +25,6 @@ struct Sidebar: View {
     @State private var seeded = false
     /// Filters projects, worktrees (name or branch) and agent sessions; matches open by themselves.
     @State private var query = ""
-    /// The row under the pointer (iPad pointer, Mac): it shows its "+" and a light fill.
-    @State private var hovered: String?
     /// What is being dragged (kept outside the view's state: the drop delegates read it while the drag runs).
     @State private var dragging = SidebarDragging()
     /// Where the dragged item would land, for the insertion line or the section's highlight.
@@ -118,7 +116,8 @@ struct Sidebar: View {
         .background(Theme.bg.ignoresSafeArea())
         .searchable(text: $query, placement: .sidebar, prompt: Text("Buscar projeto, worktree ou sessão"))
         .navigationTitle("Pier")
-        .onChange(of: router.sidebarSelection, initial: true) { _, item in reveal(item) }
+        // Followed by a child: read here, the selection would make every navigation rebuild the whole tree.
+        .background { SelectionFollower { reveal($0) } }
         .onChange(of: entries.count, initial: true) {
             #if DEBUG
             ProjectsRoot.seedSectionsIfRequested(prefs: prefs, boxes: model.boxes)
@@ -215,7 +214,7 @@ struct Sidebar: View {
     private func navRow(_ item: SidebarItem, _ title: LocalizedStringKey, _ symbol: String, id: String,
                         @ViewBuilder trailing: () -> some View) -> some View {
         let badge = trailing()
-        return SidebarRow(id: id, selected: router.sidebarSelection == item, hovered: $hovered, action: { router.select(item) }) {
+        return SidebarRow(id: id, selected: router.sidebarSelection == item, action: { router.select(item) }) {
             Image(systemName: symbol).font(.system(size: Density.icon)).foregroundStyle(Theme.accent).frame(width: Density.glyph)
             Text(title).font(.system(size: Density.text)).lineLimit(1)
             Spacer(minLength: 4)
@@ -242,7 +241,7 @@ struct Sidebar: View {
             if open {
                 ForEach(shown) { agentRow($0) }
                 if agents.count > agentsLimit {
-                    SidebarRow(id: "sidebar-agents-more", selected: false, hovered: $hovered, action: { withAnimation(.snappy) { allAgents.toggle() } }) {
+                    SidebarRow(id: "sidebar-agents-more", selected: false, action: { withAnimation(.snappy) { allAgents.toggle() } }) {
                         Image(systemName: allAgents ? "chevron.up" : "ellipsis").font(.system(size: Density.small, weight: .semibold))
                             .foregroundStyle(Theme.textDim).frame(width: Density.glyph + 2)
                         Text(allAgents ? S("Mostrar menos") : S("Mais \(agents.count - agentsLimit)"))
@@ -265,7 +264,7 @@ struct Sidebar: View {
         if !isChat, let wt = it.worktree { place += " / " + wt }
         if multiBox { place += " · " + it.box }
         return SidebarRow(id: "sidebar-agent-\(it.id)", selected: item.map { router.sidebarSelection == $0 } ?? (router.visibleSession == it.id),
-                          hovered: $hovered, height: Density.row + 14, action: {
+                          height: Density.row + 14, action: {
             if let item { router.select(item, session: s) } else { router.openSession(box: it.box, session: s) }
         }) {
             ZStack(alignment: .bottomTrailing) {
@@ -332,7 +331,7 @@ struct Sidebar: View {
     private func chat(_ bs: BoxSession) -> some View {
         let s = bs.session
         let all = model.connection(for: bs.box)?.sessions ?? []
-        return SidebarRow(id: "sidebar-chat-\(s.name)", selected: router.visibleSession == bs.id, hovered: $hovered,
+        return SidebarRow(id: "sidebar-chat-\(s.name)", selected: router.visibleSession == bs.id, 
                           action: { router.openSession(box: bs.box, session: s) }) {
             AgentGlyph(agent: DisplayNames.agent(of: s), size: Density.glyph)
             VStack(alignment: .leading, spacing: 0) {
@@ -472,10 +471,10 @@ struct Sidebar: View {
             .padding(.leading, 2 + 14 + 4).padding(.trailing, 6)
             .frame(height: Density.row)
         } else {
-            SidebarRow(id: id, selected: router.sidebarSelection == .project(e.route), hovered: $hovered, line: line,
+            SidebarRow(id: id, selected: router.sidebarSelection == .project(e.route), line: line,
                        disclosure: worktrees.isEmpty ? nil : open, toggle: { toggleExpanded(e.key) },
                        action: { router.select(.project(e.route)) },
-                       accessory: { plus(id, help: "Nova tarefa em \(name)") { newTask(box: e.box, location: e.location.name) } }) {
+                       accessory: { hovering in plus(hovering, help: "Nova tarefa em \(name)") { newTask(box: e.box, location: e.location.name) } }) {
                 ProjectGlyph(name: name, size: Density.glyph)
                 VStack(alignment: .leading, spacing: 0) {
                     Text(name).font(.system(size: Density.text)).lineLimit(1)
@@ -538,10 +537,10 @@ struct Sidebar: View {
         let id = "sidebar-worktree-\(e.location.name)/\(wt.name)"
         let key = "\(e.key)/\(wt.name)"
         let open = searching || expanded.contains(key)
-        SidebarRow(id: id, selected: router.sidebarSelection == .worktree(route), hovered: $hovered, indent: 1,
+        SidebarRow(id: id, selected: router.sidebarSelection == .worktree(route), indent: 1,
                    disclosure: sessions.isEmpty ? nil : open, toggle: { toggleExpanded(key) },
                    action: { router.select(.worktree(route)) },
-                   accessory: { plus(id, help: "Iniciar agente em \(wt.name)") { newTask(box: e.box, location: e.location.name, worktree: wt.main == true ? nil : wt.name) } }) {
+                   accessory: { hovering in plus(hovering, help: "Iniciar agente em \(wt.name)") { newTask(box: e.box, location: e.location.name, worktree: wt.main == true ? nil : wt.name) } }) {
             Image(systemName: wt.main == true ? "arrow.triangle.branch" : "point.topleft.down.to.point.bottomright.curvepath")
                 .font(.system(size: Density.small)).foregroundStyle(Theme.textDim).frame(width: Density.glyph)
             Text(wt.name).font(.system(size: Density.text)).lineLimit(1)
@@ -563,7 +562,7 @@ struct Sidebar: View {
     }
 
     private func session(_ s: Session, box: String, in route: WorktreeRoute, all: [Session]) -> some View {
-        SidebarRow(id: "sidebar-session-\(s.name)", selected: router.sidebarSelection == .session(route, name: s.name), hovered: $hovered,
+        SidebarRow(id: "sidebar-session-\(s.name)", selected: router.sidebarSelection == .session(route, name: s.name), 
                    indent: 2, action: { router.select(.session(route, name: s.name), session: s) }) {
             AgentGlyph(agent: DisplayNames.agent(of: s), size: Density.glyph - 2)
             Text(DisplayNames.sessionName(s, among: all)).font(.system(size: Density.text)).lineLimit(1)
@@ -693,7 +692,7 @@ struct Sidebar: View {
         let place = chat ? String(localized: "Conversa")
             : [prefs.displayName(box: it.box, location: it.location), it.worktree].compactMap { $0 }.joined(separator: " › ")
         return SidebarRow(id: "sidebar-archived-\(s.name)", selected: chat ? router.visibleSession == it.id : router.sidebarSelection == .session(route, name: s.name),
-                          hovered: $hovered, height: Density.row + 12,
+                          height: Density.row + 12,
                           action: { if chat { router.openSession(box: it.box, session: s) } else { router.select(.session(route, name: s.name), session: s) } }) {
             AgentGlyph(agent: DisplayNames.agent(of: s), size: Density.glyph).saturation(0).opacity(0.7)
             VStack(alignment: .leading, spacing: 1) {
@@ -726,7 +725,7 @@ struct Sidebar: View {
             if open || searching {
                 ForEach(hidden) { e in
                     let name = prefs.displayName(box: e.box, location: e.location.name)
-                    SidebarRow(id: "sidebar-hidden-\(e.location.name)", selected: router.sidebarSelection == .project(e.route), hovered: $hovered,
+                    SidebarRow(id: "sidebar-hidden-\(e.location.name)", selected: router.sidebarSelection == .project(e.route), 
                                action: { router.select(.project(e.route)) }) {
                         ProjectGlyph(name: name, size: Density.glyph).saturation(0).opacity(0.7)
                         Text(name).font(.system(size: Density.text)).foregroundStyle(Theme.textDim).lineLimit(1)
@@ -762,14 +761,7 @@ struct Sidebar: View {
             .buttonStyle(SidebarButtonStyle(kind: .quiet, radius: 6))
             .help("Faxina (⇧⌘L)")
             .accessibilityLabel("Faxina")
-            Button { router.select(.tab(.settings)) } label: {
-                Image(systemName: "gearshape").font(.system(size: Density.icon)).frame(width: Density.row, height: Density.row - 2)
-            }
-            .buttonStyle(SidebarButtonStyle(kind: router.sidebarSelection == .tab(.settings) ? .secondary : .quiet, radius: 6))
-            .help("Ajustes (⌘,)")
-            .accessibilityLabel("Ajustes")
-            .accessibilityAddTraits(router.sidebarSelection == .tab(.settings) ? .isSelected : [])
-            .accessibilityIdentifier("sidebar-settings")
+            SettingsButton()
         }
         .padding(.horizontal, 8).frame(height: Density.bar)
         .background(Theme.bg)
@@ -779,8 +771,8 @@ struct Sidebar: View {
     // MARK: building blocks
 
     /// The "+" of a project or worktree row, shown while the pointer is over the row.
-    @ViewBuilder private func plus(_ rowID: String, help: LocalizedStringKey, action: @escaping () -> Void) -> some View {
-        if hovered == rowID {
+    @ViewBuilder private func plus(_ hovering: Bool, help: LocalizedStringKey, action: @escaping () -> Void) -> some View {
+        if hovering {
             Button(action: action) {
                 Image(systemName: "plus").font(.system(size: Density.small, weight: .bold)).foregroundStyle(Theme.accent)
                     .frame(width: 20, height: 20)
@@ -1033,6 +1025,31 @@ private struct DragChip: View {
     }
 }
 
+/// Calls `reveal` with the router's selection as it changes: its own view, so only it depends on the selection.
+private struct SelectionFollower: View {
+    @Environment(Router.self) private var router
+    let reveal: (SidebarItem) -> Void
+    var body: some View {
+        Color.clear.onChange(of: router.sidebarSelection, initial: true) { _, item in reveal(item) }
+    }
+}
+
+/// The footer's Ajustes, lit while Ajustes is open.
+private struct SettingsButton: View {
+    @Environment(Router.self) private var router
+    var body: some View {
+        let on = router.sidebarSelection == .tab(.settings)
+        Button { router.select(.tab(.settings)) } label: {
+            Image(systemName: "gearshape").font(.system(size: Density.icon)).frame(width: Density.row, height: Density.row - 2)
+        }
+        .buttonStyle(SidebarButtonStyle(kind: on ? .secondary : .quiet, radius: 6))
+        .help("Ajustes (⌘,)")
+        .accessibilityLabel("Ajustes")
+        .accessibilityAddTraits(on ? .isSelected : [])
+        .accessibilityIdentifier("sidebar-settings")
+    }
+}
+
 // MARK: - rows
 
 /// A sidebar row: an optional disclosure chevron, the content as one button into the router (the whole row is the
@@ -1040,8 +1057,11 @@ private struct DragChip: View {
 /// of a drag.
 private struct SidebarRow<Content: View, Accessory: View>: View {
     let id: String
-    let selected: Bool
-    @Binding var hovered: String?
+    /// Read in the row's body (an autoclosure over the router), so a navigation redraws the rows, not the sidebar.
+    let isSelected: () -> Bool
+    /// The pointer over this row (iPad pointer, Mac): its "+" and a light fill. Kept by the row itself: in the sidebar
+    /// it redrew the whole tree (every project, worktree and agent) each time the pointer crossed a row.
+    @State private var hovering = false
     var height: CGFloat = Density.row
     var indent: Int = 0
     var line: VerticalEdge? = nil
@@ -1049,15 +1069,14 @@ private struct SidebarRow<Content: View, Accessory: View>: View {
     var disclosure: Bool? = nil
     var toggle: () -> Void = {}
     let action: () -> Void
-    var accessory: () -> Accessory
+    var accessory: (Bool) -> Accessory
     @ViewBuilder var content: () -> Content
 
-    init(id: String, selected: Bool, hovered: Binding<String?>, height: CGFloat = Density.row, indent: Int = 0, line: VerticalEdge? = nil,
+    init(id: String, selected: @autoclosure @escaping () -> Bool, height: CGFloat = Density.row, indent: Int = 0, line: VerticalEdge? = nil,
          disclosure: Bool? = nil, toggle: @escaping () -> Void = {}, action: @escaping () -> Void,
-         accessory: @escaping () -> Accessory = { EmptyView() }, @ViewBuilder content: @escaping () -> Content) {
+         accessory: @escaping (Bool) -> Accessory = { _ in EmptyView() }, @ViewBuilder content: @escaping () -> Content) {
         self.id = id
-        self.selected = selected
-        self._hovered = hovered
+        self.isSelected = selected
         self.height = height
         self.indent = indent
         self.line = line
@@ -1069,6 +1088,7 @@ private struct SidebarRow<Content: View, Accessory: View>: View {
     }
 
     var body: some View {
+        let selected = isSelected()
         HStack(spacing: 4) {
             chevron
             Button(action: action) {
@@ -1081,21 +1101,19 @@ private struct SidebarRow<Content: View, Accessory: View>: View {
             .foregroundStyle(Theme.text)
             .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
             .accessibilityIdentifier(id)
-            accessory()
+            accessory(hovering)
         }
         .padding(.leading, CGFloat(indent) * Density.indent + 2)
         .padding(.trailing, 6)
         .background {
             RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .fill(selected ? Theme.accent.opacity(0.22) : hovered == id ? Theme.washStrong : .clear)
+                .fill(selected ? Theme.accent.opacity(0.22) : hovering ? Theme.washStrong : .clear)
         }
         .overlay(alignment: line == .bottom ? .bottom : .top) {
             if line != nil { InsertionLine().offset(y: line == .bottom ? 1 : -1) }
         }
         .contentShape(Rectangle())
-        .onHover { inside in
-            if inside { hovered = id } else if hovered == id { hovered = nil }
-        }
+        .onHover { inside in if hovering != inside { hovering = inside } }
     }
 
     /// The disclosure chevron, or its room (so names line up whether a row opens or not).
@@ -1255,16 +1273,10 @@ private struct CountBadge: View {
     }
 }
 
-/// The "Trabalhando" title's pulsing dot.
+/// The "Trabalhando" title's pulsing dot (Core Animation: `PulseDot`).
 private struct LiveDot: View {
     let color: Color
-    @State private var pulse = false
-    var body: some View {
-        Circle().fill(color).frame(width: 7, height: 7)
-            .background(Circle().fill(color.opacity(0.35)).scaleEffect(pulse ? 2.2 : 1).opacity(pulse ? 0 : 1))
-            .animation(.easeOut(duration: 1.4).repeatForever(autoreverses: false), value: pulse)
-            .onAppear { pulse = true }
-    }
+    var body: some View { PulseDot(color: color, size: 7, style: .ripple) }
 }
 
 /// A sidebar-sized CountPills: a dot per state with its count ("● 2 ● 1").
@@ -1284,15 +1296,14 @@ struct StateDots: View {
     }
 }
 
-/// One session's state as a dot; working pulses.
+/// One session's state as a dot; working pulses (Core Animation: `PulseDot`).
 struct StateDot: View {
     let state: DashState
-    @State private var dim = false
     var body: some View {
-        Circle().fill(state.color).frame(width: 7, height: 7)
-            .opacity(state == .working && dim ? 0.35 : 1)
-            .animation(state == .working ? .easeInOut(duration: 0.9).repeatForever() : .default, value: dim)
-            .onAppear { if state == .working { dim = true } }
-            .accessibilityLabel(Text(state.title))
+        Group {
+            if state == .working { PulseDot(color: state.color, size: 7, style: .fade) }
+            else { Circle().fill(state.color).frame(width: 7, height: 7) }
+        }
+        .accessibilityLabel(Text(state.title))
     }
 }

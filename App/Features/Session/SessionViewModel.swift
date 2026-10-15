@@ -81,6 +81,22 @@ final class SessionViewModel {
     @ObservationIgnored private var waitSince: Date?
     var titleOverride: String?
 
+    /// The session's view model a screen already holds, or a new one: the window, the Mac's side panel and the terminal
+    /// tabs share it (one conversation in memory, one loop), and a screen's struct built again by its parent costs a
+    /// lookup instead of a new model.
+    static func shared(box: String, session: Session, client: any PierBoxClient, model: AppModel) -> SessionViewModel {
+        let key = "\(box)/\(session.name)"
+        // The same session (a new tmux session can reuse a name), through the same client and app.
+        if let v = live[key]?.vm, v.initial.created == session.created, v.client as AnyObject === client as AnyObject,
+           v.model === model { return v }
+        live = live.filter { $0.value.vm != nil }
+        let v = SessionViewModel(box: box, session: session, client: client, model: model)
+        live[key] = WeakVM(vm: v)
+        return v
+    }
+    private struct WeakVM { weak var vm: SessionViewModel? }
+    private static var live: [String: WeakVM] = [:]
+
     init(box: String, session: Session, client: any PierBoxClient, model: AppModel) {
         self.box = box
         self.name = session.name
@@ -241,7 +257,23 @@ final class SessionViewModel {
 
     // MARK: polling loop
 
+    /// How many screens follow this session (the window, the Mac's side panel): one loop serves them all.
+    @ObservationIgnored private var followers = 0
+    @ObservationIgnored private var loop: Task<Void, Never>?
+
+    /// Follows the session while the calling task lives. Several callers share one loop: the same session open in the
+    /// window and in the Mac's side panel used to poll the box twice (the reply draft every 0.6 s, the record, the screen).
     func run() async {
+        followers += 1
+        if loop == nil { loop = Task { [weak self] in await self?.follow() } }
+        defer {
+            followers -= 1
+            if followers == 0 { loop?.cancel(); loop = nil }
+        }
+        while !Task.isCancelled { try? await Task.sleep(for: .seconds(3600)) }
+    }
+
+    private func follow() async {
         // Not in memory: the kept file, read off the main thread before the first poll (which then asks only for what is new).
         if !loaded, let kept = await TranscriptCache.shared.load(box: box, session: name), !loaded {
             store = kept
@@ -737,11 +769,13 @@ final class SessionViewModel {
     /// fails. False when there is nothing to send.
     /// `done`: a sender other than this screen's composer (the Mac panel) hears how it went, with the error, and puts the
     /// text back itself; without it a failed message's text comes back through `composerRestore`.
-    func scheduleSend(_ text: String, done: (@MainActor (_ sent: Bool, _ error: String?) -> Void)? = nil) -> Bool {
+    /// `withAttachments: false` (the Mac's side panel, which shares this model with the window): the composer's photos
+    /// stay where they are.
+    func scheduleSend(_ text: String, withAttachments: Bool = true, done: (@MainActor (_ sent: Bool, _ error: String?) -> Void)? = nil) -> Bool {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        let photos = attachments.filter { $0.path != nil }
+        let photos = withAttachments ? attachments.filter { $0.path != nil } : []
         guard canSend, !trimmed.isEmpty || !photos.isEmpty else { return false }
-        attachments.removeAll { $0.path != nil }
+        if withAttachments { attachments.removeAll { $0.path != nil } }
         let out = Outgoing(text: trimmed, photos: photos.count)
         outgoing.append(out)
         sendTick += 1   // the conversation follows the new bubble down now, not after the box answers

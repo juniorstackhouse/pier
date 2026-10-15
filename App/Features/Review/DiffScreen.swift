@@ -98,11 +98,9 @@ struct PatchView<Header: View>: View {
         .task(id: command) { await load() }
     }
 
-    private var maxChars: Int { lines.reduce(0) { max($0, $1.text.count) } }
-    private var gutterDigits: Int {
-        let m = lines.reduce(0) { max($0, $1.oldNo ?? 0, $1.newNo ?? 0) }
-        return max(2, String(m).count)
-    }
+    /// The widest line and the gutter's digits, measured once per load (not on every pass over the body).
+    @State private var maxChars = 0
+    @State private var gutterDigits = 2
 
     private var content: some View {
         let digits = gutterDigits
@@ -111,15 +109,15 @@ struct PatchView<Header: View>: View {
         let language = SyntaxLanguage.forFile(path)
         return GeometryReader { geo in
             let contentW = max(CGFloat(maxChars + 2) * charW + gutter * 2 + 30, geo.size.width)
-            ScrollView(.vertical) {
-                VStack(alignment: .leading, spacing: 0) {
-                    header()
-                    scrolled {
-                        LazyVStack(alignment: .leading, spacing: 0) {
-                            ForEach(lines) { l in
-                                DiffLineRow(line: l, gutter: gutter, wrap: wrap, width: wrap ? nil : contentW, language: language)
-                            }
-                        }
+            // One scroll view for both directions, the lines in a lazy stack straight inside it: a lazy stack in a
+            // sideways scroll view inside the vertical one built (and highlighted) every line of the diff at once.
+            VStack(spacing: 0) {
+            // The file's header stays above the lines (sideways scrolling would take it off screen).
+            header()
+            ScrollView(wrap ? .vertical : [.vertical, .horizontal]) {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(lines) { l in
+                        DiffLineRow(line: l, gutter: gutter, wrap: wrap, width: wrap ? nil : contentW, language: language)
                     }
                     if truncated {
                         Text("Diff truncado: só o início/fim da saída é mostrado.")
@@ -128,12 +126,8 @@ struct PatchView<Header: View>: View {
                 }
                 .padding(.bottom, 40)
             }
+            }
         }
-    }
-
-    @ViewBuilder
-    private func scrolled<C: View>(@ViewBuilder _ c: () -> C) -> some View {
-        if wrap { c() } else { ScrollView(.horizontal, showsIndicators: true) { c() } }
     }
 
     private func load() async {
@@ -144,6 +138,8 @@ struct PatchView<Header: View>: View {
             let r = try await client.exec(location: execLocation, command: command, timeout: "60s")
             truncated = r.truncated == true
             lines = GitActions.parseDiff(r.output)
+            maxChars = lines.reduce(0) { max($0, $1.text.count) }
+            gutterDigits = max(2, String(lines.reduce(0) { max($0, $1.oldNo ?? 0, $1.newNo ?? 0) }).count)
             if r.exitCode != 0 && lines.isEmpty && !r.output.isEmpty { error = r.output }
         } catch {
             if error is CancellationError { return }

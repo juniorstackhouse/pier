@@ -59,6 +59,11 @@ targets:
         # APNs key needed.
         com.apple.developer.icloud-container-identifiers: ["iCloud.$(PIER_BUNDLE_ID)"]
         com.apple.developer.icloud-services: ["CloudKit"]
+        # Siri's messages to and from the agents (App/Intents/MessageIntents.swift: replies by voice, in the car too) and
+        # the agents' notifications as messages (App/Shared/CommunicationNotification.swift). Self-service capabilities:
+        # automatic signing adds them to the App ID.
+        com.apple.developer.siri: true
+        com.apple.developer.usernotifications.communication: true
     settings:
       configs:
         Debug:
@@ -75,6 +80,11 @@ targets:
         DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER: NO
         # The Mac build runs in the App Sandbox (required by the Mac App Store and TestFlight): its own entitlements.
         "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": App/Resources/Pier-mac.entitlements
+        # CarPlay (App/CarPlay) needs the CarPlay communication entitlement, which Apple grants on request: simulator builds
+        # carry it (the CarPlay simulator, I/O > External Displays > CarPlay); device builds take PIER_IOS_ENTITLEMENTS
+        # (Config/Base.xcconfig), set to Pier-carplay.entitlements once the App ID has it (docs/CARPLAY.md).
+        "CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]": App/Resources/Pier-carplay.entitlements
+        "CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]": $(PIER_IOS_ENTITLEMENTS)
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         GENERATE_INFOPLIST_FILE: NO
@@ -100,6 +110,12 @@ targets:
         UILaunchScreen: {}
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
+          # The car's screen (App/CarPlay/CarPlayScene.swift); the window's scene stays SwiftUI's.
+          UISceneConfigurations:
+            CPTemplateApplicationSceneSessionRoleApplication:
+              - UISceneClassName: CPTemplateApplicationScene
+                UISceneConfigurationName: CarPlay
+                UISceneDelegateClassName: "$(PRODUCT_MODULE_NAME).CarPlaySceneDelegate"
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         # iPad multitasking (required by App Store Connect) needs all four.
         UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
@@ -107,6 +123,10 @@ targets:
         NSMicrophoneUsageDescription: "O microfone é usado para ditar pedidos aos agentes em Falar."
         NSSpeechRecognitionUsageDescription: "O reconhecimento de fala transforma o que você diz em Falar em texto, no próprio aparelho."
         NSLocalNetworkUsageDescription: "O Pier se conecta às suas boxes de desenvolvimento na rede local."
+        NSSiriUsageDescription: "O Siri lê o que os agentes pedem e respondem, e manda a sua resposta por voz, no carro também."
+        # Siri's messages, handled in the app (MessageIntentHandler), and the communication notifications' donations.
+        INIntentsSupported: [INSendMessageIntent, INSearchForMessagesIntent, INSetMessageAttributeIntent]
+        NSUserActivityTypes: [INSendMessageIntent, INSearchForMessagesIntent]
         NSSupportsLiveActivities: true
         NSSupportsLiveActivitiesFrequentUpdates: true
         PierKeychainGroup: "$(AppIdentifierPrefix)$(PIER_BUNDLE_ID).shared"
@@ -219,9 +239,11 @@ targets:
         excludes: ["Info.plist"]
       - path: App/Shared/NotificationChoices.swift
       - path: App/Shared/CloudAlertPayload.swift
+      - path: App/Shared/CommunicationNotification.swift
     dependencies:
       - sdk: UserNotifications.framework
       - sdk: CloudKit.framework
+      - sdk: Intents.framework
       # Build order only: the widget extension stamps the build number this target then reads (same number everywhere).
       - target: PierWidgets
         embed: false
@@ -243,10 +265,14 @@ targets:
       path: Extensions/PierNotificationService/Info.plist
       properties:
         CFBundleDisplayName: Pier
+        # The agents' alerts become messages here (CommunicationNotification): the extension names the intent it uses.
+        NSUserActivityTypes: [INSendMessageIntent]
         CFBundleDevelopmentRegion: pt-BR
         NSExtension:
           NSExtensionPointIdentifier: com.apple.usernotifications.service
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).NotificationService
+          NSExtensionAttributes:
+            IntentsSupported: [INSendMessageIntent]
 schemes:
   Pier:
     build:

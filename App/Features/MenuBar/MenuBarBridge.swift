@@ -72,6 +72,14 @@ import PierKit
         NotificationCenter.default.addObserver(forName: UserDefaults.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.scheduleConfigure() }
         }
+        // A permission granted in System Settings shows when the app comes back (the checks are synchronous privacy
+        // queries: not on every settings write); the surface is configured again, its key monitors with it.
+        NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.configure(force: true)
+                self?.refreshPermissions()
+            }
+        }
         #if DEBUG
         // `-menuBarAction open:<box>/<session> | talk | new | app`: runs a menu pick after launch (the menu itself cannot be
         // clicked without Accessibility permission). `-macSurfaceDebug "hover,card,pick:1"` drives the surface the same way
@@ -125,8 +133,17 @@ import PierKit
         }
     }
 
-    private func configure() {
-        plugin?.configureSurface(MacSurfaceSettings.config)
+    @ObservationIgnored private var lastConfig: NSDictionary?
+
+    /// Sends the surface's settings, unless they are the ones it already has: `configureSurface` restarts the ⌥ key
+    /// monitors, rebuilds the status menu and re-pins both panels, and UserDefaults changes for many other reasons (the
+    /// window's frame, split panes, session snapshots).
+    private func configure(force: Bool = false) {
+        let config = MacSurfaceSettings.config
+        let dict = config as NSDictionary
+        if !force, let lastConfig, lastConfig.isEqual(dict) { return }
+        lastConfig = dict
+        plugin?.configureSurface(config)
     }
 
     private func scheduleConfigure() {
@@ -135,7 +152,6 @@ import PierKit
             try? await Task.sleep(for: .milliseconds(150))
             self?.configTask = nil
             self?.configure()
-            self?.refreshPermissions()
         }
     }
 

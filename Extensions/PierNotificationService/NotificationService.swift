@@ -9,29 +9,46 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
     private let lock = NSLock()
     private var handler: ((UNNotificationContent) -> Void)?
     private var content: UNMutableNotificationContent?
+    /// The content as a message, once made (shown instead of `content`).
+    private var message: UNNotificationContent?
 
     override func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void) {
         let c = (request.content.mutableCopy() as? UNMutableNotificationContent) ?? UNMutableNotificationContent()
         // An alert a Mac relayed through the person's iCloud (CloudAlertPayload): the same content a push from pierd has.
         if let alert = CloudAlertPayload.info(in: request.content.userInfo) { CloudAlertPayload.apply(alert, to: c) }
         lock.withLock { handler = contentHandler; content = c }
-        guard let options = NotificationChoices.options(in: c.userInfo) else { finish(); return }
+        let options = NotificationChoices.options(in: c.userInfo)
         Task {
-            let id = await NotificationChoices.register(options: options)
-            // The registration lands in the system daemon a moment later: let it, so the banner is drawn with its buttons.
-            try? await Task.sleep(for: .milliseconds(200))
-            self.lock.withLock { self.content?.categoryIdentifier = id }
+            if let options {
+                let id = await NotificationChoices.register(options: options)
+                // The registration lands in the system daemon a moment later: let it, so the banner is drawn with its buttons.
+                try? await Task.sleep(for: .milliseconds(200))
+                self.lock.withLock { self.content?.categoryIdentifier = id }
+            }
+            await self.asMessage()
             self.finish()
         }
+    }
+
+    /// An agent's alert becomes a message from that agent in the session's conversation (`CommunicationNotification`):
+    /// Siri reads it in the car and takes a spoken reply. Alerts without a session (tests, health) stay as they are.
+    private func asMessage() async {
+        guard let c = lock.withLock({ content }), let box = c.userInfo["box"] as? String, let session = c.userInfo["session"] as? String
+        else { return }
+        let p = CommunicationNotification.parts(title: c.title, subtitle: c.subtitle)
+        let conversation = p.conversation ?? c.title
+        let updated = await CommunicationNotification.apply(to: c, box: box, session: session, agent: p.agent ?? "Agent",
+                                                            conversation: conversation, state: p.state)
+        lock.withLock { if handler != nil { message = updated } }
     }
 
     /// Out of time: show what we have (with its buttons when the registration made it, without them otherwise).
     override func serviceExtensionTimeWillExpire() { finish() }
 
     private func finish() {
-        let (h, c): (((UNNotificationContent) -> Void)?, UNMutableNotificationContent?) = lock.withLock {
+        let (h, c): (((UNNotificationContent) -> Void)?, UNNotificationContent?) = lock.withLock {
             defer { handler = nil }
-            return (handler, content)
+            return (handler, message ?? content)
         }
         if let h, let c { h(c) }
     }

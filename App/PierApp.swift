@@ -41,6 +41,10 @@ struct PierApp: App {
                     }
                     WindowSnapshot.runIfRequested()
                     ChatPerfProbe.runIfRequested()
+                    NavPerfProbe.runIfRequested(model: model)
+                    #if os(iOS) && !targetEnvironment(macCatalyst)
+                    CarPlaySelfTest.runIfRequested()
+                    #endif
                     await DebugIntentRunner.runIfRequested(model: model)
                     #endif
                     Task { try? await Task.sleep(for: .seconds(4)); await SpotlightIndexer.reindex() }
