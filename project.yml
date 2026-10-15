@@ -265,10 +265,14 @@ targets:
       path: Extensions/PierNotificationService/Info.plist
       properties:
         CFBundleDisplayName: Pier
+        # The agents' alerts become messages here (CommunicationNotification): the extension names the intent it uses.
+        NSUserActivityTypes: [INSendMessageIntent]
         CFBundleDevelopmentRegion: pt-BR
         NSExtension:
           NSExtensionPointIdentifier: com.apple.usernotifications.service
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).NotificationService
+          NSExtensionAttributes:
+            IntentsSupported: [INSendMessageIntent]
 schemes:
   Pier:
     build:

@@ -5431,6 +5431,16 @@
         }
       }
     },
+    "Esse agente espera Permitir ou Negar: responda pelos botões." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This agent waits for Allow or Deny: answer with the buttons."
+          }
+        }
+      }
+    },
     "Esse arquivo não pode ser anexado: só imagens, PDFs e arquivos de texto." : {
       "localizations" : {
         "en" : {
@@ -6093,6 +6103,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Filter"
+          }
+        }
+      }
+    },
+    "Fora de alcance" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Out of reach"
           }
         }
       }
@@ -8039,6 +8059,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "No box online to understand the request."
+          }
+        }
+      }
+    },
+    "Nenhuma box pareada" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No box paired"
           }
         }
       }
@@ -10241,6 +10271,16 @@
         }
       }
     },
+    "Pareie uma box no Pier do iPhone." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pair a box in Pier on the iPhone."
+          }
+        }
+      }
+    },
     "Pareie uma box para receber push." : {
       "localizations" : {
         "en" : {
@@ -12161,12 +12201,32 @@
         }
       }
     },
+    "Sem conexão com %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No connection to %@"
+          }
+        }
+      }
+    },
     "Tem uma pergunta para você." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Has a question for you."
+          }
+        }
+      }
+    },
+    "Tentando de novo…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trying again…"
           }
         }
       }

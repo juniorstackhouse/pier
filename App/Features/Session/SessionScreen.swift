@@ -163,7 +163,12 @@ struct SessionScreen: View {
     // MARK: details
 
     /// Regular width (iPad, Mac): the details live in the inspector column; the iPhone shows them as a sheet.
-    private var sidePanel: Bool { sizeClass == .regular }
+    @Environment(\.windowWidth) private var windowWidth
+    /// Details as an inspector column: regular width, and on the Mac a window wide enough for the sidebar, the chat and
+    /// the column (a narrow tile clipped the chat); else a sheet, as on the iPhone.
+    private var sidePanel: Bool {
+        sizeClass == .regular && (!Platform.isMac || windowWidth == 0 || windowWidth >= WindowWidth.inspectorColumn)
+    }
 
     private func openDetails() {
         if sidePanel { withAnimation(.snappy(duration: 0.25)) { inspectorOpen = true } } else { showDetails = true }

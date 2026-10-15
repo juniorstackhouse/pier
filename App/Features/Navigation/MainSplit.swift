@@ -7,6 +7,8 @@ struct MainSplit: View {
     @Environment(AppModel.self) private var model
     @Environment(Router.self) private var router
     @State private var columns: NavigationSplitViewVisibility = .all
+    /// The window's width, for the screens that lay out columns of their own (`\.windowWidth`).
+    @State private var width: CGFloat = 0
 
     var body: some View {
         @Bindable var router = router
@@ -30,6 +32,14 @@ struct MainSplit: View {
         }
         .navigationSplitViewStyle(.balanced)
         .onChange(of: router.projectsPath.count) { router.projectsPathChanged() }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+        .environment(\.windowWidth, width)
+        // A Mac window tiled narrow (a tiling window manager gives it a third of the screen): the sidebar folds away so the
+        // screen keeps its width, and comes back once the window is wide again. Only on crossing, so the person's own
+        // toggle wins in between.
+        .onChange(of: Platform.isMac && width > 0 && width < WindowWidth.foldSidebar) { _, narrow in
+            withAnimation(.snappy) { columns = narrow ? .detailOnly : .all }
+        }
     }
 }
 
@@ -44,4 +54,18 @@ extension View {
             self
         }
     }
+}
+
+/// Window widths the layout goes by (points).
+enum WindowWidth {
+    /// Below it, the Mac's sidebar folds away by itself.
+    static let foldSidebar: CGFloat = 760
+    /// Below it, a screen's details open as a sheet on the Mac instead of an inspector column (the sidebar, the screen
+    /// and the inspector would not fit, and the screen's content was clipped).
+    static let inspectorColumn: CGFloat = 1080
+}
+
+extension EnvironmentValues {
+    /// The window's width (0 before it is laid out, and outside the split: iPhone).
+    @Entry var windowWidth: CGFloat = 0
 }

@@ -56,6 +56,9 @@ enum CommunicationNotification {
                               displayName: "\(agent) · \(conversation)", image: avatar(for: agent), contactIdentifier: nil,
                               customIdentifier: id)
         let words = [state, content.body.isEmpty ? nil : content.body].compactMap { $0 }.joined(separator: " — ")
+        // Made on a copy: when the system refuses the message (no Siri, no entitlement) the notification shows as it came,
+        // and in the extension the original may be handed over meanwhile (out of time).
+        guard let copy = content.mutableCopy() as? UNMutableNotificationContent else { return content }
         let intent = INSendMessageIntent(recipients: nil, outgoingMessageType: .outgoingMessageText, content: words,
                                          speakableGroupName: INSpeakableString(spokenPhrase: conversation),
                                          conversationIdentifier: id, serviceName: nil, sender: sender, attachments: nil)
@@ -64,8 +67,8 @@ enum CommunicationNotification {
         interaction.direction = .incoming
         interaction.groupIdentifier = id
         try? await interaction.donate()
-        content.body = words
-        return (try? content.updating(from: intent)) ?? content
+        copy.body = words
+        return (try? copy.updating(from: intent)) ?? content
         #else
         return content
         #endif

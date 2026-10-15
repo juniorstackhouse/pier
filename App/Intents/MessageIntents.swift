@@ -47,10 +47,11 @@ final class MessageIntentHandler: NSObject, INSendMessageIntentHandling, INSearc
                     if let row { results.append(.success(with: Self.person(row))); continue }
                 }
                 let found = Self.match(a.name, in: rows)
-                switch found.count {
+                switch found.rows.count {
                 case 0: results.append(.unsupported(forReason: .noValidHandle))
-                case 1: results.append(.success(with: Self.person(found[0])))
-                default: results.append(.disambiguation(with: found.prefix(5).map(Self.person)))
+                // Only part of what was heard matched: Siri asks before the words go to that session.
+                case 1: results.append(found.exact ? .success(with: Self.person(found.rows[0])) : .confirmationRequired(with: Self.person(found.rows[0])))
+                default: results.append(.disambiguation(with: found.rows.prefix(5).map(Self.person)))
                 }
             }
             done.run(results)
@@ -69,7 +70,7 @@ final class MessageIntentHandler: NSObject, INSendMessageIntentHandling, INSearc
         let text = intent.content ?? ""
         guard let target else { done.run(INSendMessageIntentResponse(code: .failureRequiringAppLaunch, userActivity: nil)); return }
         Task {
-            switch await SessionActions.send(box: target.box, session: target.session, text: text, when: .idle) {
+            switch await SessionActions.reply(box: target.box, session: target.session, text: text) {
             case .success: done.run(INSendMessageIntentResponse(code: .success, userActivity: nil))
             case .failure: done.run(INSendMessageIntentResponse(code: .failure, userActivity: nil))
             }
@@ -89,7 +90,7 @@ final class MessageIntentHandler: NSObject, INSendMessageIntentHandling, INSearc
                 // A conversation that left the lists (archived meanwhile): read straight from its box.
                 for id in wanted where !rows.contains(where: { $0.id == id }) { if let r = await CarFeed.row(for: id) { rows.append(r) } }
             } else if !senders.isEmpty {
-                rows = rows.filter { r in senders.contains { s in s.id == r.id || !Self.match(s.name, in: [r]).isEmpty } }
+                rows = rows.filter { r in senders.contains { s in s.id == r.id || !Self.match(s.name, in: [r]).rows.isEmpty } }
             }
             // The words of each, read in parallel; the messages made from them afterwards (INMessage is not Sendable).
             let words = await withTaskGroup(of: (Int, String).self) { g in
@@ -118,20 +119,26 @@ final class MessageIntentHandler: NSObject, INSendMessageIntentHandling, INSearc
 
     // MARK: matching
 
-    /// Rows whose agent or title is the name Siri heard ("Claude", "Fix login", "Claude no Fix login").
-    static func match(_ name: String?, in rows: [CarDigest.Row]) -> [CarDigest.Row] {
-        guard let name = name?.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
-            .trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty else { return [] }
-        func fold(_ s: String) -> String { s.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil) }
-        let byTitle = rows.filter { r in
-            let t = fold(CarDigest.title(r.session))
-            return t == name || t.contains(name) || name.contains(t)
+    /// Rows whose title or agent is the name Siri heard ("Fix login", "Claude", "Claude no Fix login"), by whole words of
+    /// three letters or more: `exact` when the whole title or agent name was said, else only some of its words were (the
+    /// caller asks before sending). A title "api" never matches "rapid fix".
+    static func match(_ heard: String?, in rows: [CarDigest.Row]) -> (rows: [CarDigest.Row], exact: Bool) {
+        func words(_ s: String) -> [String] {
+            s.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
+                .components(separatedBy: CharacterSet.alphanumerics.inverted).filter { $0.count >= 3 }
         }
-        if !byTitle.isEmpty { return byTitle }
-        return rows.filter { r in
-            let a = fold(CarDigest.agentName(r.session))
-            return a == name || a.hasPrefix(name) || name.hasPrefix(fold(a.components(separatedBy: " ").first ?? a))
-        }
+        let said = words(heard ?? "")
+        guard !said.isEmpty else { return ([], false) }
+        let saidSet = Set(said)
+        func contained(_ w: [String]) -> Bool { !w.isEmpty && w.allSatisfy(saidSet.contains) }
+        // The whole title said (in what was heard), then the whole agent name, then titles sharing words.
+        let byTitle = rows.filter { contained(words(CarDigest.title($0.session))) }
+        if !byTitle.isEmpty { return (byTitle, true) }
+        let byAgent = rows.filter { r in contained(words(CarDigest.agentName(r.session))) || saidSet.contains(words(CarDigest.agentName(r.session)).first ?? "") }
+        if !byAgent.isEmpty { return (byAgent, byAgent.count == 1) }
+        let scored = rows.map { r in (r, Set(words(CarDigest.title(r.session))).intersection(saidSet).count) }.filter { $0.1 > 0 }
+        guard let best = scored.map(\.1).max() else { return ([], false) }
+        return (scored.filter { $0.1 == best }.map(\.0), false)
     }
 
     /// What Siri passed of a person, read once on the calling thread (INPerson is not Sendable).

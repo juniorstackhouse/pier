@@ -33,8 +33,13 @@ final class CarPlayController {
     private let interface: CPInterfaceController?
     private let root: CPListTemplate
     private var loop: Task<Void, Never>?
-    /// What the list shows now (kind, id, since): the list is redrawn only when it changes, so nothing flickers.
+    /// What the list shows now (kind, id, since, age in minutes): redrawn only when it changes, so nothing flickers.
     private var shown: [String] = []
+    /// Each box's sessions as last read: a box that does not answer this time keeps its rows (marked out of reach)
+    /// instead of the list emptying into a false "nothing waiting".
+    private var lastGood: [String: [Session]] = [:]
+    /// A waiting agent's answers being read (a second tap meanwhile opens nothing more).
+    private var opening = false
     /// How often the boxes are read while the car shows Pier.
     private static let interval: Duration = .seconds(5)
 
@@ -65,15 +70,38 @@ final class CarPlayController {
     // MARK: the list
 
     func refresh() async {
-        let rows = await CarFeed.rows(limit: max(1, min(8, CPListTemplate.maximumItemCount / 3)))
-        let signature = rows.map { "\($0.kind.rawValue)|\($0.id)|\($0.since.timeIntervalSince1970)|\(CarDigest.title($0.session))" }
+        let report = await CarFeed.report()
+        if !report.paired {
+            root.emptyViewTitleVariants = [String(localized: "Nenhuma box pareada")]
+            root.emptyViewSubtitleVariants = [String(localized: "Pareie uma box no Pier do iPhone.")]
+        } else {
+            root.emptyViewTitleVariants = [String(localized: "Nada esperando por você")]
+            root.emptyViewSubtitleVariants = [String(localized: "Os agentes que precisarem de você aparecem aqui.")]
+        }
+        for (box, s) in report.sessions { lastGood[box] = s }
+        var sessions = report.sessions
+        for box in report.offline { sessions[box] = lastGood[box] ?? [] }
+        let rows = await CarFeed.rows(sessions, limit: max(1, min(8, CPListTemplate.maximumItemCount / 3)))
+        let minute = Int(Date().timeIntervalSince1970 / 60)
+        let signature = report.offline.map { "offline|\($0)" } + ["paired|\(report.paired)"] + rows.map {
+            "\($0.kind.rawValue)|\($0.id)|\($0.since.timeIntervalSince1970)|\(CarDigest.title($0.session))|\(minute - Int($0.since.timeIntervalSince1970 / 60))"
+        }
         guard signature != shown else { return }
         shown = signature
-        root.updateSections(sections(rows))
+        root.updateSections(sections(rows, offline: report.offline))
     }
 
-    func sections(_ rows: [CarDigest.Row]) -> [CPListSection] {
+    func sections(_ rows: [CarDigest.Row], offline: [String] = []) -> [CPListSection] {
         var out: [CPListSection] = []
+        if !offline.isEmpty {
+            let items = offline.map { box in
+                let item = CPListItem(text: String(localized: "Sem conexão com \(box)"), detailText: String(localized: "Tentando de novo…"),
+                                      image: Self.symbol("wifi.slash", .systemGray))
+                item.handler = { _, done in done() }
+                return item
+            }
+            out.append(CPListSection(items: items, header: String(localized: "Fora de alcance"), sectionIndexTitle: nil))
+        }
         let waiting = rows.filter { $0.kind == .needsYou }
         if !waiting.isEmpty {
             out.append(CPListSection(items: waiting.map(waitingItem), header: String(localized: "Precisa de você"), sectionIndexTitle: nil))
@@ -95,7 +123,10 @@ final class CarPlayController {
         item.accessoryType = .disclosureIndicator
         item.handler = { [weak self] _, done in
             Task { @MainActor in
-                await self?.openAnswers(row)
+                guard let self, !self.opening else { done(); return }
+                self.opening = true
+                await self.openAnswers(row)
+                self.opening = false
                 done()
             }
         }
@@ -127,17 +158,18 @@ final class CarPlayController {
     private func openAnswers(_ row: CarDigest.Row) async {
         let s = row.session
         var items: [CPListTemplateItem] = []
-        if Ask.classify(s.ask) == .permission {
-            items.append(answerItem(String(localized: "Permitir"), "checkmark.circle.fill", .systemGreen) {
+        let permission = Ask.classify(s.ask) == .permission
+        if permission {
+            items.append(answerItem(String(localized: "Permitir"), "checkmark.circle.fill", .systemGreen, row: row) {
                 await SessionActions.answerPermission(box: row.box, session: s.name, .allow)
             })
-            items.append(answerItem(String(localized: "Negar"), "xmark.circle.fill", .systemRed) {
+            items.append(answerItem(String(localized: "Negar"), "xmark.circle.fill", .systemRed, row: row) {
                 await SessionActions.answerPermission(box: row.box, session: s.name, .deny)
             })
         } else if let client = try? HeadlessBoxes.box(row.box).client,
                   let options = await ChoiceOptions.fetch(client: client, session: s) {
             for (i, label) in options.enumerated() {
-                items.append(answerItem("\(i + 1). \(label)", "\(i + 1).circle.fill", .systemBlue) {
+                items.append(answerItem("\(i + 1). \(label)", "\(i + 1).circle.fill", .systemBlue, row: row) {
                     await SessionActions.answerChoice(box: row.box, session: s.name, label: label)
                 })
             }
@@ -147,19 +179,24 @@ final class CarPlayController {
                                         leadingItem: .none, leadingImage: Self.symbol("mic.fill", .systemBlue), unread: false),
                                       trailingConfiguration: CPMessageListItemTrailingConfiguration(trailingItem: .none, trailingImage: nil),
                                       detailText: String(localized: "Diga a resposta para o Siri"), trailingText: nil)
-        items.append(voice)
+        // A permission takes only Permitir / Negar (`SessionActions.reply` would refuse the words anyway).
+        if !permission { items.append(voice) }
         let section = CPListSection(items: items, header: CarFeed.ask(s), sectionIndexTitle: nil)
         let template = CPListTemplate(title: CarDigest.title(s), sections: [section])
         interface?.pushTemplate(template, animated: true, completion: nil)
     }
 
     /// A row that answers the agent, then goes back to the list (or says why it could not).
-    private func answerItem(_ title: String, _ symbol: String, _ color: UIColor,
+    /// Before it acts, the session is read again: the answer goes only to the request this screen showed (the agent may
+    /// have moved on to another one, Permitir must not approve that).
+    private func answerItem(_ title: String, _ symbol: String, _ color: UIColor, row: CarDigest.Row,
                             _ act: @escaping @MainActor () async -> Result<Void, SessionActions.Failure>) -> CPListItem {
         let item = CPListItem(text: title, detailText: nil, image: Self.symbol(symbol, color))
         item.handler = { [weak self] _, done in
             Task { @MainActor in
-                let result = await act()
+                let now = await CarFeed.row(for: row.id)
+                let same = now.map { $0.kind == .needsYou && $0.session.ask == row.session.ask && $0.since == row.since } ?? false
+                let result = same ? await act() : .failure(.menuChanged)
                 done()
                 guard let self else { return }
                 switch result {
@@ -179,7 +216,11 @@ final class CarPlayController {
         let ok = CPAlertAction(title: String(localized: "OK"), style: .cancel) { [weak self] _ in
             self?.interface?.dismissTemplate(animated: true, completion: nil)
         }
-        interface?.presentTemplate(CPAlertTemplate(titleVariants: [message], actions: [ok]), animated: true, completion: nil)
+        let show = { [weak self] in
+            self?.interface?.presentTemplate(CPAlertTemplate(titleVariants: [message], actions: [ok]), animated: true, completion: nil)
+        }
+        // One alert at a time: an older one goes first.
+        if interface?.presentedTemplate != nil { interface?.dismissTemplate(animated: false) { _, _ in show() } } else { show() }
     }
 
     // MARK: drawing

@@ -70,6 +70,16 @@ enum CarPlaySelfTest {
                 let arrived = page.items.contains { $0.kind == "user" && $0.text == "Pode seguir com os testes" }
                 say("arrived \(arrived)")
             }
+            // A spoken reply to agents that wait: a question takes the words as its answer, a permission refuses them.
+            for row in rows where row.kind == .needsYou {
+                let r = await SessionActions.reply(box: row.box, session: row.session.name, text: "Use a opção mais simples")
+                let kind = Ask.classify(row.session.ask) == .permission ? "permission" : "question"
+                switch r {
+                case .success: say("reply \(kind) -> answered")
+                case .failure(let f): say("reply \(kind) -> refused: \(f.message)")
+                }
+            }
+            say("siri \(INPreferences.siriAuthorizationStatus().rawValue)")
             say("done")
         }
     }

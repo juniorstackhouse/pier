@@ -2,6 +2,9 @@ import Foundation
 import SwiftUI
 import UserNotifications
 import PierKit
+#if os(iOS) && !targetEnvironment(macCatalyst)
+import Intents
+#endif
 
 /// Action identifiers of the actionable categories (see docs/PUSH.md).
 enum NotificationAction {
@@ -87,6 +90,12 @@ final class Notifications: NSObject, UNUserNotificationCenterDelegate {
 
     func refreshStatus() async {
         status = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
+        #if os(iOS) && !targetEnvironment(macCatalyst)
+        // Someone who allowed notifications before Siri was asked for: asked once now (the agents' messages, by voice).
+        if status == .authorized, INPreferences.siriAuthorizationStatus() == .notDetermined {
+            INPreferences.requestSiriAuthorization { _ in }
+        }
+        #endif
     }
 
     @discardableResult
@@ -97,6 +106,12 @@ final class Notifications: NSObject, UNUserNotificationCenterDelegate {
         options.insert(.carPlay)
         #endif
         let ok = (try? await UNUserNotificationCenter.current().requestAuthorization(options: options)) ?? false
+        #if os(iOS) && !targetEnvironment(macCatalyst)
+        // Siri reads the agents' messages and takes spoken replies only for an app it was allowed to work with.
+        if ok, INPreferences.siriAuthorizationStatus() == .notDetermined {
+            _ = await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in INPreferences.requestSiriAuthorization { _ in c.resume() } }
+        }
+        #endif
         await refreshStatus()
         return ok
     }

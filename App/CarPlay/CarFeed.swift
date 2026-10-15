@@ -12,6 +12,34 @@ enum CarFeed {
         return CarDigest.rows(items, archived: { LocalPrefs.isClosed(marks, box: $0, session: $1) }, limit: limit)
     }
 
+    /// What the boxes said this time: the sessions of those that answered, the names of those that did not, and whether
+    /// any box is paired at all (a box out of reach is not "nothing waiting").
+    struct Report: Sendable {
+        var sessions: [String: [Session]] = [:]
+        var offline: [String] = []
+        var paired = true
+    }
+
+    static func report() async -> Report {
+        guard let boxes = try? HeadlessBoxes.all(), !boxes.isEmpty else { return Report(paired: false) }
+        return await withTaskGroup(of: (String, [Session]?).self) { g in
+            for b in boxes { g.addTask { (b.name, try? await b.client.sessions()) } }
+            var r = Report()
+            for await (name, s) in g {
+                if let s { r.sessions[name] = s } else { r.offline.append(name) }
+            }
+            r.offline.sort()
+            return r
+        }
+    }
+
+    /// The rows from boxes' sessions (`CarDigest.rows`, archived turns left out).
+    static func rows(_ sessions: [String: [Session]], limit: Int) async -> [CarDigest.Row] {
+        let marks = await LocalPrefs.savedClosedMarks()
+        let items = sessions.keys.sorted().flatMap { box in sessions[box]!.map { (box: box, session: $0) } }
+        return CarDigest.rows(items, archived: { LocalPrefs.isClosed(marks, box: $0, session: $1) }, limit: limit)
+    }
+
     /// The row for a conversation id, read fresh from its box.
     static func row(for id: String) async -> CarDigest.Row? {
         guard let (box, name) = CarDigest.parse(id), let client = try? HeadlessBoxes.box(box).client,
