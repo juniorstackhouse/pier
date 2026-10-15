@@ -29,7 +29,7 @@ mutual TLS.
 | `Config/` | `Base.xcconfig` (identifiers), `Signing.example.xcconfig`, build-number script | |
 | `Design/` | The app icon's mascot (`render-mascot.swift`, SceneKit), the site's 3D hero (`hero/`, the same mascot in three.js: `npm ci && npm run build` there writes `site/assets/hero.js`) and the launch film (`motion/`, rendered frame by frame in the browser, its sound synthesized from the same clock; see its README) | Swift, JS |
 | `site/` | docktopier.com (GitHub Pages, `.github/workflows/pages.yml`): the landing page, privacy, support and `install.sh`; fonts and scripts are self-hosted | HTML, CSS |
-| `docs/` | `ARCHITECTURE.md` (read this first), `PROTOCOL.md` (transport, pairing), `API.md` (endpoints), `PUSH.md`, `CHAT-QUALITY.md` (the chat's targets and how to measure them) | |
+| `docs/` | `ARCHITECTURE.md` (read this first), `PROTOCOL.md` (transport, pairing), `API.md` (endpoints), `PUSH.md`, `CARPLAY.md` (CarPlay, Siri messages, communication notifications), `CHAT-QUALITY.md` (the chat's targets and how to measure them) | |
 
 `project.yml` is the XcodeGen spec; `Pier.xcodeproj` is generated and gitignored. Targets: `Pier`, `PierWidgets`,
 `PierNotificationService`, `PierMenuBar`, `PierUITests`.

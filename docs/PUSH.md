@@ -114,6 +114,11 @@ Custom keys, top level next to `aps`:
 | `options` | a waiting agent's choices, in order (≤ 4, each ≤ 60 characters): the notification's buttons, see 4.3 |
 | `optionsKind` | where they came from: `question` (the transcript's form; answered by label) or `menu` (numbered rows on screen; answered by digit) |
 
+Every category also carries `.allowInCarPlay` and the message intent (`INSendMessageIntentIdentifier`), and each agent
+alert is shown as a message from that agent (a communication notification, `App/Shared/CommunicationNotification.swift`,
+made in the app for local notifications and in the service extension for pushes, from the payload's `box`, `session`,
+title and subtitle): Siri reads it in the car and a spoken reply reaches the session (docs/CARPLAY.md).
+
 ### 4.2 Payload and headers
 
 ```json

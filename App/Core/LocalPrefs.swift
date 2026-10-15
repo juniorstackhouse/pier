@@ -107,6 +107,21 @@ final class LocalPrefs {
         if url == nil { mirrorForWidgets() }
     }
 
+    /// The archive marks ("box/session" -> date) as saved, read without a prefs object (CarPlay and Siri run without the
+    /// app's window and must not write the file the app keeps).
+    nonisolated static func savedClosedMarks() async -> [String: Date] {
+        let url = await MainActor.run { defaultURL }
+        guard let d = try? Foundation.Data(contentsOf: url),
+              let v = try? JSONDecoder().decode(Data.self, from: d) else { return [:] }
+        return v.closed
+    }
+
+    /// Whether the marks say the person closed this turn (`isClosed`, from saved marks).
+    nonisolated static func isClosed(_ marks: [String: Date], box: String, session: Session) -> Bool {
+        guard let at = marks["\(box)/\(session.name)"] else { return false }
+        return at >= (session.stateSince ?? session.created)
+    }
+
     static var defaultURL: URL {
         // A mock run (UI tests, screenshots) seeds sections and marks of its own: on the Mac it shares the installed app's
         // container, so it keeps them in a file of its own instead of the person's prefs. The demo keeps its own too, so

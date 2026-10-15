@@ -40,6 +40,12 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>INIntentsSupported</key>
+	<array>
+		<string>INSendMessageIntent</string>
+		<string>INSearchForMessagesIntent</string>
+		<string>INSetMessageAttributeIntent</string>
+	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSApplicationCategoryType</key>
@@ -50,12 +56,19 @@
 	<string>O Pier se conecta às suas boxes de desenvolvimento na rede local.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>O microfone é usado para ditar pedidos aos agentes em Falar.</string>
+	<key>NSSiriUsageDescription</key>
+	<string>O Siri lê o que os agentes pedem e respondem, e manda a sua resposta por voz, no carro também.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>O reconhecimento de fala transforma o que você diz em Falar em texto, no próprio aparelho.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>NSSupportsLiveActivitiesFrequentUpdates</key>
 	<true/>
+	<key>NSUserActivityTypes</key>
+	<array>
+		<string>INSendMessageIntent</string>
+		<string>INSearchForMessagesIntent</string>
+	</array>
 	<key>PierAppGroup</key>
 	<string>group.$(PIER_BUNDLE_ID)</string>
 	<key>PierKeychainGroup</key>
@@ -66,6 +79,20 @@
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
 		<false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>CPTemplateApplicationSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneClassName</key>
+					<string>CPTemplateApplicationScene</string>
+					<key>UISceneConfigurationName</key>
+					<string>CarPlay</string>
+					<key>UISceneDelegateClassName</key>
+					<string>$(PRODUCT_MODULE_NAME).CarPlaySceneDelegate</string>
+				</dict>
+			</array>
+		</dict>
 	</dict>
 	<key>UIBackgroundModes</key>
 	<array>
