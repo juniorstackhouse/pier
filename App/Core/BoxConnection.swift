@@ -48,14 +48,14 @@ final class BoxConnection: Identifiable {
     private func apply(error: Error) {
         if let e = error as? PierError {
             switch e {
-            case .unauthorized: state = .revoked
-            case .pinMismatch: state = .pinMismatch
-            default: state = .offline(e.localizedDescription)
+            case .unauthorized: set(\.state, .revoked)
+            case .pinMismatch: set(\.state, .pinMismatch)
+            default: set(\.state, .offline(e.localizedDescription))
             }
         } else if error is CancellationError {
             return
         } else {
-            state = .offline(error.localizedDescription)
+            set(\.state, .offline(error.localizedDescription))
         }
     }
 
@@ -67,10 +67,10 @@ final class BoxConnection: Identifiable {
             async let i = client.info()
             async let s = client.sessions()
             async let l = client.locations()
-            info = try await i
+            set(\.info, try await i)
             applySessions(try await s)
-            locations = try await l
-            state = .online
+            set(\.locations, try await l)
+            set(\.state, .online)
             if info?.relay != record.relay { onRelay?(self, info?.relay) }
         } catch {
             apply(error: error)
@@ -84,17 +84,17 @@ final class BoxConnection: Identifiable {
     func refreshSessions() async {
         do {
             applySessions(try await client.sessions())
-            state = .online
+            set(\.state, .online)
         } catch { apply(error: error) }
         onChange?(self)
     }
 
     func refreshLocations() async {
-        do { locations = try await client.locations() } catch { apply(error: error) }
+        do { set(\.locations, try await client.locations()) } catch { apply(error: error) }
     }
 
     func refreshStats() async {
-        do { stats = try await client.stats() } catch { if !(error is CancellationError) { /* keep old */ } }
+        do { set(\.stats, try await client.stats()) } catch { if !(error is CancellationError) { /* keep old */ } }
     }
 
     /// Debounced refresh (events arrive in bursts).
@@ -115,14 +115,22 @@ final class BoxConnection: Identifiable {
     private func applySessions(_ new: [Session]) {
         let old = Dictionary(uniqueKeysWithValues: sessions.map { ($0.name, $0.agentState) })
         let first = !hasLoadedSessions
+        // Unchanged lists (most polls) touch nothing: every sidebar, Home, Inbox and Board reader would redraw, and the
+        // snapshot's UserDefaults write wakes everything listening to UserDefaults.
+        guard first || new != sessions else { return }
         sessions = new
-        hasLoadedSessions = true
+        if first { hasLoadedSessions = true }
         StateSnapshot.save(box: name, sessions: new)
         guard !first else { return }
         for s in new where s.isAgent && !s.exited {
             let before = old[s.name] ?? nil
             if before != s.agentState { onTransition?(self, s, before, s.agentState) }
         }
+    }
+
+    /// Assigns only a different value: an @Observable property invalidates its readers on every write, equal or not.
+    private func set<T: Equatable>(_ key: ReferenceWritableKeyPath<BoxConnection, T>, _ value: T) {
+        if self[keyPath: key] != value { self[keyPath: key] = value }
     }
 
     // MARK: lookups
@@ -140,8 +148,10 @@ enum StateSnapshot {
     }
     static func save(box: String, sessions: [Session]) {
         var all = load()
-        all[box] = Dictionary(uniqueKeysWithValues: sessions.filter { $0.isAgent && !$0.exited }
+        let states = Dictionary(uniqueKeysWithValues: sessions.filter { $0.isAgent && !$0.exited }
             .map { ($0.name, $0.agentState?.rawValue ?? "") })
+        guard all[box] != states else { return }
+        all[box] = states
         defaults.set(all, forKey: key)
     }
     static func forget(box: String) {

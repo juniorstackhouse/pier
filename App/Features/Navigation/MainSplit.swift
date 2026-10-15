@@ -17,18 +17,31 @@ struct MainSplit: View {
             // One stack per section, the same paths the tabs use: notifications and deep links land here unchanged.
             switch router.tab {
             case .home:
-                NavigationStack(path: $router.homePath) { DashboardView().pierDestinations() }
+                NavigationStack(path: $router.homePath) { DashboardView().pierDestinations() }.macInstantPush(router.homePath)
             case .inbox:
-                NavigationStack(path: $router.inboxPath) { InboxScreen().pierDestinations() }
+                NavigationStack(path: $router.inboxPath) { InboxScreen().pierDestinations() }.macInstantPush(router.inboxPath)
             case .board:
-                NavigationStack(path: $router.boardPath) { BoardScreen().pierDestinations() }
+                NavigationStack(path: $router.boardPath) { BoardScreen().pierDestinations() }.macInstantPush(router.boardPath)
             case .projects:
-                NavigationStack(path: $router.projectsPath) { ProjectsRoot().pierDestinations() }
+                NavigationStack(path: $router.projectsPath) { ProjectsRoot().pierDestinations() }.macInstantPush(router.projectsPath)
             case .settings:
-                NavigationStack(path: $router.settingsPath) { SettingsView().pierDestinations() }
+                NavigationStack(path: $router.settingsPath) { SettingsView().pierDestinations() }.macInstantPush(router.settingsPath)
             }
         }
         .navigationSplitViewStyle(.balanced)
         .onChange(of: router.projectsPath.count) { router.projectsPathChanged() }
+    }
+}
+
+extension View {
+    /// On the Mac a pushed screen replaces the current one at once, as in Finder or Mail: UIKit's sliding push laid out
+    /// both screens and animated them for a third of a second on every navigation (measured at ~100 ms of main thread
+    /// to set up, plus the animated frames). The iPad keeps the slide.
+    @ViewBuilder func macInstantPush(_ path: NavigationPath) -> some View {
+        if Platform.isMac {
+            transaction(value: path) { $0.disablesAnimations = true }
+        } else {
+            self
+        }
     }
 }

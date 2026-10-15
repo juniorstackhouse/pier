@@ -219,29 +219,17 @@ struct AgentDotStrip: View {
 struct AgentDotView: View {
     let state: DashState
     var size: CGFloat = 10
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var breathe = false
 
     var body: some View {
         ZStack {
             if state == .needsYou {
                 Circle().fill(state.color.opacity(0.28)).frame(width: size + 6, height: size + 6)
             }
-            if state == .working && !reduceMotion {
-                Circle().stroke(state.color.opacity(breathe ? 0 : 0.55), lineWidth: 1.5)
-                    .frame(width: size, height: size)
-                    .scaleEffect(breathe ? 1.9 : 1)
-            }
-            Circle().fill(state.color).frame(width: size, height: size)
+            // The breathing ring runs in Core Animation (`PulseDot`), not a SwiftUI animation every frame.
+            if state == .working { PulseDot(color: state.color, size: size, style: .ring) }
+            else { Circle().fill(state.color).frame(width: size, height: size) }
         }
         .frame(width: size + 6, height: size + 6)
-        .onAppear { if state == .working { startBreathing() } }
-        .onChange(of: state) { _, s in breathe = false; if s == .working { startBreathing() } }
         .accessibilityHidden(true)
-    }
-
-    private func startBreathing() {
-        guard !reduceMotion else { return }
-        withAnimation(.easeInOut(duration: 1.4).repeatForever(autoreverses: false)) { breathe = true }
     }
 }

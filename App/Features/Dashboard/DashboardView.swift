@@ -6,8 +6,10 @@ struct DashboardView: View {
     @Environment(Router.self) private var router
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.dynamicTypeSize) private var typeSize
-    @State private var home = HomeStore()
-    @State private var layout = HomeLayout()
+    // One of each for the app's life: a `@State` initial value is built again every time the parent redraws (and these
+    // read a file and UserDefaults), and the Home opens again on what it already had.
+    @State private var home = HomeStore.shared
+    @State private var layout = HomeLayout.shared
     @State private var customizing = false
     @State private var web: IdentifiedURL?
     @State private var unsupported: URL?

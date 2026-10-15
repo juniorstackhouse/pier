@@ -123,7 +123,7 @@ final class InboxStore {
     func vm(_ i: InboxItem, model: AppModel) -> SessionViewModel? {
         if let v = vms[i.id] { return v }
         guard let client = model.client(for: i.item.box) else { return nil }
-        let v = SessionViewModel(box: i.item.box, session: i.item.session, client: client, model: model)
+        let v = SessionViewModel.shared(box: i.item.box, session: i.item.session, client: client, model: model)
         vms[i.id] = v
         return v
     }

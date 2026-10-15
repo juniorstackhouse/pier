@@ -538,8 +538,8 @@ final class EdgeTabView: NSView {
     private var tracking: NSTrackingArea?
     private var dragStart: NSPoint?
     private var moved = false
-    private var spinTimer: Timer?
-    private var spinAngle: CGFloat = 0
+    /// The working rings: one shape layer per working indicator, turned by Core Animation.
+    private var ringLayers: [CAShapeLayer] = []
     // The pointer along the tab (base coordinates, nil when off the shape) and the item under it.
     private var pointerBase: CGFloat?
     private var insideShape = false
@@ -557,6 +557,7 @@ final class EdgeTabView: NSView {
 
     override init(frame: NSRect) {
         super.init(frame: frame)
+        wantsLayer = true
         for b in buttons {
             b.onBlack = true
             b.glow = true
@@ -601,7 +602,6 @@ final class EdgeTabView: NSView {
         more.accessibilityTitle = strings["more"] ?? "Mais"
         let shown = Array(dots.prefix(Self.maxDots))
         indicatorRects = Array(repeating: .zero, count: shown.count)
-        spin(dots.contains { $0.state == "working" })
         overflow?.removeFromSuperview(); overflow = nil
         if dots.count > shown.count {
             let f = SurfaceStyle.label("+\(dots.count - shown.count)", font: SurfaceStyle.mono(9, .semibold), color: NSColor.white.withAlphaComponent(0.7), alignment: .center)
@@ -629,28 +629,54 @@ final class EdgeTabView: NSView {
         return pill
     }
 
-    /// The working ring turns (30 steps a second) while an agent works; still with Reduce Motion.
-    private func spin(_ on: Bool) {
-        if on, !SurfaceStyle.reduceMotion {
-            guard spinTimer == nil else { return }
-            spinTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30, repeats: true) { [weak self] _ in
-                MainActor.assumeIsolated {
-                    guard let self else { return }
-                    self.spinAngle = (self.spinAngle + 8).truncatingRemainder(dividingBy: 360)
-                    // Only the turning rings: the whole tab, its buttons with it, redrawn 30 times a second took about
-                    // 4% of the app's main thread whenever an agent worked, window open or not.
-                    let rings = zip(self.indicatorRects, self.dots).filter { $0.1.state == "working" }.map { $0.0.insetBy(dx: -1, dy: -1) }
-                    if rings.isEmpty { self.setNeedsDisplay(self.shapePath.bounds) } else { rings.forEach { self.setNeedsDisplay($0) } }
-                }
+    /// The working rings turn in Core Animation: a shape layer per working indicator with an endless rotation, so nothing
+    /// runs on the main thread per frame. (A 30 Hz timer redrawing them took about 3% of the main thread whenever an
+    /// agent worked, window open or not.) Still with Reduce Motion.
+    private func layoutRings() {
+        guard let host = layer else { return }
+        let working = indicatorRects.indices.filter { dots.indices.contains($0) && dots[$0].state == "working" }
+        while ringLayers.count > working.count { ringLayers.removeLast().removeFromSuperlayer() }
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        for (k, i) in working.enumerated() {
+            let r = indicatorRects[i]
+            let ring: CAShapeLayer
+            if k < ringLayers.count { ring = ringLayers[k] } else {
+                ring = CAShapeLayer()
+                ring.fillColor = nil
+                ring.lineCap = .round
+                host.addSublayer(ring)
+                ringLayers.append(ring)
             }
-        } else {
-            spinTimer?.invalidate(); spinTimer = nil
+            if ring.bounds.size != r.size {
+                ring.bounds = CGRect(origin: .zero, size: r.size)
+                let radius = r.width * 0.36
+                let path = CGMutablePath()
+                path.addArc(center: CGPoint(x: r.width / 2, y: r.height / 2), radius: radius, startAngle: -.pi / 2,
+                            endAngle: -.pi / 2 + .pi * 1.5, clockwise: false)
+                ring.path = path
+                ring.lineWidth = max(1.6, r.width * 0.14)
+            }
+            ring.position = CGPoint(x: r.midX, y: r.midY)
+            ring.strokeColor = SurfaceStyle.tabColor(forState: "working").cgColor
+            if SurfaceStyle.reduceMotion {
+                ring.removeAnimation(forKey: "spin")
+            } else if ring.animation(forKey: "spin") == nil {
+                let turn = CABasicAnimation(keyPath: "transform.rotation.z")
+                turn.fromValue = 0
+                turn.toValue = 2 * CGFloat.pi
+                turn.duration = 1.5
+                turn.repeatCount = .infinity
+                turn.isRemovedOnCompletion = false
+                ring.add(turn, forKey: "spin")
+            }
         }
+        CATransaction.commit()
     }
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
-        if window == nil { spin(false); springTimer?.invalidate(); springTimer = nil }
+        if window == nil { springTimer?.invalidate(); springTimer = nil }
     }
 
     // MARK: slots and the pointer
@@ -817,6 +843,7 @@ final class EdgeTabView: NSView {
             b.isHidden = shown <= 0
             b.alphaValue = shown
         }
+        layoutRings()
         if let overflow, let last = indicatorRects.last {
             overflow.frame = NSRect(x: min(edgeX, faceX), y: last.maxY + 1, width: bodyWidth, height: 12)
         }
@@ -888,7 +915,8 @@ final class EdgeTabView: NSView {
                 let g = NSGradient(colors: [SurfaceStyle.tabColor(forState: d.state).withAlphaComponent(0.35), NSColor.clear])
                 g?.draw(in: NSBezierPath(ovalIn: rect.insetBy(dx: -rect.width * 0.45, dy: -rect.height * 0.45)), relativeCenterPosition: .zero)
             }
-            IndicatorDrawing.draw(state: d.state, dimmed: d.state == "needsYou" && !d.focused, in: rect, angle: spinAngle)
+            // Working rings are layers (`layoutRings`).
+            if d.state != "working" { IndicatorDrawing.draw(state: d.state, dimmed: d.state == "needsYou" && !d.focused, in: rect, angle: 0) }
         }
         if openness > 0.05 {
             // Hairlines between the grown tab's sections, in the middle of each section gap.

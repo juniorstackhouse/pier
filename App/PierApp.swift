@@ -41,6 +41,7 @@ struct PierApp: App {
                     }
                     WindowSnapshot.runIfRequested()
                     ChatPerfProbe.runIfRequested()
+                    NavPerfProbe.runIfRequested(model: model)
                     await DebugIntentRunner.runIfRequested(model: model)
                     #endif
                     Task { try? await Task.sleep(for: .seconds(4)); await SpotlightIndexer.reindex() }

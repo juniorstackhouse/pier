@@ -22,7 +22,7 @@ struct SessionScreen: View {
 
     init(route: SessionRoute, client: any PierBoxClient, model: AppModel) {
         self.route = route
-        _vm = State(initialValue: SessionViewModel(box: route.box, session: route.session, client: client, model: model))
+        _vm = State(initialValue: SessionViewModel.shared(box: route.box, session: route.session, client: client, model: model))
     }
 
     private var session: Session { vm.session }

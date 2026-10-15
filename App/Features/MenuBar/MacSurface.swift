@@ -212,7 +212,10 @@ enum MacSurfaceSettings {
             defer { follow.cancel() }
             while !Task.isCancelled {
                 guard let self, let model = self.model else { return }
-                if vm.session.agentState == .finished, !vm.isClosed { model.prefs.markSeen(box: vm.box, session: vm.name) }
+                // Only once per turn: each mark rewrites the prefs and redraws everything that reads them.
+                if vm.session.agentState == .finished, !vm.isClosed, !model.prefs.isSeen(box: vm.box, session: vm.session) {
+                    model.prefs.markSeen(box: vm.box, session: vm.name)
+                }
                 await self.signals.refreshBoard(model: model)
                 try? await Task.sleep(for: .seconds(3))
             }
@@ -241,7 +244,10 @@ enum MacSurfaceSettings {
         if let v = agentVMs[id] { return v }
         guard let model, let d = AgentDots.make(model).first(where: { $0.id == id }), let conn = model.connection(for: d.box),
               let s = conn.sessions.first(where: { $0.name == d.session }) else { return nil }
-        let v = SessionViewModel(box: d.box, session: s, client: conn.client, model: model)
+        let v = SessionViewModel.shared(box: d.box, session: s, client: conn.client, model: model)
+        // Only the agent on screen is kept (each holds its conversation): the rest went for good with every agent ever
+        // shown in the panel. The window's screen shares the same model while it shows that session.
+        agentVMs = agentVMs.filter { $0.key == selectedAgent }
         agentVMs[id] = v
         return v
     }

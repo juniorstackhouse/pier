@@ -160,14 +160,16 @@ final class FileTreeStore {
     var hideIgnored = false
     /// Every file of the worktree for "Abrir rápido" (`FileSearch`), read when first needed and again, keeping this one
     /// meanwhile, the next time it is needed after the box changed.
-    private(set) var allFiles: [String]?
+    private(set) var allFiles: [String]? { didSet { searchVersion &+= 1 } }
+    /// Bumped whenever what quick open searches changes (`allFiles`, `matched`), so a search can be kept until then.
+    @ObservationIgnored private(set) var searchVersion = 0
     private(set) var allFilesTruncated = false
     private(set) var allFilesError: String?
     @ObservationIgnored private var allFilesStale = false
     /// The read of the list under way: every caller waits for the same one.
     @ObservationIgnored private var allFilesTask: Task<Void, Never>?
     /// A repository too large to list whole: the files git found for what is being typed (`FileSearch.command(matching:)`).
-    private(set) var matched: [String] = []
+    private(set) var matched: [String] = [] { didSet { searchVersion &+= 1 } }
     private(set) var matchedTruncated = false
     /// Searches under way (a newer one can start before an older one, given up, has its answer).
     private var matches = 0
@@ -335,6 +337,9 @@ final class EditorStore {
     var active: String?
     /// The caret's line and column in the active file (the status bar).
     var caret = (line: 1, column: 1)
+    /// Each file's caret, taken back when its text is replaced. Not observed: it moves on every keystroke, and in `docs`
+    /// it redrew the whole workspace (tabs, status bar, editor header) each time.
+    @ObservationIgnored private var selections: [String: NSRange] = [:]
     /// A file of this worktree whose save the box refused (it changed there): its editor asks what to do.
     var conflict: String?
     @ObservationIgnored private var client: (any PierBoxClient)?
@@ -383,6 +388,7 @@ final class EditorStore {
     func close(_ path: String) {
         guard let i = index(path) else { return }
         docs.remove(at: i)
+        selections[path] = nil
         noteDirty(path)
         if active == path { active = docs.indices.contains(i) ? docs[i].path : docs.last?.path }
     }
@@ -408,10 +414,10 @@ final class EditorStore {
 
     /// The caret moved. `text` is the text view's: UIKit tells of the caret before the edit reaches the store.
     func setSelection(_ range: NSRange, text: String, for path: String) {
-        guard let i = index(path) else { return }
-        docs[i].selection = range
+        guard index(path) != nil else { return }
+        selections[path] = range
         let p = EditorText.lineColumn(in: text, utf16Offset: range.location)
-        caret = (p.line, p.column)
+        if caret != (p.line, p.column) { caret = (p.line, p.column) }
     }
 
     func load(_ path: String) async {
@@ -438,6 +444,7 @@ final class EditorStore {
             } else if let t = f.text {
                 d.base = t
                 d.text = t
+                d.selection = selections[path] ?? d.selection
                 d.revision = Self.nextRevision()
             }
             docs[i] = d
@@ -500,6 +507,7 @@ final class EditorStore {
         guard let i = index(path) else { return }
         docs[i].text = docs[i].base
         docs[i].changedOnBox = false
+        docs[i].selection = selections[path] ?? docs[i].selection
         docs[i].revision = Self.nextRevision()
         noteDirty(path)
         await load(path)

@@ -61,6 +61,8 @@ final class HomeLayout {
     private(set) var hidden: Set<HomeWidgetKind>
     @ObservationIgnored private let defaults: UserDefaults
 
+    static let shared = HomeLayout()
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         if let d = defaults.data(forKey: Self.key), let s = try? JSONDecoder().decode(Saved.self, from: d) {

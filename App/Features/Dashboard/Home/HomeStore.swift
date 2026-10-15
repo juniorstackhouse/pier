@@ -62,6 +62,8 @@ final class HomeStore {
 
     static let interval: [HomeWidgetKind: TimeInterval] = [.prs: 300, .ci: 600, .git: 900, .services: 30, .limits: 120]
 
+    static let shared = HomeStore()
+
     init(cacheURL: URL? = nil) {
         self.cacheURL = cacheURL ?? Shared.supportDirectory.appendingPathComponent("home-cache.json")
         if let d = try? Data(contentsOf: self.cacheURL), let c = try? Self.decoder.decode(Cache.self, from: d) {

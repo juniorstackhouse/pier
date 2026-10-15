@@ -49,7 +49,19 @@ private struct FileTreePane: View {
     private var tree: FileTreeStore { state.tree }
     private var editor: EditorStore { state.editor }
     private var searching: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
-    private var results: [String] { searching ? FileSearch.search(query, in: tree.searchable) : [] }
+    /// The last search, kept: the body reads the results several times per pass and passes come on every key.
+    @State private var memo = SearchMemo()
+    private var results: [String] {
+        guard searching else { return [] }
+        // Read so the body follows the lists; the version says whether they changed since the kept search.
+        _ = (tree.allFiles?.count, tree.matched.count)
+        if memo.query != query || memo.version != tree.searchVersion {
+            memo.query = query
+            memo.version = tree.searchVersion
+            memo.value = FileSearch.search(query, in: tree.searchable)
+        }
+        return memo.value
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -724,4 +736,11 @@ private struct BinaryPreview: View {
         .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
+}
+
+/// `FilesPane`'s last quick-open search (a reference, so reading it in body changes no state).
+private final class SearchMemo {
+    var query = ""
+    var version = -1
+    var value: [String] = []
 }
