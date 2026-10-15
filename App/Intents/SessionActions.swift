@@ -121,7 +121,14 @@ enum SessionActions {
                 await SessionActivityBridge.answered(box: box, session: session)
                 return .success(())
             }
-            // A question only on screen: typed as the answer (pierd takes a forced send into a waiting agent as one).
+            // A question only on screen (Claude Code writes it to its record once answered): its "Type something." row,
+            // then the words, as pierd answers in the person's own words. No such row, no typing into the menu.
+            let screen = try await client.screen(session: session, history: 0)
+            guard let key = MenuParser.typeSomethingKey(in: screen) else {
+                return .failure(.failed(String(localized: "Essa pergunta só aceita uma das opções: escolha pelos botões.")))
+            }
+            _ = try await client.send(session: session, SendRequest(text: key, enter: false, when: .now, force: true))
+            try? await Task.sleep(for: .milliseconds(400))   // the row opens its text field
             _ = try await client.send(session: session, SendRequest(text: t, enter: true, when: .now, force: true))
             await SessionActivityBridge.answered(box: box, session: session)
             return .success(())

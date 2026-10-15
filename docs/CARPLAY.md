@@ -43,7 +43,12 @@ reading them and the spoken replies, in the car included (CarPlay reads communic
   turn and reads the box's record back. One `CARPLAY-TEST …` line each on stderr
   (`xcrun simctl launch --console-pty <udid> <bundle id> -uiTestMock 1 -carPlaySelfTest 1`).
 - `CarDigestTests` (PierKit): ids, order and caps of the lists, and the spoken text.
-- The CarPlay screen itself: Xcode 27's Device Hub has no CarPlay display menu any more. `SimDevice
-  -enableCarPlay:error:` (CoreSimulator, private) still starts the simulator's CarPlay session (CarPlayApp runs), but
-  its display draws nothing until a screen is created with CarPlay properties (`SimScreenAdapter`), which Device Hub
-  does not do. A device with the entitlement and a car (or Apple's CarPlay Simulator app over USB) shows it.
+- The CarPlay screen itself: Xcode 27's Device Hub has no CarPlay display menu any more. Through CoreSimulator and
+  SimulatorKit (private) the simulator's CarPlay session does start — `-[SimDevice enableCarPlay:error:]`, the
+  `wireless0` screen (the one whose `carPlayProperties` carry `SimCarPlayPropertyKeyStark`) given a mode and power,
+  `IndigoHIDMessageToCreateCarPlayService` sent through `SimDeviceLegacyHIDClient` — and CarPlayApp and carkitd run and
+  list Pier (`online.residente.pier`) among the car's apps, but on Xcode 27 the screen stays black (no frames). Seeing
+  it takes a device with the entitlement, in a car or Apple's CarPlay Simulator app over USB.
+- A spoken reply to an agent waiting on a question: `-uiTestMock 1 -uiTestAsk 1 -carPlaySelfTest 1` (the words go in
+  through the question's "Type something." row, read from the screen with `MenuParser.typeSomethingKey`, or its form
+  when the record holds the question; a permission refuses them).

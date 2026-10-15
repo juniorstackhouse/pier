@@ -197,6 +197,9 @@ final class MockBox: PierTransport, @unchecked Sendable {
     }
 
     /// The question's reply once a choice arrives (a structured answer, or the digit of its row on screen).
+    /// The ask session's "Type something." row was picked: the next send is the person's words.
+    private var askTyping = false
+
     private func answerAsk(_ pick: String) -> (Int, Data) {
         scheduleReply(Self.askSession, text: "Going with \(pick). Building the pricing page now.", after: 1.0)
         return (200, Self.json(["answered": [pick]]))
@@ -649,10 +652,22 @@ final class MockBox: PierTransport, @unchecked Sendable {
         case (.post, "send") where name == Self.askSession && (sessions[si]["agent_state"] as? String) == "waiting":
             // The digit of a row on screen (the fallback when the box cannot drive the form).
             let text = (req["text"] as? String) ?? ""
+            // "Type something." (the row after the choices) opens a field; the next words with Enter are the answer.
+            if askTyping {
+                askTyping = false
+                transcripts[name, default: []].append(item("user", text: text))
+                return answerAsk(text)
+            }
+            if Int(text) == Self.askChoices.count + 1, req["enter"] as? Bool == false { askTyping = true; return (200, Self.json(["sent": true])) }
             guard let n = Int(text), (1...Self.askChoices.count).contains(n) else { return (409, Data(#"{"error":"Claude is waiting for a choice"}"#.utf8)) }
             return answerAsk(Self.askChoices[n - 1])
         case (.post, "answer") where name == Self.askSession:
             let picks = ((req["answers"] as? [JSON])?.first?["picks"] as? [String]) ?? []
+            // The person's own words, typed into "Type something" as pierd does (box/answer.go).
+            if picks.isEmpty, let other = (req["answers"] as? [JSON])?.first?["other"] as? String, !other.isEmpty {
+                transcripts[name, default: []].append(item("user", text: other))
+                return answerAsk(other)
+            }
             guard let pick = picks.first, Self.askChoices.contains(pick) else { return (409, Data(#"{"error":"that option isn't on screen"}"#.utf8)) }
             return answerAsk(pick)
         case (.get, "screen"):

@@ -75,7 +75,11 @@ enum CarPlaySelfTest {
                 let r = await SessionActions.reply(box: row.box, session: row.session.name, text: "Use a opção mais simples")
                 let kind = Ask.classify(row.session.ask) == .permission ? "permission" : "question"
                 switch r {
-                case .success: say("reply \(kind) -> answered")
+                case .success:
+                    try? await Task.sleep(for: .seconds(2))
+                    let page = try? await HeadlessBoxes.box(row.box).client.transcriptBefore(session: row.session.name, before: 0, limit: 10)
+                    let got = page?.items.contains { ($0.text ?? "").contains("Use a opção mais simples") } ?? false
+                    say("reply \(kind) -> answered, in the record: \(got)")
                 case .failure(let f): say("reply \(kind) -> refused: \(f.message)")
                 }
             }

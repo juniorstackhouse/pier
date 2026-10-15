@@ -5411,6 +5411,16 @@
         }
       }
     },
+    "Essa pergunta só aceita uma das opções: escolha pelos botões." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This question only takes one of its options: pick it with the buttons."
+          }
+        }
+      }
+    },
     "Essa sessão já terminou" : {
       "localizations" : {
         "en" : {

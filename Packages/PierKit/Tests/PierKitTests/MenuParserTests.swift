@@ -257,4 +257,29 @@ import Testing
         #expect("\u{1B}[32mgreen\u{1B}[0m".strippingANSI == "green")
         #expect(ANSI.strip("trailing \u{1B}") == "trailing ")
     }
+
+    @Test func typeSomethingRowOfAQuestion() {
+        let three = """
+        ● Which layout for the pricing page?
+
+         ❯ 1. Three tiers
+              Starter, Pro and Team side by side
+           2. One plan
+           3. A table
+           4. Type something.
+           5. Chat about this
+
+          Enter to select · ↑↓ to move
+        """
+        #expect(MenuParser.typeSomethingKey(in: three) == "4")
+        let four = "● Pick one\n\n ❯ 1. A\n   2. B\n   3. C\n   4. D\n   5. Type something.\n   6. Chat about this\n"
+        #expect(MenuParser.typeSomethingKey(in: four) == "5")
+    }
+
+    @Test func noTypeSomethingRowNoKey() {
+        let permission = " Do you want to proceed?\n ❯ 1. Yes\n   2. Yes, and don't ask again\n   3. No, and tell Claude what to do differently\n"
+        #expect(MenuParser.typeSomethingKey(in: permission) == nil)
+        #expect(MenuParser.typeSomethingKey(in: "> just a prompt\n") == nil)
+        #expect(MenuParser.typeSomethingKey(in: " 1. Type something.\n") == nil)
+    }
 }
