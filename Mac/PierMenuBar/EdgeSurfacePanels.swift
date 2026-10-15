@@ -635,6 +635,7 @@ final class EdgeTabView: NSView {
     private func layoutRings() {
         guard let host = layer else { return }
         let working = indicatorRects.indices.filter { dots.indices.contains($0) && dots[$0].state == "working" }
+        let scale = window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2
         while ringLayers.count > working.count { ringLayers.removeLast().removeFromSuperlayer() }
         CATransaction.begin()
         CATransaction.setDisableActions(true)
@@ -658,6 +659,8 @@ final class EdgeTabView: NSView {
                 ring.lineWidth = max(1.6, r.width * 0.14)
             }
             ring.position = CGPoint(x: r.midX, y: r.midY)
+            // A layer added by hand draws at 1x unless told the screen's scale: soft on a Retina display.
+            if ring.contentsScale != scale { ring.contentsScale = scale }
             ring.strokeColor = SurfaceStyle.tabColor(forState: "working").cgColor
             if SurfaceStyle.reduceMotion {
                 ring.removeAnimation(forKey: "spin")
@@ -672,6 +675,11 @@ final class EdgeTabView: NSView {
             }
         }
         CATransaction.commit()
+    }
+
+    override func viewDidChangeBackingProperties() {
+        super.viewDidChangeBackingProperties()
+        needsLayout = true   // the rings take the new screen's scale
     }
 
     override func viewDidMoveToWindow() {
@@ -818,7 +826,12 @@ final class EdgeTabView: NSView {
         super.layout()
         let m = metrics, n = shownCount
         column = m.column(openness: openness, indicators: n)
-        guard column.slots.count == slotCount, slotCount >= 5 else { return }
+        guard column.slots.count == slotCount, slotCount >= 5 else {
+            // Nothing to lay out: no ring of an earlier layout stays turning.
+            ringLayers.forEach { $0.removeFromSuperlayer() }
+            ringLayers = []
+            return
+        }
         // The shape sits in the middle of the canvas.
         bodyWidth = m.bodyWidth(openness: openness)
         shapeHeight = m.height(openness: openness, indicators: n)

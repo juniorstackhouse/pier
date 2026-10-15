@@ -121,6 +121,8 @@ final class LocalPrefs {
         url = Self.defaultURL
         data = Data()
         load()
+        draftSave?.cancel()
+        composeDraft = data.composeDraft
     }
 
     static func key(box: String, location: String) -> String { "\(box)/\(location)" }

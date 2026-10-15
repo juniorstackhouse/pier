@@ -111,9 +111,11 @@ struct PatchView<Header: View>: View {
             let contentW = max(CGFloat(maxChars + 2) * charW + gutter * 2 + 30, geo.size.width)
             // One scroll view for both directions, the lines in a lazy stack straight inside it: a lazy stack in a
             // sideways scroll view inside the vertical one built (and highlighted) every line of the diff at once.
+            VStack(spacing: 0) {
+            // The file's header stays above the lines (sideways scrolling would take it off screen).
+            header()
             ScrollView(wrap ? .vertical : [.vertical, .horizontal]) {
                 LazyVStack(alignment: .leading, spacing: 0) {
-                    header().frame(width: wrap ? nil : geo.size.width, alignment: .leading)
                     ForEach(lines) { l in
                         DiffLineRow(line: l, gutter: gutter, wrap: wrap, width: wrap ? nil : contentW, language: language)
                     }
@@ -123,6 +125,7 @@ struct PatchView<Header: View>: View {
                     }
                 }
                 .padding(.bottom, 40)
+            }
             }
         }
     }

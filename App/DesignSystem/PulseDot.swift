@@ -57,6 +57,8 @@ private struct PulseHalo: UIViewRepresentable {
             // removed by itself when the view goes away).
             NotificationCenter.default.addObserver(self, selector: #selector(foreground), name: UIApplication.willEnterForegroundNotification,
                                                    object: nil)
+            // A layer's colors are resolved once: light and dark switch them again.
+            registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (view: HaloView, _: UITraitCollection) in view.applyColor() }
         }
 
         required init?(coder: NSCoder) { fatalError() }
@@ -74,6 +76,7 @@ private struct PulseHalo: UIViewRepresentable {
         }
 
         private func applyColor() {
+            let tint = tint.resolvedColor(with: traitCollection)
             switch style {
             case .fade: backgroundColor = tint; layer.borderWidth = 0
             case .ripple: backgroundColor = tint.withAlphaComponent(0.35); layer.borderWidth = 0

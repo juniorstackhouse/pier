@@ -31,7 +31,20 @@ enum NavPerfProbe {
                 }
             }
             steps.append(("home", { router.select(.tab(.home)) }))
+            // `-navPerfProbeOnly tabs|sessions|projects`: one kind of step (which kind of navigation costs or keeps what).
+            if let only = UserDefaults.standard.string(forKey: "navPerfProbeOnly") {
+                let kinds: [String: [String]] = ["tabs": ["home", "inbox", "board", "projects"], "sessions": ["home", "session"],
+                                                 "projects": ["projects", "project", "worktree"]]
+                let keep = kinds[only] ?? []
+                steps = steps.filter { s in keep.contains { s.0 == $0 || (s.0.hasPrefix($0) && s.0.dropFirst($0.count).allSatisfy(\.isNumber)) } }
+            }
             var all: [[String: Any]] = []
+            // `-navPerfProbeLoops <n>`: the walk n times (memory that grows from one walk to the next is a leak).
+            let loops = max(1, UserDefaults.standard.integer(forKey: "navPerfProbeLoops"))
+            for loop in 0..<loops {
+            if loops > 1 {
+                FileHandle.standardError.write(Data("NAV-PERF-LOOP \(loop) footprint_mb=\(Self.footprintMB())\n".utf8))
+            }
             for (name, go) in steps {
                 let recorder = StepRecorder()
                 recorder.start()
@@ -43,6 +56,7 @@ enum NavPerfProbe {
                 let line = (try? JSONSerialization.data(withJSONObject: r, options: [.sortedKeys])) ?? Data()
                 FileHandle.standardError.write(Data("NAV-PERF ".utf8) + line + Data("\n".utf8))
             }
+            }
             func median(_ k: String) -> Double {
                 let v = all.compactMap { $0[k] as? Double }.sorted()
                 return v.isEmpty ? 0 : v[v.count / 2]
@@ -53,6 +67,16 @@ enum NavPerfProbe {
             let data = (try? JSONSerialization.data(withJSONObject: summary, options: [.sortedKeys])) ?? Data()
             FileHandle.standardError.write(Data("NAV-PERF-SUMMARY ".utf8) + data + Data("\n".utf8))
         }
+    }
+
+    /// The process's physical footprint (what Activity Monitor and `footprint` show), in MB.
+    static func footprintMB() -> Int {
+        var info = task_vm_info_data_t()
+        var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<integer_t>.size)
+        let r = withUnsafeMutablePointer(to: &info) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) { task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count) }
+        }
+        return r == KERN_SUCCESS ? Int(info.phys_footprint / 1_048_576) : -1
     }
 }
 

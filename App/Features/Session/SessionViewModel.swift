@@ -86,7 +86,9 @@ final class SessionViewModel {
     /// lookup instead of a new model.
     static func shared(box: String, session: Session, client: any PierBoxClient, model: AppModel) -> SessionViewModel {
         let key = "\(box)/\(session.name)"
-        if let v = live[key]?.vm, v.client as AnyObject === client as AnyObject, v.model === model { return v }
+        // The same session (a new tmux session can reuse a name), through the same client and app.
+        if let v = live[key]?.vm, v.initial.created == session.created, v.client as AnyObject === client as AnyObject,
+           v.model === model { return v }
         live = live.filter { $0.value.vm != nil }
         let v = SessionViewModel(box: box, session: session, client: client, model: model)
         live[key] = WeakVM(vm: v)
@@ -767,11 +769,13 @@ final class SessionViewModel {
     /// fails. False when there is nothing to send.
     /// `done`: a sender other than this screen's composer (the Mac panel) hears how it went, with the error, and puts the
     /// text back itself; without it a failed message's text comes back through `composerRestore`.
-    func scheduleSend(_ text: String, done: (@MainActor (_ sent: Bool, _ error: String?) -> Void)? = nil) -> Bool {
+    /// `withAttachments: false` (the Mac's side panel, which shares this model with the window): the composer's photos
+    /// stay where they are.
+    func scheduleSend(_ text: String, withAttachments: Bool = true, done: (@MainActor (_ sent: Bool, _ error: String?) -> Void)? = nil) -> Bool {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        let photos = attachments.filter { $0.path != nil }
+        let photos = withAttachments ? attachments.filter { $0.path != nil } : []
         guard canSend, !trimmed.isEmpty || !photos.isEmpty else { return false }
-        attachments.removeAll { $0.path != nil }
+        if withAttachments { attachments.removeAll { $0.path != nil } }
         let out = Outgoing(text: trimmed, photos: photos.count)
         outgoing.append(out)
         sendTick += 1   // the conversation follows the new bubble down now, not after the box answers

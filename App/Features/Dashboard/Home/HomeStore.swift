@@ -78,6 +78,9 @@ final class HomeStore {
         guard now != cachedBoxes else { return }
         cachedBoxes = now
         prs = Remote(); ci = Remote(); git = Remote()
+        // The store lives for the app's run (`shared`): the old boxes' services and limits go too, and come back fresh.
+        services = []; servicesAt = nil; servicesError = nil; reachable = [:]
+        limits = []; limitsAt = nil; limitsError = nil
         saveCache()
     }
 

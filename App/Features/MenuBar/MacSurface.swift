@@ -262,7 +262,7 @@ enum MacSurfaceSettings {
         guard let vm = vm(for: id) else { return }
         stopDictation()
         let card = item(id)
-        let started = vm.scheduleSend(text) { [weak self] sent, error in
+        let started = vm.scheduleSend(text, withAttachments: false) { [weak self] sent, error in
             guard let self else { return }
             if sent {
                 if let card, let model = self.model { self.store.markAnswered(card, model: model) }

@@ -123,7 +123,9 @@ final class InboxStore {
     func vm(_ i: InboxItem, model: AppModel) -> SessionViewModel? {
         if let v = vms[i.id] { return v }
         guard let client = model.client(for: i.item.box) else { return nil }
-        let v = SessionViewModel.shared(box: i.item.box, session: i.item.session, client: client, model: model)
+        // Its own model, not the session window's (`SessionViewModel.shared`): a card's answer must not take the photos
+        // attached in the window's composer, nor read and clear the window's errors.
+        let v = SessionViewModel(box: i.item.box, session: i.item.session, client: client, model: model)
         vms[i.id] = v
         return v
     }
