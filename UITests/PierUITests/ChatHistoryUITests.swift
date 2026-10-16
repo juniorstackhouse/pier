@@ -15,7 +15,7 @@ final class ChatHistoryUITests: XCTestCase {
         app.launchArguments = [
             "-uiTestMock", "1", "-uiTestChatLab", "1", "-uiTestChatLabTurns", "240", "-uiTestChatLabPageSize", "24",
             "-uiTestChatLabProbe", "1",
-            "-openSession", lab, "-undoSeconds", "0", "-session.inspector", "0",
+            "-openSession", lab, "-undoSeconds", "0", "-session.inspector", "0", "-macWindowSize", "1280x800",
             "-session.view.devbox/\(lab)", "conversation", "-session.view.devbox/\(other)", "conversation",
             "-AppleLanguages", "(pt-BR)", "-AppleLocale", "pt_BR",
         ]

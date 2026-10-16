@@ -17,7 +17,33 @@ on:
 permissions:
   contents: read
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
+  unit-tests:
+    if: ${{ !inputs.baseline }}
+    runs-on: macos-26
+    timeout-minutes: 20
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: PierKit unit tests
+        run: |
+          mkdir -p build/local-test/logs
+          swift test --package-path Packages/PierKit 2>&1 | tee build/local-test/logs/unit-tests.log
+      - name: Upload unit test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pier-unit-tests-${{ github.run_number }}
+          path: build/local-test/logs/unit-tests.log
+          retention-days: 7
+
   mac-test:
     runs-on: macos-26
     timeout-minutes: 60
@@ -42,15 +68,24 @@ jobs:
           brew install xcodegen
           xcodegen --version
 
-      - name: PierKit unit tests
-        run: swift test --package-path Packages/PierKit 2>&1 | tee build/local-test/logs/unit-tests.log
-
       - name: Build isolated optimized Debug app
         run: bash Config/scripts/build-local-test.sh build
 
       - name: Package app and debugging symbols
         if: ${{ !inputs.baseline }}
         run: bash Config/scripts/build-local-test.sh package
+
+      - name: Upload runnable app
+        if: ${{ !inputs.baseline }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pier-Teste-app-${{ github.run_number }}
+          path: |
+            build/local-test/Pier-Teste.app.zip
+            build/local-test/Pier-Teste.dSYM.zip
+            build/local-test/build-info.txt
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Conversation history UI regression
         if: ${{ inputs.ui_tests }}
@@ -63,13 +98,13 @@ jobs:
             ditto -c -k --keepParent build/local-test/ChatHistory.xcresult build/local-test/ChatHistory.xcresult.zip
           fi
 
-      - name: Upload app, symbols and logs
+      - name: Upload UI test results and logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Pier-Teste-${{ inputs.baseline && 'baseline' || 'fix' }}-${{ github.run_number }}
+          name: Pier-Teste-results-${{ inputs.baseline && 'baseline' || 'fix' }}-${{ github.run_number }}
           path: |
-            build/local-test/*.zip
+            build/local-test/ChatHistory.xcresult.zip
             build/local-test/build-info.txt
             build/local-test/logs/
           if-no-files-found: error
