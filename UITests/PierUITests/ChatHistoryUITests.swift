@@ -7,6 +7,7 @@ final class ChatHistoryUITests: XCTestCase {
     private var app: XCUIApplication!
     private let lab = "chatlab-claude-z9"
     private let other = "sandbox-subtract-claude-6s1"
+    private var latestTurn = 240
 
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -32,7 +33,7 @@ final class ChatHistoryUITests: XCTestCase {
     private var historyRequests: Int? { (element("chat-history-before-count").value as? String).flatMap(Int.init) }
 
     private func assertLatestVisible() {
-        let latest = marker(240)
+        let latest = marker(latestTurn)
         XCTAssertTrue(latest.waitForExistence(timeout: 15), "the newest reply never appeared; the layout may be spinning")
         let visible = NSPredicate { _, _ in latest.exists && latest.frame.intersects(self.conversation.frame) }
         let expectation = XCTNSPredicateExpectation(predicate: visible, object: nil)
@@ -112,5 +113,31 @@ final class ChatHistoryUITests: XCTestCase {
         }
         assertComposerResponds("synthetic-after-session-switch")
         XCTAssertEqual(historyRequests, 0, "switching sessions fetched history without a user scroll")
+    }
+
+    /// The reported freeze also occurs in short records. Long history is a stress case, not a precondition.
+    func testSmallUnpagedConversationRemainsResponsiveAcrossSessionSwitches() throws {
+        latestTurn = 5
+        for (flag, value) in [("-uiTestChatLabTurns", "5"), ("-uiTestChatLabPageSize", "0")] {
+            let index = app.launchArguments.firstIndex(of: flag)!
+            app.launchArguments[index + 1] = value
+        }
+        // Five invented turns (20 items), ordinary mixed Markdown, no oversized final reply or earlier pages.
+        openLab()
+        assertComposerResponds("synthetic-small-open")
+        let labRow = element("sidebar-chat-\(lab)")
+        let otherRow = element("sidebar-agent-devbox/\(other)")
+        guard labRow.exists, otherRow.exists else {
+            throw XCTSkip("session switching uses the regular-width Mac/iPad sidebar")
+        }
+        for round in 1...3 {
+            otherRow.tap()
+            XCTAssertTrue(element("session-open-\(other)").waitForExistence(timeout: 5))
+            labRow.tap()
+            XCTAssertTrue(element("session-open-\(lab)").waitForExistence(timeout: 5))
+            assertLatestVisible()
+            assertComposerResponds("-small-switch-\(round)")
+        }
+        XCTAssertEqual(historyRequests, 0, "an unpaged conversation requested older history")
     }
 }

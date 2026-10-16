@@ -1,4 +1,5 @@
 name: Pier isolated Mac test
+run-name: "Mac chat ${{ inputs.baseline && 'baseline 1.1' || 'fix' }} · ${{ github.sha }}"
 
 on:
   workflow_dispatch:
@@ -7,6 +8,11 @@ on:
         description: Run the mock conversation history UI regression tests
         type: boolean
         default: true
+
+      baseline:
+        description: Compare the original 1.1 conversation with the same synthetic tests (no app artifact)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -21,6 +27,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+
+      - name: Use released conversation for comparison
+        if: ${{ inputs.baseline }}
+        run: |
+          git fetch --depth=1 origin tag pier-mac-v1.1
+          python3 Config/scripts/use-chat-baseline.py
 
       - name: Build tools
         run: |
@@ -37,6 +49,7 @@ jobs:
         run: bash Config/scripts/build-local-test.sh build
 
       - name: Package app and debugging symbols
+        if: ${{ !inputs.baseline }}
         run: bash Config/scripts/build-local-test.sh package
 
       - name: Conversation history UI regression
@@ -54,7 +67,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Pier-Teste-${{ github.run_number }}
+          name: Pier-Teste-${{ inputs.baseline && 'baseline' || 'fix' }}-${{ github.run_number }}
           path: |
             build/local-test/*.zip
             build/local-test/build-info.txt

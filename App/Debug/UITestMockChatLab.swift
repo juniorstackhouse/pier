@@ -47,7 +47,7 @@ struct MockChatLab {
             let pick = (turn + shift) % replies.count
             var reply = replies[pick]
             if tallTail, turn == last { reply += "\n\n" + tallReply }
-            if pageSize != nil || tallTail { reply += "\n\nhistory-turn-\(turn + 1)" }
+            if pageSize != nil || tallTail || turnCount != 60 { reply += "\n\nhistory-turn-\(turn + 1)" }
             out.append(item("user", ["text": prompts[pick] + (turn >= prompts.count ? " (\(turn / prompts.count + 1))" : "")]))
             out.append(item("tools", ["verb": "Read", "done": true, "items": [
                 ["id": "toolu_lab_\(off)_0", "verb": "Read", "target": "src/billing/totals.ts", "at": 1_791_408_804_607],

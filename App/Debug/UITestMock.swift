@@ -675,12 +675,12 @@ final class MockBox: PierTransport, @unchecked Sendable {
                                         "reason": "No claude conversation for /home/ubuntu/code/\(name) yet in ~/.claude/projects."]))
             }
             let all = transcripts[name] ?? []
+            #if DEBUG
+            if name == MockChatLab.name, let before = query["before"].flatMap(Int.init), before > 0 {
+                ChatHistoryDiagnostics.didRequestHistory()
+            }
+            #endif
             if name == MockChatLab.name, let page = MockChatLab.page(items: all, query: query) {
-                #if DEBUG
-                if let before = query["before"].flatMap(Int.init), before > 0 {
-                    ChatHistoryDiagnostics.didRequestHistory()
-                }
-                #endif
                 return (200, Self.json(page))
             }
             // --- Agents board: `before=0` is "the tail" (the board's last reply of a finished turn), as on pierd. ---
