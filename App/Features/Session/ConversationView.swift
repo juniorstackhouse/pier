@@ -73,6 +73,11 @@ struct ConversationView: View {
                 .frame(maxWidth: .infinity)
             }
             .accessibilityIdentifier("conversation-scroll")
+            .onGeometryChange(for: CGSize.self) { $0.size } action: { size in
+                guard size.width > 0, size.height > 0 else { return }
+                // Window/inspector resizing reflows text. Follow the viewport, never estimated content height.
+                scrollEvents.submitViewportChange { follow(proxy) }
+            }
             .modifier(InitialConversationAnchor())
             .modifier(FollowScrollPosition(state: $scrollState, events: scrollEvents, resumeFollowing: { follow(proxy) }) {
                 Task { await loadOlder(proxy) }
@@ -118,7 +123,11 @@ struct ConversationView: View {
             .onChange(of: vm.session.agentState) { _, _ in follow(proxy) }
             .onChange(of: vm.reviewCard?.changes) { _, _ in follow(proxy) }
             .onChange(of: vm.sendTick) { _, _ in requestFollow(proxy) }
-            .onDisappear { followTask?.cancel(); scrollEvents.cancelGeometry() }
+            .onDisappear {
+                followTask?.cancel()
+                scrollEvents.cancelGeometry()
+                scrollEvents.cancelViewportChange()
+            }
         }
     }
 
@@ -383,6 +392,8 @@ private final class ConversationScrollEvents {
     var pendingContentFollow = false
     private var pendingGeometry: (@MainActor () -> Void)?
     private var scheduled = false
+    private var pendingViewportChange: (@MainActor () -> Void)?
+    private var viewportChangeScheduled = false
 
     func submitGeometry(_ action: @escaping @MainActor () -> Void) {
         pendingGeometry = action
@@ -398,6 +409,22 @@ private final class ConversationScrollEvents {
     }
 
     func cancelGeometry() { pendingGeometry = nil }
+
+    /// Keep viewport updates separate so they cannot replace the final real gesture position.
+    func submitViewportChange(_ action: @escaping @MainActor () -> Void) {
+        pendingViewportChange = action
+        guard !viewportChangeScheduled else { return }
+        viewportChangeScheduled = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.viewportChangeScheduled = false
+            let action = self.pendingViewportChange
+            self.pendingViewportChange = nil
+            action?()
+        }
+    }
+
+    func cancelViewportChange() { pendingViewportChange = nil }
 }
 
 /// Only real scroll interaction can detach following or request a history page. Initial placement, lazy height
