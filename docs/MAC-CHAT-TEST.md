@@ -45,14 +45,17 @@ experimental app. Follow the normal macOS prompts; do not disable Gatekeeper or 
 
 ## Scroll correction
 
-The conversation keeps lazy rendering and visual text selection. It uses an initial bottom anchor rather than continuous
-size-change anchoring. Explicit content or viewport changes may start a bounded follow sequence after the viewport has
-settled. It first materializes the last actual reply when its identity or viewport changes, then targets the bottom;
-ordinary draft ticks do not repeat that preparation. On systems with scroll geometry, passive measurements let the
-sequence stop after two stable bottom readings;
-it has at most eight checks, 150 ms apart, and user interaction cancels the active sequence. Geometry callbacks never
-start or restart it. Older systems retain a single explicit scroll. Pagination is driven by real scroll interaction and
-preserves the previously visible block after a successful history load.
+On Mac Catalyst, the conversation measures the loaded history with a `VStack` instead of `LazyVStack`. Text selection
+and Markdown remain available. The Mac has no automatic bottom anchor: loading, content changes and a settled viewport
+request one explicit scroll, outside the layout transaction. Resize requests wait for 250 ms without another viewport
+size change, and user interaction or reading older messages prevents automatic following. There are no priming or retry
+sequences. Scroll geometry callbacks record passive diagnostics and handle actual user scrolling; idle layout cannot request
+history or schedule another follow. iPhone and iPad keep a lazy stack and their initial-position fallback.
+
+The server's initial window contains at most 300 transcript items; each request for older messages adds up to 120.
+Pagination preserves the previously visible block after a successful history load. Already loaded and cached items are
+not discarded, so rendering cost grows with the history the person has requested. This change does not introduce a
+rendering cap or remove access to older messages; test long, previously expanded histories as well as the initial window.
 
 ## Validation
 

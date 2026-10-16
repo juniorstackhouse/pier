@@ -18,7 +18,7 @@ struct ConversationView: View {
 
     private var blocks: [ConversationBlock] { ConversationFold.blocks(vm.store.displayItems, live: vm.isRunning || vm.isWaiting) }
 
-    /// What the lazy stack iterates: an id and where the block is. SwiftUI walks a ForEach's data again and again while
+    /// What the stack iterates: an id and where the block is. SwiftUI walks a ForEach's data again and again while
     /// it scrolls, and copying the blocks themselves (each holding whole transcript items) was a tenth of the main thread.
     private struct Row: Identifiable {
         let id: String
@@ -28,15 +28,9 @@ struct ConversationView: View {
     var body: some View {
         let blocks = self.blocks
         let rows = blocks.indices.map { Row(id: blocks[$0].id, index: $0) }
-        // Capture from the already-folded body, never by folding history on each draft update. A stable reply before
-        // a live draft can be much taller than its estimate and must be measured before targeting the end.
-        let materializationID = blocks.last(where: { block in
-            if case .item(let item) = block { return item.type == .text }
-            return false
-        })?.id ?? rows.last?.id
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 14) {
+                ConversationStack {
                     top(proxy)
                     // A task just started here: the person's words first, while the agent writes its record.
                     if vm.showsStartingPrompt, let p = vm.startingPrompt {
@@ -115,15 +109,14 @@ struct ConversationView: View {
                 }
             }
             // Observe streaming in a child, so each draft update does not fold/diff the entire history.
-            // Follow content changes explicitly, outside the layout transaction. Size-change anchoring on a
-            // lazy stack can feed its estimated heights back into scroll layout indefinitely on Mac Catalyst.
+            // Follow content changes explicitly, outside the layout transaction. On Catalyst the loaded history
+            // has concrete heights, so one command can target the end without lazy estimate/anchor feedback.
             .background { DraftFollow(vm: vm) { follow(proxy) } }
             .background {
                 #if DEBUG
                 ChatHistoryProbe()
                 #endif
             }
-            .onChange(of: materializationID, initial: true) { _, id in scrollEvents.materializationID = id }
             .onChange(of: vm.store.next) { _, _ in follow(proxy) }
             .onChange(of: vm.loaded) { _, loaded in if loaded { follow(proxy) } }
             .onChange(of: vm.outgoing.count) { _, _ in follow(proxy) }
@@ -140,13 +133,13 @@ struct ConversationView: View {
 
     private func requestFollow(_ proxy: ScrollViewProxy) {
         scrollEvents.cancelGeometry()
-        scrollEvents.materializedID = nil
         scrollState.requestFollow()
         follow(proxy)
     }
 
     private func follow(_ proxy: ScrollViewProxy) {
-        guard scrollState.followsBottom, !vm.loadingOlder else { return }
+        guard scrollState.followsBottom, !vm.loadingOlder,
+              vm.loaded || vm.showsStartingPrompt || !vm.outgoing.isEmpty else { return }
         if scrollEvents.isUserInteracting || scrollEvents.isViewportChanging {
             scrollEvents.pendingContentFollow = true
             return
@@ -160,48 +153,22 @@ struct ConversationView: View {
         #endif
         followTask = Task { @MainActor in
             await Task.yield()
-            let materializationID = scrollEvents.materializationID
-            var settling = ConversationFollowSettlement(primeFirst: materializationID != nil && materializationID != scrollEvents.materializedID)
-            #if DEBUG
-            var step = 0
-            #endif
-            while !Task.isCancelled {
-                guard scrollEvents.interactionGeneration == interactionGeneration,
-                      scrollState.followsBottom, !vm.loadingOlder else { return }
-                if scrollEvents.isUserInteracting || scrollEvents.isViewportChanging {
-                    scrollEvents.pendingContentFollow = true
-                    return
-                }
-                // Read passive geometry only on this finite schedule; geometry callbacks never request a retry.
-                let action = settling.advance(distanceFromBottom: scrollEvents.distanceFromBottom,
-                                              contentHeight: scrollEvents.contentHeight, canFollow: true)
-                #if DEBUG
-                step += 1
-                ChatHistoryDiagnostics.recordScroll(event: "settlement", sequence: sequence, step: step,
-                    action: String(describing: action), target: action == .prime ? "last-row" : "bottom",
-                    distanceFromBottom: scrollEvents.distanceFromBottom, contentHeight: scrollEvents.contentHeight,
-                    visibleMinY: scrollEvents.visibleMinY, visibleMaxY: scrollEvents.visibleMaxY,
-                    viewportHeight: scrollEvents.viewportHeight, followsBottom: scrollState.followsBottom,
-                    isUserInteracting: scrollEvents.isUserInteracting, isViewportChanging: scrollEvents.isViewportChanging,
-                    itemCount: vm.store.items.count)
-                #endif
-                switch action {
-                case .prime:
-                    if #unavailable(iOS 18) { proxy.scrollTo("bottom", anchor: .bottom); return }
-                    if let materializationID {
-                        proxy.scrollTo(materializationID, anchor: .bottom)
-                        // A new draft tick may cancel this sequence. It must continue at the bottom, not prime again.
-                        scrollEvents.materializedID = materializationID
-                    }
-                case .scroll:
-                    proxy.scrollTo("bottom", anchor: .bottom)
-                    // iOS 17 has no passive scroll geometry or phase observation; keep its single-scroll fallback.
-                    if #unavailable(iOS 18) { return }
-                case .wait: break
-                case .stop: return
-                }
-                do { try await Task.sleep(for: .milliseconds(150)) } catch { return }
+            guard !Task.isCancelled, scrollEvents.interactionGeneration == interactionGeneration,
+                  scrollState.followsBottom, !vm.loadingOlder else { return }
+            if scrollEvents.isUserInteracting || scrollEvents.isViewportChanging {
+                scrollEvents.pendingContentFollow = true
+                return
             }
+            #if DEBUG
+            ChatHistoryDiagnostics.recordScroll(event: "follow", sequence: sequence, step: 1,
+                action: "scroll", target: "bottom",
+                distanceFromBottom: scrollEvents.distanceFromBottom, contentHeight: scrollEvents.contentHeight,
+                visibleMinY: scrollEvents.visibleMinY, visibleMaxY: scrollEvents.visibleMaxY,
+                viewportHeight: scrollEvents.viewportHeight, followsBottom: scrollState.followsBottom,
+                isUserInteracting: scrollEvents.isUserInteracting, isViewportChanging: scrollEvents.isViewportChanging,
+                itemCount: vm.store.items.count)
+            #endif
+            proxy.scrollTo("bottom", anchor: .bottom)
         }
     }
 
@@ -422,14 +389,34 @@ struct ReviewCard: View {
     }
 }
 
-/// Set the initial position only. Continuously anchoring size changes fights a LazyVStack's height estimates.
+/// Catalyst measures the loaded history as a whole. This avoids lazy height estimates feeding back into scroll
+/// placement; the server supplies an initial window and earlier history is still fetched only when requested.
+private struct ConversationStack<Content: View>: View {
+    let content: Content
+
+    init(@ViewBuilder content: () -> Content) { self.content = content() }
+
+    var body: some View {
+        #if targetEnvironment(macCatalyst)
+        VStack(alignment: .leading, spacing: 14) { content }
+        #else
+        LazyVStack(alignment: .leading, spacing: 14) { content }
+        #endif
+    }
+}
+
+/// Catalyst follows explicitly after loading/layout. The mobile lazy list keeps its initial-position fallback.
 private struct InitialConversationAnchor: ViewModifier {
     func body(content: Content) -> some View {
+        #if targetEnvironment(macCatalyst)
+        content
+        #else
         if #available(iOS 18, *) {
             content.defaultScrollAnchor(.bottom, for: .initialOffset)
         } else {
             content.defaultScrollAnchor(.bottom)
         }
+        #endif
     }
 }
 
@@ -444,8 +431,6 @@ private final class ConversationScrollEvents {
     var visibleMinY: Double?
     var visibleMaxY: Double?
     var viewportHeight: Double?
-    var materializationID: String?
-    var materializedID: String?
     #if DEBUG
     var followSequence = 0
     #endif
@@ -479,7 +464,6 @@ private final class ConversationScrollEvents {
         guard size.width.isFinite, size.height.isFinite, size.width > 0, size.height > 0 else { return }
         if let previous = viewportSize, size == previous { return }
         viewportSize = size
-        materializedID = nil
         isViewportChanging = true
         pendingViewportChange = action
         viewportTask?.cancel()
@@ -499,7 +483,6 @@ private final class ConversationScrollEvents {
         viewportTask = nil
         pendingViewportChange = nil
         viewportSize = nil
-        materializedID = nil
         isViewportChanging = false
     }
 }

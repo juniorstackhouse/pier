@@ -19,7 +19,8 @@ struct MockChatLab {
     }
     static var pageSize: Int? {
         let size = UserDefaults.standard.integer(forKey: "uiTestChatLabPageSize")
-        return size > 0 ? min(size, 120) : nil
+        // The server's initial transcript window holds up to 300 items. Older requests still honor their limit.
+        return size > 0 ? min(size, 300) : nil
     }
     static var tallTail: Bool { UserDefaults.standard.bool(forKey: "uiTestChatLabTallTail") }
 
