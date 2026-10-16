@@ -28,6 +28,12 @@ struct ConversationView: View {
     var body: some View {
         let blocks = self.blocks
         let rows = blocks.indices.map { Row(id: blocks[$0].id, index: $0) }
+        // Capture from the already-folded body, never by folding history on each draft update. A stable reply before
+        // a live draft can be much taller than its estimate and must be measured before targeting the end.
+        let materializationID = blocks.last(where: { block in
+            if case .item(let item) = block { return item.type == .text }
+            return false
+        })?.id ?? rows.last?.id
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 14) {
@@ -117,6 +123,7 @@ struct ConversationView: View {
                 ChatHistoryProbe()
                 #endif
             }
+            .onChange(of: materializationID, initial: true) { _, id in scrollEvents.materializationID = id }
             .onChange(of: vm.store.next) { _, _ in follow(proxy) }
             .onChange(of: vm.loaded) { _, loaded in if loaded { follow(proxy) } }
             .onChange(of: vm.outgoing.count) { _, _ in follow(proxy) }
@@ -133,6 +140,7 @@ struct ConversationView: View {
 
     private func requestFollow(_ proxy: ScrollViewProxy) {
         scrollEvents.cancelGeometry()
+        scrollEvents.materializedID = nil
         scrollState.requestFollow()
         follow(proxy)
     }
@@ -146,9 +154,17 @@ struct ConversationView: View {
         scrollEvents.pendingContentFollow = false
         followTask?.cancel()
         let interactionGeneration = scrollEvents.interactionGeneration
+        #if DEBUG
+        scrollEvents.followSequence &+= 1
+        let sequence = scrollEvents.followSequence
+        #endif
         followTask = Task { @MainActor in
             await Task.yield()
-            var settling = ConversationFollowSettlement()
+            let materializationID = scrollEvents.materializationID
+            var settling = ConversationFollowSettlement(primeFirst: materializationID != nil && materializationID != scrollEvents.materializedID)
+            #if DEBUG
+            var step = 0
+            #endif
             while !Task.isCancelled {
                 guard scrollEvents.interactionGeneration == interactionGeneration,
                       scrollState.followsBottom, !vm.loadingOlder else { return }
@@ -157,8 +173,26 @@ struct ConversationView: View {
                     return
                 }
                 // Read passive geometry only on this finite schedule; geometry callbacks never request a retry.
-                switch settling.advance(distanceFromBottom: scrollEvents.distanceFromBottom,
-                                        contentHeight: scrollEvents.contentHeight, canFollow: true) {
+                let action = settling.advance(distanceFromBottom: scrollEvents.distanceFromBottom,
+                                              contentHeight: scrollEvents.contentHeight, canFollow: true)
+                #if DEBUG
+                step += 1
+                ChatHistoryDiagnostics.recordScroll(event: "settlement", sequence: sequence, step: step,
+                    action: String(describing: action), target: action == .prime ? "last-row" : "bottom",
+                    distanceFromBottom: scrollEvents.distanceFromBottom, contentHeight: scrollEvents.contentHeight,
+                    visibleMinY: scrollEvents.visibleMinY, visibleMaxY: scrollEvents.visibleMaxY,
+                    viewportHeight: scrollEvents.viewportHeight, followsBottom: scrollState.followsBottom,
+                    isUserInteracting: scrollEvents.isUserInteracting, isViewportChanging: scrollEvents.isViewportChanging,
+                    itemCount: vm.store.items.count)
+                #endif
+                switch action {
+                case .prime:
+                    if #unavailable(iOS 18) { proxy.scrollTo("bottom", anchor: .bottom); return }
+                    if let materializationID {
+                        proxy.scrollTo(materializationID, anchor: .bottom)
+                        // A new draft tick may cancel this sequence. It must continue at the bottom, not prime again.
+                        scrollEvents.materializedID = materializationID
+                    }
                 case .scroll:
                     proxy.scrollTo("bottom", anchor: .bottom)
                     // iOS 17 has no passive scroll geometry or phase observation; keep its single-scroll fallback.
@@ -407,6 +441,14 @@ private final class ConversationScrollEvents {
     // Passive layout samples, never observed by SwiftUI and never used to schedule work.
     var distanceFromBottom: Double?
     var contentHeight: Double?
+    var visibleMinY: Double?
+    var visibleMaxY: Double?
+    var viewportHeight: Double?
+    var materializationID: String?
+    var materializedID: String?
+    #if DEBUG
+    var followSequence = 0
+    #endif
     private(set) var isViewportChanging = false
     /// Retry content following after a gesture or a viewport resize ends, if the reader is still following.
     var pendingContentFollow = false
@@ -437,6 +479,7 @@ private final class ConversationScrollEvents {
         guard size.width.isFinite, size.height.isFinite, size.width > 0, size.height > 0 else { return }
         if let previous = viewportSize, size == previous { return }
         viewportSize = size
+        materializedID = nil
         isViewportChanging = true
         pendingViewportChange = action
         viewportTask?.cancel()
@@ -456,6 +499,7 @@ private final class ConversationScrollEvents {
         viewportTask = nil
         pendingViewportChange = nil
         viewportSize = nil
+        materializedID = nil
         isViewportChanging = false
     }
 }
@@ -473,6 +517,9 @@ private struct FollowScrollPosition: ViewModifier {
         var fromTop: Double
         var scrollable: Bool
         var contentHeight: Double
+        var visibleMinY: Double
+        var visibleMaxY: Double
+        var viewportHeight: Double
     }
 
     func body(content: Content) -> some View {
@@ -481,11 +528,17 @@ private struct FollowScrollPosition: ViewModifier {
                 Spot(fromBottom: Double((g.contentSize.height - g.visibleRect.maxY).rounded()),
                      fromTop: Double((g.visibleRect.minY / 20).rounded() * 20),
                      scrollable: g.contentSize.height > g.containerSize.height + 1,
-                     contentHeight: Double(g.contentSize.height.rounded()))
+                     contentHeight: Double(g.contentSize.height.rounded()),
+                     visibleMinY: Double(g.visibleRect.minY.rounded()),
+                     visibleMaxY: Double(g.visibleRect.maxY.rounded()),
+                     viewportHeight: Double(g.containerSize.height.rounded()))
             } action: { _, spot in
                 // Content shorter than the viewport has no missing bottom even though its distance is negative.
                 events.distanceFromBottom = spot.scrollable ? spot.fromBottom : 0
                 events.contentHeight = spot.contentHeight
+                events.visibleMinY = spot.visibleMinY
+                events.visibleMaxY = spot.visibleMaxY
+                events.viewportHeight = spot.viewportHeight
                 guard events.isUserInteracting else { return }
                 events.submitGeometry {
                     if state.update(fromTop: spot.fromTop, fromBottom: spot.fromBottom,

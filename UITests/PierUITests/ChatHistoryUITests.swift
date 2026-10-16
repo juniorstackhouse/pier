@@ -29,7 +29,8 @@ final class ChatHistoryUITests: XCTestCase {
             screenshot.lifetime = .keepAlways
             add(screenshot)
             let frames = "window=\(app.windows.firstMatch.frame) conversation=\(conversation.frame) "
-                + "composer=\(element("composer-field").frame) historyRequests=\(historyRequests.map(String.init) ?? "missing")"
+                + "composer=\(element("composer-field").frame) historyRequests=\(historyRequests.map(String.init) ?? "missing") "
+                + "latest=\(marker(latestTurn).exists ? String(describing: marker(latestTurn).frame) : "missing")"
             let diagnostic = XCTAttachment(string: frames)
             diagnostic.name = "synthetic-chat-frames"
             diagnostic.lifetime = .keepAlways
@@ -59,11 +60,16 @@ final class ChatHistoryUITests: XCTestCase {
                        "the chat did not settle at the latest reply")
     }
 
-    private func openLab() {
+    private func openLab(requireLatestVisible: Bool = true) {
         app.launch()
         XCTAssertTrue(element("session-open-\(lab)").waitForExistence(timeout: 15), "the lab session did not open")
         XCTAssertTrue(conversation.waitForExistence(timeout: 10), "the conversation was replaced by a terminal or fallback")
-        assertLatestVisible()
+        if requireLatestVisible {
+            assertLatestVisible()
+        } else {
+            // The opening-position tests cover visibility. The send regression must still run if that alone fails.
+            XCTAssertTrue(marker(latestTurn).waitForExistence(timeout: 15), "the long record never loaded")
+        }
         XCTAssertTrue(element("chat-history-before-count").waitForExistence(timeout: 5), "the DEBUG history probe is missing")
         XCTAssertEqual(historyRequests, 0, "opening at the bottom fetched history without a user scroll")
     }
@@ -94,6 +100,31 @@ final class ChatHistoryUITests: XCTestCase {
             assertComposerResponds("-after-resize")
         }
         XCTAssertEqual(historyRequests, 0, "typing or resizing at the bottom fetched older history")
+    }
+
+    func testSendingAfterTallTailKeepsTheCompletedReplyVisible() {
+        app.launchArguments += ["-uiTestChatLabTallTail", "1"]
+        openLab(requireLatestVisible: false)
+        assertComposerResponds("Synthetic follow-up after the tall reply")
+        element("composer-send").tap()
+
+        // This is the existing fixture's last paragraph, so its appearance proves the full reply arrived.
+        let endOfReply = app.staticTexts.matching(NSPredicate(
+            format: "label CONTAINS %@", "Tell me if you want the receipts changed in the same PR.")).firstMatch
+        XCTAssertTrue(endOfReply.waitForExistence(timeout: 20), "the complete synthetic reply never appeared")
+        // The mock clears its draft two seconds after appending the record. Its session list does not publish
+        // events, so a stale running toolbar is not a reliable indication of this handoff completing.
+        let brewing = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "Brewing")).firstMatch
+        XCTAssertTrue(brewing.waitForNonExistence(timeout: 15), "the synthetic draft did not finish its handoff")
+        let visible = NSPredicate { _, _ in
+            endOfReply.exists && endOfReply.frame.intersects(self.conversation.frame)
+        }
+        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: visible, object: nil)], timeout: 5),
+                       .completed, "the conversation became blank or lost the completed reply after the draft cleared")
+        assertComposerResponds("synthetic-after-complete-reply")
+        XCTAssertTrue(endOfReply.exists && endOfReply.frame.intersects(conversation.frame),
+                      "typing after the completed reply displaced it outside the viewport")
+        XCTAssertEqual(historyRequests, 0, "sending at the bottom fetched older history")
     }
 
     func testScrollingLoadsEarlierPagesAndReturnsToLatestReply() {

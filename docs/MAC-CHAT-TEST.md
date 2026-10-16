@@ -47,7 +47,9 @@ experimental app. Follow the normal macOS prompts; do not disable Gatekeeper or 
 
 The conversation keeps lazy rendering and visual text selection. It uses an initial bottom anchor rather than continuous
 size-change anchoring. Explicit content or viewport changes may start a bounded follow sequence after the viewport has
-settled. On systems with scroll geometry, passive measurements let that sequence stop after two stable bottom readings;
+settled. It first materializes the last actual reply when its identity or viewport changes, then targets the bottom;
+ordinary draft ticks do not repeat that preparation. On systems with scroll geometry, passive measurements let the
+sequence stop after two stable bottom readings;
 it has at most eight checks, 150 ms apart, and user interaction cancels the active sequence. Geometry callbacks never
 start or restart it. Older systems retain a single explicit scroll. Pagination is driven by real scroll interaction and
 preserves the previously visible block after a successful history load.
@@ -56,7 +58,9 @@ preserves the previously visible block after a successful history load.
 
 `ChatHistoryUITests` uses an in-memory mock: a small unpaged conversation, hundreds of paginated turns, and a final reply with tall Markdown rows. It
 checks opening at the latest reply, loading older history by scrolling, returning to the latest reply, and switching
-sessions while retaining UI responsiveness. It never contacts a real box. The artifact includes failures as well as
+sessions while retaining UI responsiveness, plus a completed streamed reply after a very tall message. With the opt-in
+mock probe enabled, `CHAT-SCROLL` logs contain only numeric geometry, decision roles and mock stream phases; no text or
+user/session identifiers are recorded. It never contacts a real box. The artifact includes failures as well as
 successes; check the workflow conclusion and `ChatHistory.xcresult` before interpreting its result.
 
 After pairing locally, repeat the session switch that previously froze the app, scroll older messages, return to the

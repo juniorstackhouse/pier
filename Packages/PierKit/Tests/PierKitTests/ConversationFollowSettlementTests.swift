@@ -3,6 +3,22 @@ import Testing
 @testable import PierKit
 
 @Suite struct ConversationFollowSettlementTests {
+    @Test func primingAlwaysPrecedesTheBottomCommandAndUsesTheSameBudget() {
+        var settling = ConversationFollowSettlement(primeFirst: true)
+        let settled = (0..<4).map { _ in
+            settling.advance(distanceFromBottom: 0, contentHeight: 1_000, canFollow: true)
+        }
+        #expect(settled == [.prime, .scroll, .wait, .stop])
+
+        var unsettled = ConversationFollowSettlement(primeFirst: true)
+        let actions = (0..<20).map { _ in
+            unsettled.advance(distanceFromBottom: 5_000, contentHeight: 10_000, canFollow: true)
+        }
+        #expect(actions.first == .prime)
+        #expect(actions.filter { $0 == .scroll }.count == ConversationFollowSettlement.maximumChecks - 1)
+        #expect(actions.dropFirst(ConversationFollowSettlement.maximumChecks).allSatisfy { $0 == .stop })
+    }
+
     @Test func requiresTwoBottomReadingsAfterTheInitialCommand() {
         var settling = ConversationFollowSettlement()
         let initial = settling.advance(distanceFromBottom: 0, contentHeight: 1_000, canFollow: true)
