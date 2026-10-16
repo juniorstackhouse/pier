@@ -68,8 +68,28 @@ jobs:
           brew install xcodegen
           xcodegen --version
 
+      - name: Restore Catalyst build cache
+        id: catalyst-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            build/local-test/SourcePackages
+            build/local-test/DerivedData
+          key: pier-catalyst-26.6-${{ inputs.baseline && 'baseline' || 'fix' }}-${{ github.sha }}
+          restore-keys: |
+            pier-catalyst-26.6-${{ inputs.baseline && 'baseline' || 'fix' }}-
+
       - name: Build isolated optimized Debug app
         run: bash Config/scripts/build-local-test.sh build
+
+      - name: Save compiled Catalyst cache
+        if: ${{ steps.catalyst-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            build/local-test/SourcePackages
+            build/local-test/DerivedData
+          key: ${{ steps.catalyst-cache.outputs.cache-primary-key }}
 
       - name: Package app and debugging symbols
         if: ${{ !inputs.baseline }}

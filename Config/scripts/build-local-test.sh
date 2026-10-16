@@ -48,7 +48,7 @@ package() {
   /usr/bin/codesign --verify --deep --strict --verbose=2 "$app" 2>&1 | tee "$LOGS/signature.log"
   /usr/bin/plutil -extract CFBundleIdentifier raw "$app/Contents/Info.plist" | /usr/bin/grep -Fx 'dev.pier.app.chatfix'
   /usr/bin/plutil -extract PierLocalTest raw "$app/Contents/Info.plist" | /usr/bin/grep -Fx 'true'
-  /usr/bin/codesign --display --entitlements - "$app" > "$LOGS/entitlements.plist" 2> "$LOGS/signing-details.log"
+  /usr/bin/codesign --display --entitlements - --xml "$app" > "$LOGS/entitlements.plist" 2> "$LOGS/signing-details.log"
   python3 - "$app" "$LOGS/entitlements.plist" <<'PY'
 import pathlib
 import plistlib

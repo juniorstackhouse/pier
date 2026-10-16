@@ -52,7 +52,11 @@ info = app['info']['properties']
 info['CFBundleDisplayName'] = 'Pier Teste'
 info['PierLocalTest'] = true
 %w[PierAppGroup PierKeychainGroup UIBackgroundModes BGTaskSchedulerPermittedIdentifiers].each { |key| info.delete(key) }
-targets.fetch('PierUITests')['settings']['base'].merge!({
+ui_tests = targets.fetch('PierUITests')
+# The production suite contains iPhone-only device actions (Home/lock buttons). This Mac target compiles the
+# self-contained conversation regression suite only; -only-testing selects tests to run, not sources to compile.
+ui_tests['sources'] = [{ 'path' => 'UITests/PierUITests/ChatHistoryUITests.swift' }]
+ui_tests['settings']['base'].merge!({
   'SUPPORTS_MACCATALYST' => 'YES',
   'TARGETED_DEVICE_FAMILY' => '1,2,6',
   'DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER' => 'NO'
