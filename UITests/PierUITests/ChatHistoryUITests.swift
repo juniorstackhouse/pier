@@ -2,7 +2,7 @@ import XCTest
 
 /// Synthetic reproduction of the Mac chat's layout loop: a bottom-anchored, paginated conversation with uneven
 /// rows, including one much taller than the viewport. Run this suite on Mac Catalyst (or an iPad simulator).
-/// The mock's initial page has only turns 234–240; turn 233 can appear only after an older-page request.
+/// The mock's initial page has only turns 234–240; turns 228–233 appear only after an older-page request.
 final class ChatHistoryUITests: XCTestCase {
     private var app: XCUIApplication!
     private let lab = "chatlab-claude-z9"
@@ -15,10 +15,28 @@ final class ChatHistoryUITests: XCTestCase {
         app.launchArguments = [
             "-uiTestMock", "1", "-uiTestChatLab", "1", "-uiTestChatLabTurns", "240", "-uiTestChatLabPageSize", "24",
             "-uiTestChatLabProbe", "1",
-            "-openSession", lab, "-undoSeconds", "0", "-session.inspector", "0", "-macWindowSize", "1280x800",
+            // The hosted Mac runner has a 1024x768 display. Keep the composer and toolbar inside its usable area.
+            "-openSession", lab, "-undoSeconds", "0", "-session.inspector", "0", "-macWindowSize", "960x640",
             "-session.view.devbox/\(lab)", "conversation", "-session.view.devbox/\(other)", "conversation",
             "-AppleLanguages", "(pt-BR)", "-AppleLocale", "pt_BR",
         ]
+    }
+
+    override func tearDownWithError() throws {
+        if let run = testRun, run.failureCount > 0, app.state == .runningForeground {
+            let screenshot = XCTAttachment(screenshot: app.screenshot())
+            screenshot.name = "synthetic-chat-failure"
+            screenshot.lifetime = .keepAlways
+            add(screenshot)
+            let frames = "window=\(app.windows.firstMatch.frame) conversation=\(conversation.frame) "
+                + "composer=\(element("composer-field").frame) historyRequests=\(historyRequests.map(String.init) ?? "missing")"
+            let diagnostic = XCTAttachment(string: frames)
+            diagnostic.name = "synthetic-chat-frames"
+            diagnostic.lifetime = .keepAlways
+            add(diagnostic)
+            print("CHAT-HISTORY \(frames)")
+        }
+        try super.tearDownWithError()
     }
 
     private func element(_ id: String) -> XCUIElement {
@@ -54,6 +72,9 @@ final class ChatHistoryUITests: XCTestCase {
     private func assertComposerResponds(_ draft: String) {
         let field = element("composer-field")
         XCTAssertTrue(field.waitForExistence(timeout: 5))
+        let hittable = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isHittable == true"), object: field)
+        XCTAssertEqual(XCTWaiter.wait(for: [hittable], timeout: 5), .completed,
+                       "the composer is outside the clickable viewport or layout stopped responding")
         field.tap()
         field.typeText(draft)
         XCTAssertTrue((field.value as? String)?.contains(draft) == true, "the composer stopped responding after layout")
@@ -77,15 +98,19 @@ final class ChatHistoryUITests: XCTestCase {
 
     func testScrollingLoadsEarlierPagesAndReturnsToLatestReply() {
         openLab()
-        let older = marker(233)
+        let olderTurns = 228...233
         // The lab has 240 turns, but the initial response contains only its last 24 items.
-        XCTAssertFalse(older.exists, "an older page is already visible before any scroll")
+        XCTAssertFalse(olderTurns.contains { marker($0).exists }, "an older page is already visible before any scroll")
         for _ in 0..<24 {
-            if older.exists { break }
+            if (historyRequests ?? 0) > 0 { break }
             conversation.swipeDown(velocity: .fast)
         }
-        XCTAssertTrue(older.waitForExistence(timeout: 5), "scrolling to the top never loaded the next history page")
-        XCTAssertGreaterThan(historyRequests ?? -1, 0, "the older row did not come from a history request")
+        XCTAssertGreaterThan(historyRequests ?? -1, 0, "scrolling to the top never requested the next history page")
+        // A fling may pass turn 233 while the prepended page settles. Require new content, without requiring a
+        // particular off-screen lazy row to remain materialized after the gesture.
+        let olderVisible = NSPredicate { _, _ in olderTurns.contains { self.marker($0).exists } }
+        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: olderVisible, object: nil)], timeout: 5),
+                       .completed, "the history request completed without rendering any row from the older page")
         let end = app.buttons["Ir para o fim"].firstMatch
         XCTAssertTrue(end.waitForExistence(timeout: 5), "scrolling away from the bottom did not offer a return")
         end.tap()

@@ -76,7 +76,7 @@ struct ConversationView: View {
             .onGeometryChange(for: CGSize.self) { $0.size } action: { size in
                 guard size.width > 0, size.height > 0 else { return }
                 // Window/inspector resizing reflows text. Follow the viewport, never estimated content height.
-                scrollEvents.submitViewportChange { follow(proxy) }
+                scrollEvents.submitViewportChange(size) { follow(proxy) }
             }
             .modifier(InitialConversationAnchor())
             .modifier(FollowScrollPosition(state: $scrollState, events: scrollEvents, resumeFollowing: { follow(proxy) }) {
@@ -139,7 +139,7 @@ struct ConversationView: View {
 
     private func follow(_ proxy: ScrollViewProxy) {
         guard scrollState.followsBottom, !vm.loadingOlder else { return }
-        if scrollEvents.isUserInteracting {
+        if scrollEvents.isUserInteracting || scrollEvents.isViewportChanging {
             scrollEvents.pendingContentFollow = true
             return
         }
@@ -148,7 +148,7 @@ struct ConversationView: View {
         followTask = Task { @MainActor in
             await Task.yield()
             guard !Task.isCancelled, scrollState.followsBottom, !vm.loadingOlder else { return }
-            if scrollEvents.isUserInteracting {
+            if scrollEvents.isUserInteracting || scrollEvents.isViewportChanging {
                 scrollEvents.pendingContentFollow = true
                 return
             }
@@ -388,12 +388,14 @@ private struct InitialConversationAnchor: ViewModifier {
 @MainActor
 private final class ConversationScrollEvents {
     var isUserInteracting = false
-    /// Content changed while a gesture held the scroll view. Retry once when that gesture ends, if still following.
+    private(set) var isViewportChanging = false
+    /// Retry content following after a gesture or a viewport resize ends, if the reader is still following.
     var pendingContentFollow = false
     private var pendingGeometry: (@MainActor () -> Void)?
     private var scheduled = false
+    private var viewportSize: CGSize?
     private var pendingViewportChange: (@MainActor () -> Void)?
-    private var viewportChangeScheduled = false
+    private var viewportTask: Task<Void, Never>?
 
     func submitGeometry(_ action: @escaping @MainActor () -> Void) {
         pendingGeometry = action
@@ -410,21 +412,34 @@ private final class ConversationScrollEvents {
 
     func cancelGeometry() { pendingGeometry = nil }
 
-    /// Keep viewport updates separate so they cannot replace the final real gesture position.
-    func submitViewportChange(_ action: @escaping @MainActor () -> Void) {
+    /// A next-queue-turn scrollTo can still race the window's repeated layout passes. Wait for a stable viewport;
+    /// the initial anchor and the loaded-content event already handle the first measurement.
+    func submitViewportChange(_ size: CGSize, _ action: @escaping @MainActor () -> Void) {
+        guard size.width.isFinite, size.height.isFinite, size.width > 0, size.height > 0 else { return }
+        guard let previous = viewportSize else { viewportSize = size; return }
+        guard size != previous else { return }
+        viewportSize = size
+        isViewportChanging = true
         pendingViewportChange = action
-        guard !viewportChangeScheduled else { return }
-        viewportChangeScheduled = true
-        DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
-            self.viewportChangeScheduled = false
+        viewportTask?.cancel()
+        viewportTask = Task { @MainActor [weak self] in
+            do { try await Task.sleep(for: .milliseconds(250)) } catch { return }
+            guard let self, !Task.isCancelled else { return }
+            self.viewportTask = nil
+            self.isViewportChanging = false
             let action = self.pendingViewportChange
             self.pendingViewportChange = nil
             action?()
         }
     }
 
-    func cancelViewportChange() { pendingViewportChange = nil }
+    func cancelViewportChange() {
+        viewportTask?.cancel()
+        viewportTask = nil
+        pendingViewportChange = nil
+        viewportSize = nil
+        isViewportChanging = false
+    }
 }
 
 /// Only real scroll interaction can detach following or request a history page. Initial placement, lazy height
