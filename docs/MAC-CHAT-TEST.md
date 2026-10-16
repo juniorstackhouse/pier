@@ -43,6 +43,15 @@ The test app does not have the production app's provisioning or sandbox. macOS m
 experimental app. Follow the normal macOS prompts; do not disable Gatekeeper or remove security attributes. Apple's
 [opening apps guidance](https://support.apple.com/en-us/102445) describes the available system checks and prompts.
 
+## Scroll correction
+
+The conversation keeps lazy rendering and visual text selection. It uses an initial bottom anchor rather than continuous
+size-change anchoring. Explicit content or viewport changes may start a bounded follow sequence after the viewport has
+settled. On systems with scroll geometry, passive measurements let that sequence stop after two stable bottom readings;
+it has at most eight checks, 150 ms apart, and user interaction cancels the active sequence. Geometry callbacks never
+start or restart it. Older systems retain a single explicit scroll. Pagination is driven by real scroll interaction and
+preserves the previously visible block after a successful history load.
+
 ## Validation
 
 `ChatHistoryUITests` uses an in-memory mock: a small unpaged conversation, hundreds of paginated turns, and a final reply with tall Markdown rows. It

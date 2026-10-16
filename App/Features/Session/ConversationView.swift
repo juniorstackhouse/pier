@@ -145,14 +145,29 @@ struct ConversationView: View {
         }
         scrollEvents.pendingContentFollow = false
         followTask?.cancel()
+        let interactionGeneration = scrollEvents.interactionGeneration
         followTask = Task { @MainActor in
             await Task.yield()
-            guard !Task.isCancelled, scrollState.followsBottom, !vm.loadingOlder else { return }
-            if scrollEvents.isUserInteracting || scrollEvents.isViewportChanging {
-                scrollEvents.pendingContentFollow = true
-                return
+            var settling = ConversationFollowSettlement()
+            while !Task.isCancelled {
+                guard scrollEvents.interactionGeneration == interactionGeneration,
+                      scrollState.followsBottom, !vm.loadingOlder else { return }
+                if scrollEvents.isUserInteracting || scrollEvents.isViewportChanging {
+                    scrollEvents.pendingContentFollow = true
+                    return
+                }
+                // Read passive geometry only on this finite schedule; geometry callbacks never request a retry.
+                switch settling.advance(distanceFromBottom: scrollEvents.distanceFromBottom,
+                                        contentHeight: scrollEvents.contentHeight, canFollow: true) {
+                case .scroll:
+                    proxy.scrollTo("bottom", anchor: .bottom)
+                    // iOS 17 has no passive scroll geometry or phase observation; keep its single-scroll fallback.
+                    if #unavailable(iOS 18) { return }
+                case .wait: break
+                case .stop: return
+                }
+                do { try await Task.sleep(for: .milliseconds(150)) } catch { return }
             }
-            proxy.scrollTo("bottom", anchor: .bottom)
         }
     }
 
@@ -388,6 +403,10 @@ private struct InitialConversationAnchor: ViewModifier {
 @MainActor
 private final class ConversationScrollEvents {
     var isUserInteracting = false
+    var interactionGeneration = 0
+    // Passive layout samples, never observed by SwiftUI and never used to schedule work.
+    var distanceFromBottom: Double?
+    var contentHeight: Double?
     private(set) var isViewportChanging = false
     /// Retry content following after a gesture or a viewport resize ends, if the reader is still following.
     var pendingContentFollow = false
@@ -453,15 +472,20 @@ private struct FollowScrollPosition: ViewModifier {
         var fromBottom: Double
         var fromTop: Double
         var scrollable: Bool
+        var contentHeight: Double
     }
 
     func body(content: Content) -> some View {
         if #available(iOS 18, *) {
             content.onScrollGeometryChange(for: Spot.self) { g in
-                Spot(fromBottom: Double(((g.contentSize.height - g.visibleRect.maxY) / 20).rounded() * 20),
+                Spot(fromBottom: Double((g.contentSize.height - g.visibleRect.maxY).rounded()),
                      fromTop: Double((g.visibleRect.minY / 20).rounded() * 20),
-                     scrollable: g.contentSize.height > g.containerSize.height + 1)
+                     scrollable: g.contentSize.height > g.containerSize.height + 1,
+                     contentHeight: Double(g.contentSize.height.rounded()))
             } action: { _, spot in
+                // Content shorter than the viewport has no missing bottom even though its distance is negative.
+                events.distanceFromBottom = spot.scrollable ? spot.fromBottom : 0
+                events.contentHeight = spot.contentHeight
                 guard events.isUserInteracting else { return }
                 events.submitGeometry {
                     if state.update(fromTop: spot.fromTop, fromBottom: spot.fromBottom,
@@ -471,7 +495,9 @@ private struct FollowScrollPosition: ViewModifier {
                 }
             }
             .onScrollPhaseChange { _, phase in
-                events.isUserInteracting = phase == .tracking || phase == .interacting || phase == .decelerating
+                let userInteracting = phase == .tracking || phase == .interacting || phase == .decelerating
+                if userInteracting && !events.isUserInteracting { events.interactionGeneration &+= 1 }
+                events.isUserInteracting = userInteracting
                 if phase == .idle {
                     // Deliver the final gesture position before rearming pagination for the next gesture.
                     DispatchQueue.main.async {
