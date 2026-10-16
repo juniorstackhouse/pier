@@ -398,7 +398,12 @@ private struct ConversationStack<Content: View>: View {
 
     var body: some View {
         #if targetEnvironment(macCatalyst)
-        VStack(alignment: .leading, spacing: 14) { content }
+        if #available(iOS 18, *) {
+            VStack(alignment: .leading, spacing: 14) { content }
+        } else {
+            // Catalyst 17 observes visibility through appearance; eagerly mounting every row breaks that fallback.
+            LazyVStack(alignment: .leading, spacing: 14) { content }
+        }
         #else
         LazyVStack(alignment: .leading, spacing: 14) { content }
         #endif
@@ -409,7 +414,11 @@ private struct ConversationStack<Content: View>: View {
 private struct InitialConversationAnchor: ViewModifier {
     func body(content: Content) -> some View {
         #if targetEnvironment(macCatalyst)
-        content
+        if #available(iOS 18, *) {
+            content
+        } else {
+            content.defaultScrollAnchor(.bottom)
+        }
         #else
         if #available(iOS 18, *) {
             content.defaultScrollAnchor(.bottom, for: .initialOffset)

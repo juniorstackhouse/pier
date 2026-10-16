@@ -45,12 +45,13 @@ experimental app. Follow the normal macOS prompts; do not disable Gatekeeper or 
 
 ## Scroll correction
 
-On Mac Catalyst, the conversation measures the loaded history with a `VStack` instead of `LazyVStack`. Text selection
+On Mac Catalyst 18 and later (macOS 15+), the conversation measures the loaded history with a `VStack` instead of `LazyVStack`. Text selection
 and Markdown remain available. The Mac has no automatic bottom anchor: loading, content changes and a settled viewport
 request one explicit scroll, outside the layout transaction. Resize requests wait for 250 ms without another viewport
 size change, and user interaction or reading older messages prevents automatic following. There are no priming or retry
 sequences. Scroll geometry callbacks record passive diagnostics and handle actual user scrolling; idle layout cannot request
-history or schedule another follow. iPhone and iPad keep a lazy stack and their initial-position fallback.
+history or schedule another follow. iPhone and iPad keep a lazy stack and their initial-position fallback. Catalyst 17
+(macOS 14) also retains the lazy stack and default bottom anchor because its visibility fallback uses row appearance.
 
 The server's initial window contains at most 300 transcript items; each request for older messages adds up to 120.
 Pagination preserves the previously visible block after a successful history load. Already loaded and cached items are
