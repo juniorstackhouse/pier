@@ -412,12 +412,11 @@ private final class ConversationScrollEvents {
 
     func cancelGeometry() { pendingGeometry = nil }
 
-    /// A next-queue-turn scrollTo can still race the window's repeated layout passes. Wait for a stable viewport;
-    /// the initial anchor and the loaded-content event already handle the first measurement.
+    /// A next-queue-turn scrollTo can still race the window's repeated layout passes. Wait for a stable viewport,
+    /// including its first measurement: a cached transcript may not emit another loaded-content event.
     func submitViewportChange(_ size: CGSize, _ action: @escaping @MainActor () -> Void) {
         guard size.width.isFinite, size.height.isFinite, size.width > 0, size.height > 0 else { return }
-        guard let previous = viewportSize else { viewportSize = size; return }
-        guard size != previous else { return }
+        if let previous = viewportSize, size == previous { return }
         viewportSize = size
         isViewportChanging = true
         pendingViewportChange = action
