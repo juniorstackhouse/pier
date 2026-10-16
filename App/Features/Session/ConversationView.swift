@@ -117,7 +117,7 @@ struct ConversationView: View {
                 ChatHistoryProbe()
                 #endif
             }
-            .onChange(of: vm.store.next) { _, _ in follow(proxy) }
+            .onChange(of: vm.conversationContentRevision) { _, _ in follow(proxy) }
             .onChange(of: vm.loaded) { _, loaded in if loaded { follow(proxy) } }
             .onChange(of: vm.outgoing.count) { _, _ in follow(proxy) }
             .onChange(of: vm.session.agentState) { _, _ in follow(proxy) }

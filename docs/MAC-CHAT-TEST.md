@@ -29,6 +29,8 @@ and the [runner image](https://github.com/actions/runner-images/blob/main/images
 ## Isolation and pairing
 
 - The app and keychain service use `dev.pier.app.chatfix`, with a separate Application Support folder and defaults.
+  Its conversation cache also lives under `Caches/dev.pier.app.chatfix/Transcripts`, rather than the generic
+  `Caches/Transcripts` directory used by an unprovisioned production build.
 - `PierLocalTest = true` in its generated Info.plist disables App Group storage, iCloud sync/alerts, remote push, login
   registration and keychain migration. Widgets and notification service extensions are omitted. The menu bar plugin
   keeps its own test bundle identifier.
@@ -52,6 +54,9 @@ size change, and user interaction or reading older messages prevents automatic f
 sequences. Scroll geometry callbacks record passive diagnostics and handle actual user scrolling; idle layout cannot request
 history or schedule another follow. iPhone and iPad keep a lazy stack and their initial-position fallback. Catalyst 17
 (macOS 14) also retains the lazy stack and default bottom anchor because its visibility fallback uses row appearance.
+
+Content following uses a view-model revision when transcript items or pending prompts change, including a command or tool
+updated at the same server cursor. Metadata-only polls do not request a follow; the transcript is not compared in the view body.
 
 The server's initial window contains at most 300 transcript items; each request for older messages adds up to 120.
 Pagination preserves the previously visible block after a successful history load. Already loaded and cached items are
