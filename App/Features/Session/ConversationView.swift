@@ -9,7 +9,11 @@ struct ConversationView: View {
     let vm: SessionViewModel
     @Environment(Router.self) private var router
     @State private var bottomVisible = true
-    @State private var detached = false
+    @State private var scrollState = ConversationScrollState()
+    @State private var scrollEvents = ConversationScrollEvents()
+    @State private var followTask: Task<Void, Never>?
+
+    private var detached: Bool { !scrollState.followsBottom }
     @State private var scrolledUp = false
 
     private var blocks: [ConversationBlock] { ConversationFold.blocks(vm.store.displayItems, live: vm.isRunning || vm.isWaiting) }
@@ -54,30 +58,42 @@ struct ConversationView: View {
                     SessionNextSteps(vm: vm).id("next-steps")
                     if vm.store.displayItems.isEmpty, vm.outgoing.isEmpty, vm.loaded, !vm.isRunning, !vm.starting, !vm.showsStartingPrompt { emptyNote }
                     Color.clear.frame(height: 1).id("bottom")
-                        .onAppear { bottomVisible = true; detached = false }
-                        .onDisappear { bottomVisible = false }
+                        .onAppear {
+                            if #available(iOS 18, *) { return }
+                            bottomVisible = true
+                            scrollState.requestFollow()
+                        }
+                        .onDisappear {
+                            if #available(iOS 18, *) { return }
+                            bottomVisible = false
+                        }
                 }
                 .padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 8)
                 .frame(maxWidth: readableColumn)
                 .frame(maxWidth: .infinity)
             }
-            .defaultScrollAnchor(.bottom)
-            .modifier(PinBottomOnGrowth())
-            .modifier(FollowScrollPosition(detached: $detached, nearTop: $scrolledUp))
+            .accessibilityIdentifier("conversation-scroll")
+            .modifier(InitialConversationAnchor())
+            .modifier(FollowScrollPosition(state: $scrollState, events: scrollEvents, resumeFollowing: { follow(proxy) }) {
+                Task { await loadOlder(proxy) }
+            })
             .scrollDismissesKeyboard(.interactively)
             .simultaneousGesture(DragGesture(minimumDistance: 8).onEnded { _ in
                 // iOS 17 (no scroll geometry): a drag that left the bottom out of view detaches.
                 if #available(iOS 18, *) { return }
                 scrolledUp = true
-                Task { try? await Task.sleep(for: .milliseconds(450)); if !bottomVisible { detached = true } }
+                Task {
+                    try? await Task.sleep(for: .milliseconds(450))
+                    _ = scrollState.update(fromTop: 300, fromBottom: bottomVisible ? 0 : 200,
+                                           scrollable: true, userInteracting: true)
+                }
             })
             // A task just started here already has its first message to show: no spinner over it.
             .overlay { if !vm.loaded && !vm.showsStartingPrompt { loading } }
             .overlay(alignment: .bottomTrailing) {
                 if detached {
                     Button {
-                        detached = false
-                        withAnimation(.snappy) { proxy.scrollTo("bottom", anchor: .bottom) }
+                        requestFollow(proxy)
                     } label: {
                         Image(systemName: "arrow.down").font(.footnote.weight(.bold)).foregroundStyle(Theme.text)
                             .padding(11).background(.ultraThinMaterial, in: Circle())
@@ -87,28 +103,48 @@ struct ConversationView: View {
                     .accessibilityLabel("Ir para o fim")
                 }
             }
-            // iOS 18+: the scroll view itself keeps the bottom pinned as content grows, only while it is at the bottom, so
-            // these manual follows (which raced that and yanked a reader back down) are for iOS 17 only, without animation.
-            // The draft's own follow lives in a view of its own: this body must not depend on the draft, or every
-            // streamed update (each 0.6 s) would fold and diff the whole conversation again.
-            .background { LegacyDraftFollow(vm: vm) { followLegacy(proxy) } }
-            .onChange(of: vm.store.displayItems.last?.id) { _, _ in followLegacy(proxy) }
-            .onChange(of: vm.session.agentState) { _, _ in followLegacy(proxy) }
-            .onChange(of: vm.reviewCard?.changes) { _, _ in followLegacy(proxy) }
-            .onChange(of: vm.sendTick) { _, _ in detached = false; follow(proxy) }
-            .animation(.snappy, value: detached)
+            // Observe streaming in a child, so each draft update does not fold/diff the entire history.
+            // Follow content changes explicitly, outside the layout transaction. Size-change anchoring on a
+            // lazy stack can feed its estimated heights back into scroll layout indefinitely on Mac Catalyst.
+            .background { DraftFollow(vm: vm) { follow(proxy) } }
+            .background {
+                #if DEBUG
+                ChatHistoryProbe()
+                #endif
+            }
+            .onChange(of: vm.store.next) { _, _ in follow(proxy) }
+            .onChange(of: vm.loaded) { _, loaded in if loaded { follow(proxy) } }
+            .onChange(of: vm.outgoing.count) { _, _ in follow(proxy) }
+            .onChange(of: vm.session.agentState) { _, _ in follow(proxy) }
+            .onChange(of: vm.reviewCard?.changes) { _, _ in follow(proxy) }
+            .onChange(of: vm.sendTick) { _, _ in requestFollow(proxy) }
+            .onDisappear { followTask?.cancel(); scrollEvents.cancelGeometry() }
         }
     }
 
-    private func follow(_ proxy: ScrollViewProxy) {
-        guard !detached else { return }
-        withAnimation(.snappy(duration: 0.25)) { proxy.scrollTo("bottom", anchor: .bottom) }
+    private func requestFollow(_ proxy: ScrollViewProxy) {
+        scrollEvents.cancelGeometry()
+        scrollState.requestFollow()
+        follow(proxy)
     }
 
-    private func followLegacy(_ proxy: ScrollViewProxy) {
-        if #available(iOS 18, *) { return }
-        guard !detached else { return }
-        proxy.scrollTo("bottom", anchor: .bottom)
+    private func follow(_ proxy: ScrollViewProxy) {
+        guard scrollState.followsBottom, !vm.loadingOlder else { return }
+        if scrollEvents.isUserInteracting {
+            scrollEvents.pendingContentFollow = true
+            return
+        }
+        scrollEvents.pendingContentFollow = false
+        followTask?.cancel()
+        followTask = Task { @MainActor in
+            await Task.yield()
+            guard !Task.isCancelled, scrollState.followsBottom, !vm.loadingOlder else { return }
+            if scrollEvents.isUserInteracting {
+                scrollEvents.pendingContentFollow = true
+                return
+            }
+            proxy.scrollTo("bottom", anchor: .bottom)
+        }
     }
 
     @ViewBuilder private func top(_ proxy: ScrollViewProxy) -> some View {
@@ -123,7 +159,11 @@ struct ConversationView: View {
                 .frame(maxWidth: .infinity).padding(.vertical, 8)
             }
             .foregroundStyle(Theme.textDim)
-            .onAppear { if scrolledUp { Task { await loadOlder(proxy) } } }
+            .disabled(vm.loadingOlder)
+            .onAppear {
+                if #available(iOS 18, *) { return }
+                if scrolledUp { Task { await loadOlder(proxy) } }
+            }
             .onChange(of: scrolledUp) { _, up in if up { Task { await loadOlder(proxy) } } }
         } else if vm.loaded, vm.store.displayItems.count > 6 {
             HStack(spacing: 10) {
@@ -136,9 +176,15 @@ struct ConversationView: View {
     }
 
     private func loadOlder(_ proxy: ScrollViewProxy) async {
-        let first = vm.store.displayItems.first?.id
+        guard !vm.loadingOlder, vm.store.hasMoreBefore, let offset = vm.store.oldestOffset else { return }
+        scrollState.requestHistory()
+        scrollEvents.pendingContentFollow = false
+        followTask?.cancel()
+        let first = blocks.first?.id
         await vm.loadOlder()
-        if let first { proxy.scrollTo(first, anchor: .top) }
+        // Failed requests and concurrent/no-op loads must not move the scroll position.
+        guard let newOffset = vm.store.oldestOffset, newOffset < offset, let first else { return }
+        proxy.scrollTo(first, anchor: .top)
     }
 
     private var emptyNote: some View {
@@ -318,41 +364,85 @@ struct ReviewCard: View {
     }
 }
 
-/// Keeps the bottom in view when content grows, but only if the reader is already at the bottom (iOS 18+).
-private struct PinBottomOnGrowth: ViewModifier {
+/// Set the initial position only. Continuously anchoring size changes fights a LazyVStack's height estimates.
+private struct InitialConversationAnchor: ViewModifier {
     func body(content: Content) -> some View {
         if #available(iOS 18, *) {
-            content.defaultScrollAnchor(.bottom, for: .sizeChanges)
+            content.defaultScrollAnchor(.bottom, for: .initialOffset)
         } else {
-            content
+            content.defaultScrollAnchor(.bottom)
         }
     }
 }
 
-/// Where the reader is, from the scroll view itself (iOS 18+), so a trackpad, a mouse wheel or the keyboard count as
-/// much as a finger: away from the bottom shows "Ir para o fim"; near the top after scrolling up loads older messages.
+/// Holds transient events without invalidating the view graph from inside a geometry callback.
+@MainActor
+private final class ConversationScrollEvents {
+    var isUserInteracting = false
+    /// Content changed while a gesture held the scroll view. Retry once when that gesture ends, if still following.
+    var pendingContentFollow = false
+    private var pendingGeometry: (@MainActor () -> Void)?
+    private var scheduled = false
+
+    func submitGeometry(_ action: @escaping @MainActor () -> Void) {
+        pendingGeometry = action
+        guard !scheduled else { return }
+        scheduled = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.scheduled = false
+            let action = self.pendingGeometry
+            self.pendingGeometry = nil
+            action?()
+        }
+    }
+
+    func cancelGeometry() { pendingGeometry = nil }
+}
+
+/// Only real scroll interaction can detach following or request a history page. Initial placement, lazy height
+/// estimates, a prepend and an explicit scrollTo all produce geometry too; none is a reader asking for more history.
 private struct FollowScrollPosition: ViewModifier {
-    @Binding var detached: Bool
-    @Binding var nearTop: Bool
+    @Binding var state: ConversationScrollState
+    let events: ConversationScrollEvents
+    let resumeFollowing: () -> Void
+    let loadOlder: () -> Void
 
     struct Spot: Equatable {
-        var fromBottom: CGFloat
-        var fromTop: CGFloat
+        var fromBottom: Double
+        var fromTop: Double
         var scrollable: Bool
     }
 
     func body(content: Content) -> some View {
         if #available(iOS 18, *) {
             content.onScrollGeometryChange(for: Spot.self) { g in
-                // In steps of 20 pt: the action runs when the reader really moved, not on every frame.
-                Spot(fromBottom: ((g.contentSize.height - g.visibleRect.maxY) / 20).rounded() * 20,
-                     fromTop: (g.visibleRect.minY / 20).rounded() * 20,
+                Spot(fromBottom: Double(((g.contentSize.height - g.visibleRect.maxY) / 20).rounded() * 20),
+                     fromTop: Double((g.visibleRect.minY / 20).rounded() * 20),
                      scrollable: g.contentSize.height > g.containerSize.height + 1)
-            } action: { _, s in
-                // Some give either way, so text growing at the bottom never flickers the button.
-                if s.fromBottom > 160, !detached { detached = true } else if s.fromBottom < 40, detached { detached = false }
-                let top = s.scrollable && s.fromTop < 240 && s.fromBottom > 240
-                if top != nearTop { nearTop = top }
+            } action: { _, spot in
+                guard events.isUserInteracting else { return }
+                events.submitGeometry {
+                    if state.update(fromTop: spot.fromTop, fromBottom: spot.fromBottom,
+                                    scrollable: spot.scrollable, userInteracting: true) {
+                        loadOlder()
+                    }
+                }
+            }
+            .onScrollPhaseChange { _, phase in
+                events.isUserInteracting = phase == .tracking || phase == .interacting || phase == .decelerating
+                if phase == .idle {
+                    // Deliver the final gesture position before rearming pagination for the next gesture.
+                    DispatchQueue.main.async {
+                        if !events.isUserInteracting {
+                            state.endInteraction()
+                            if events.pendingContentFollow {
+                                events.pendingContentFollow = false
+                                resumeFollowing()
+                            }
+                        }
+                    }
+                }
             }
         } else {
             content
@@ -360,17 +450,13 @@ private struct FollowScrollPosition: ViewModifier {
     }
 }
 
-/// iOS 17: follows the reply being written (iOS 18 pins the bottom by itself, and reads nothing here).
-private struct LegacyDraftFollow: View {
+/// Isolates high-frequency draft observation from the conversation's folding and diffing.
+private struct DraftFollow: View {
     let vm: SessionViewModel
     let follow: () -> Void
 
     var body: some View {
-        if #available(iOS 18, *) {
-            Color.clear
-        } else {
-            Color.clear.onChange(of: vm.draft?.text) { _, _ in follow() }
-        }
+        Color.clear.onChange(of: vm.draft?.text) { _, _ in follow() }
     }
 }
 
