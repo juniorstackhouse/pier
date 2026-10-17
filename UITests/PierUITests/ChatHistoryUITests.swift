@@ -72,10 +72,17 @@ final class ChatHistoryUITests: XCTestCase {
     private func assertLatestVisible() {
         let latest = marker(latestTurn)
         XCTAssertTrue(latest.waitForExistence(timeout: 15), "the newest reply never appeared; the layout may be spinning")
-        let visible = NSPredicate { _, _ in latest.exists && latest.frame.intersects(self.conversation.frame) }
+        assertVisible(latest, "the chat did not settle at the latest reply")
+    }
+
+    /// Call after existence is confirmed. A large Markdown AX tree can make one predicate evaluation consume the
+    /// waiter's whole budget even when the marker is already on screen; check its actual frames before polling.
+    private func assertVisible(_ marker: XCUIElement, _ message: String,
+                               file: StaticString = #filePath, line: UInt = #line) {
+        if marker.frame.intersects(conversation.frame) { return }
+        let visible = NSPredicate { _, _ in marker.frame.intersects(self.conversation.frame) }
         let expectation = XCTNSPredicateExpectation(predicate: visible, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 5), .completed,
-                       "the chat did not settle at the latest reply")
+        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 5), .completed, message, file: file, line: line)
     }
 
     private func openLab(requireLatestVisible: Bool = true) {
@@ -134,11 +141,7 @@ final class ChatHistoryUITests: XCTestCase {
         // events, so a stale running toolbar is not a reliable indication of this handoff completing.
         let brewing = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "Brewing")).firstMatch
         XCTAssertTrue(brewing.waitForNonExistence(timeout: 15), "the synthetic draft did not finish its handoff")
-        let visible = NSPredicate { _, _ in
-            endOfReply.exists && endOfReply.frame.intersects(self.conversation.frame)
-        }
-        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: visible, object: nil)], timeout: 5),
-                       .completed, "the conversation became blank or lost the completed reply after the draft cleared")
+        assertVisible(endOfReply, "the conversation became blank or lost the completed reply after the draft cleared")
         assertComposerResponds("synthetic-after-complete-reply")
         XCTAssertTrue(endOfReply.exists && endOfReply.frame.intersects(conversation.frame),
                       "typing after the completed reply displaced it outside the viewport")
