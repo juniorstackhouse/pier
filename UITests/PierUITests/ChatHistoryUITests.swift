@@ -62,7 +62,7 @@ final class ChatHistoryUITests: XCTestCase {
             let otherRow = element("sidebar-agent-devbox/\(other)")
             let labSelected = labRow.exists ? String(labRow.isSelected) : "missing"
             let otherSelected = otherRow.exists ? String(otherRow.isSelected) : "missing"
-            let windows = app.windows.allElementsBoundByIndex.map(\.label)
+            let windows = app.windows.allElementsBoundByIndex.map { $0.label }
             print("CHAT-NAVIGATION expected=\(name) labOpen=\(labOpen) otherOpen=\(otherOpen) "
                   + "labSelected=\(labSelected) otherSelected=\(otherSelected) windows=\(windows)")
         }
@@ -222,7 +222,8 @@ final class ChatHistoryUITests: XCTestCase {
         }
         // Five invented turns (20 items), ordinary mixed Markdown, no oversized final reply or earlier pages.
         openLab()
-        assertComposerResponds("synthetic-small-open")
+        // Complete sentences avoid a native autocorrection candidate consuming the following sidebar click.
+        assertComposerResponds("This conversation is ready.")
         let labRow = element("sidebar-chat-\(lab)")
         let otherRow = element("sidebar-agent-devbox/\(other)")
         guard labRow.exists, otherRow.exists else {
@@ -234,7 +235,7 @@ final class ChatHistoryUITests: XCTestCase {
             labRow.tap()
             assertSessionOpens(lab)
             assertLatestVisible()
-            assertComposerResponds("-small-switch-\(round)")
+            assertComposerResponds("This is switch number \(round).")
         }
         XCTAssertEqual(historyRequests, 0, "an unpaged conversation requested older history")
     }
