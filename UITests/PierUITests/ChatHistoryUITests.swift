@@ -51,6 +51,24 @@ final class ChatHistoryUITests: XCTestCase {
     private var conversation: XCUIElement { element("conversation-scroll") }
     private var historyRequests: Int? { (element("chat-history-before-count").value as? String).flatMap(Int.init) }
 
+    /// Keep a failed pointer navigation distinguishable from an unavailable session without dumping the chat tree.
+    private func assertSessionOpens(_ name: String, _ message: String = "the session did not open",
+                                    file: StaticString = #filePath, line: UInt = #line) {
+        let opened = element("session-open-\(name)").waitForExistence(timeout: 5)
+        if !opened {
+            let labOpen = element("session-open-\(lab)").exists
+            let otherOpen = element("session-open-\(other)").exists
+            let labRow = element("sidebar-chat-\(lab)")
+            let otherRow = element("sidebar-agent-devbox/\(other)")
+            let labSelected = labRow.exists ? String(labRow.isSelected) : "missing"
+            let otherSelected = otherRow.exists ? String(otherRow.isSelected) : "missing"
+            let windows = app.windows.allElementsBoundByIndex.map(\.label)
+            print("CHAT-NAVIGATION expected=\(name) labOpen=\(labOpen) otherOpen=\(otherOpen) "
+                  + "labSelected=\(labSelected) otherSelected=\(otherSelected) windows=\(windows)")
+        }
+        XCTAssertTrue(opened, message, file: file, line: line)
+    }
+
     private func assertLatestVisible() {
         let latest = marker(latestTurn)
         XCTAssertTrue(latest.waitForExistence(timeout: 15), "the newest reply never appeared; the layout may be spinning")
@@ -162,9 +180,9 @@ final class ChatHistoryUITests: XCTestCase {
         }
         for _ in 0..<3 {
             otherRow.tap()
-            XCTAssertTrue(element("session-open-\(other)").waitForExistence(timeout: 5), "the other session did not open")
+            assertSessionOpens(other, "the other session did not open")
             labRow.tap()
-            XCTAssertTrue(element("session-open-\(lab)").waitForExistence(timeout: 5), "the long conversation did not reopen")
+            assertSessionOpens(lab, "the long conversation did not reopen")
             assertLatestVisible()
         }
         assertComposerResponds("synthetic-after-session-switch")
@@ -183,9 +201,9 @@ final class ChatHistoryUITests: XCTestCase {
         XCTAssertTrue(labRow.waitForExistence(timeout: 5), "the lab sidebar entry is missing")
         XCTAssertTrue(otherRow.waitForExistence(timeout: 5), "the other session sidebar entry is missing")
         otherRow.tap()
-        XCTAssertTrue(element("session-open-\(other)").waitForExistence(timeout: 5), "the other session did not open")
+        assertSessionOpens(other, "the other session did not open")
         labRow.tap()
-        XCTAssertTrue(element("session-open-\(lab)").waitForExistence(timeout: 5), "the full initial page did not reopen")
+        assertSessionOpens(lab, "the full initial page did not reopen")
         assertLatestVisible()
         assertComposerResponds("synthetic-full-page")
         assertLatestVisible()
@@ -209,9 +227,9 @@ final class ChatHistoryUITests: XCTestCase {
         }
         for round in 1...3 {
             otherRow.tap()
-            XCTAssertTrue(element("session-open-\(other)").waitForExistence(timeout: 5))
+            assertSessionOpens(other)
             labRow.tap()
-            XCTAssertTrue(element("session-open-\(lab)").waitForExistence(timeout: 5))
+            assertSessionOpens(lab)
             assertLatestVisible()
             assertComposerResponds("-small-switch-\(round)")
         }

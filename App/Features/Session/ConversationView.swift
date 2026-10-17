@@ -25,48 +25,42 @@ struct ConversationView: View {
         let index: Int
     }
 
+    private enum ScrollTarget: Hashable { case tail }
+
+    private static var measuresTail: Bool {
+        #if targetEnvironment(macCatalyst)
+        if #available(iOS 18, *) { return true }
+        #endif
+        return false
+    }
+
     var body: some View {
         let blocks = self.blocks
         let rows = blocks.indices.map { Row(id: blocks[$0].id, index: $0) }
+        let tailStart = Self.measuresTail ? ConversationTail.startIndex(in: blocks) : rows.endIndex
         ScrollViewReader { proxy in
             ScrollView {
-                ConversationStack {
+                LazyVStack(alignment: .leading, spacing: 14) {
                     top(proxy)
-                    // A task just started here: the person's words first, while the agent writes its record.
-                    if vm.showsStartingPrompt, let p = vm.startingPrompt {
-                        UserBubble(item: TranscriptItem(kind: "user", id: "starting-prompt", text: p), agent: vm.session.agentShortName)
-                            .id("starting-prompt")
+                    if !Self.measuresTail || tailStart > 0 { startingPrompt }
+                    ForEach(rows[..<tailStart]) { row in
+                        transcriptBlock(blocks[row.index])
                     }
-                    ForEach(rows) { row in
-                        switch blocks[row.index] {
-                        case .item(let it):
-                            TranscriptRow(vm: vm, item: it).id(it.id)
-                        case .fold(let id, let steps, let live):
-                            WorkFoldRow(vm: vm, id: id, steps: steps, live: live).id(id)
+                    if Self.measuresTail {
+                        // The latest replies and the end are one lazy child with one concrete height. Older rows
+                        // remain lazy, keeping large histories out of the accessibility tree until they are visible.
+                        VStack(alignment: .leading, spacing: 14) {
+                            if tailStart == 0 { startingPrompt }
+                            ForEach(rows[tailStart...]) { row in
+                                transcriptBlock(blocks[row.index])
+                            }
+                            conversationEnd
                         }
+                        .id(ScrollTarget.tail)
+                    } else {
+                        // The iOS/Catalyst 17 visibility fallback requires the bottom to remain its own lazy row.
+                        conversationEnd
                     }
-                    ForEach(vm.outgoing) { o in OutgoingBubble(message: o).id(o.id) }
-                    if vm.isRunning || vm.starting { LiveDraftRow(vm: vm).id("draft") }
-                    if let card = vm.reviewCard, let (loc, wt) = vm.reviewTarget {
-                        ReviewCard(changes: card.changes, uncommittedOnly: card.uncommittedOnly) {
-                            router.push(ReviewRoute(box: vm.box, location: loc, worktree: wt, session: vm.name))
-                        }
-                        .id("review-card")
-                        .transition(.opacity.combined(with: .move(edge: .bottom)))
-                    }
-                    // Suggested replies for a finished turn (Inbox feature): only sent when the person taps one.
-                    SessionNextSteps(vm: vm).id("next-steps")
-                    if vm.store.displayItems.isEmpty, vm.outgoing.isEmpty, vm.loaded, !vm.isRunning, !vm.starting, !vm.showsStartingPrompt { emptyNote }
-                    Color.clear.frame(height: 1).id("bottom")
-                        .onAppear {
-                            if #available(iOS 18, *) { return }
-                            bottomVisible = true
-                            scrollState.requestFollow()
-                        }
-                        .onDisappear {
-                            if #available(iOS 18, *) { return }
-                            bottomVisible = false
-                        }
                 }
                 .padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 8)
                 .frame(maxWidth: readableColumn)
@@ -109,8 +103,8 @@ struct ConversationView: View {
                 }
             }
             // Observe streaming in a child, so each draft update does not fold/diff the entire history.
-            // Follow content changes explicitly, outside the layout transaction. On Catalyst the loaded history
-            // has concrete heights, so one command can target the end without lazy estimate/anchor feedback.
+            // Follow content changes explicitly, outside the layout transaction. On modern Catalyst the end shares
+            // one measured row with the recent replies, so the command targets that direct lazy child.
             .background { DraftFollow(vm: vm) { follow(proxy) } }
             .background {
                 #if DEBUG
@@ -129,6 +123,48 @@ struct ConversationView: View {
                 scrollEvents.cancelViewportChange()
             }
         }
+    }
+
+    @ViewBuilder private var startingPrompt: some View {
+        // A task just started here: the person's words first, while the agent writes its record.
+        if vm.showsStartingPrompt, let p = vm.startingPrompt {
+            UserBubble(item: TranscriptItem(kind: "user", id: "starting-prompt", text: p), agent: vm.session.agentShortName)
+                .id("starting-prompt")
+        }
+    }
+
+    @ViewBuilder private func transcriptBlock(_ block: ConversationBlock) -> some View {
+        switch block {
+        case .item(let it):
+            TranscriptRow(vm: vm, item: it).id(it.id)
+        case .fold(let id, let steps, let live):
+            WorkFoldRow(vm: vm, id: id, steps: steps, live: live).id(id)
+        }
+    }
+
+    @ViewBuilder private var conversationEnd: some View {
+        ForEach(vm.outgoing) { o in OutgoingBubble(message: o).id(o.id) }
+        if vm.isRunning || vm.starting { LiveDraftRow(vm: vm).id("draft") }
+        if let card = vm.reviewCard, let (loc, wt) = vm.reviewTarget {
+            ReviewCard(changes: card.changes, uncommittedOnly: card.uncommittedOnly) {
+                router.push(ReviewRoute(box: vm.box, location: loc, worktree: wt, session: vm.name))
+            }
+            .id("review-card")
+            .transition(.opacity.combined(with: .move(edge: .bottom)))
+        }
+        // Suggested replies for a finished turn (Inbox feature): only sent when the person taps one.
+        SessionNextSteps(vm: vm).id("next-steps")
+        if vm.store.displayItems.isEmpty, vm.outgoing.isEmpty, vm.loaded, !vm.isRunning, !vm.starting, !vm.showsStartingPrompt { emptyNote }
+        Color.clear.frame(height: 1).id("bottom")
+            .onAppear {
+                if #available(iOS 18, *) { return }
+                bottomVisible = true
+                scrollState.requestFollow()
+            }
+            .onDisappear {
+                if #available(iOS 18, *) { return }
+                bottomVisible = false
+            }
     }
 
     private func requestFollow(_ proxy: ScrollViewProxy) {
@@ -161,14 +197,15 @@ struct ConversationView: View {
             }
             #if DEBUG
             ChatHistoryDiagnostics.recordScroll(event: "follow", sequence: sequence, step: 1,
-                action: "scroll", target: "bottom",
+                action: "scroll", target: Self.measuresTail ? "tail" : "bottom",
                 distanceFromBottom: scrollEvents.distanceFromBottom, contentHeight: scrollEvents.contentHeight,
                 visibleMinY: scrollEvents.visibleMinY, visibleMaxY: scrollEvents.visibleMaxY,
                 viewportHeight: scrollEvents.viewportHeight, followsBottom: scrollState.followsBottom,
                 isUserInteracting: scrollEvents.isUserInteracting, isViewportChanging: scrollEvents.isViewportChanging,
                 itemCount: vm.store.items.count)
             #endif
-            proxy.scrollTo("bottom", anchor: .bottom)
+            if Self.measuresTail { proxy.scrollTo(ScrollTarget.tail, anchor: .bottom) }
+            else { proxy.scrollTo("bottom", anchor: .bottom) }
         }
     }
 
@@ -386,27 +423,6 @@ struct ReviewCard: View {
         .padding(.horizontal, 12).padding(.vertical, 10)
         .background(Theme.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Theme.stroke))
-    }
-}
-
-/// Catalyst measures the loaded history as a whole. This avoids lazy height estimates feeding back into scroll
-/// placement; the server supplies an initial window and earlier history is still fetched only when requested.
-private struct ConversationStack<Content: View>: View {
-    let content: Content
-
-    init(@ViewBuilder content: () -> Content) { self.content = content() }
-
-    var body: some View {
-        #if targetEnvironment(macCatalyst)
-        if #available(iOS 18, *) {
-            VStack(alignment: .leading, spacing: 14) { content }
-        } else {
-            // Catalyst 17 observes visibility through appearance; eagerly mounting every row breaks that fallback.
-            LazyVStack(alignment: .leading, spacing: 14) { content }
-        }
-        #else
-        LazyVStack(alignment: .leading, spacing: 14) { content }
-        #endif
     }
 }
 
