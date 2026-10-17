@@ -55,9 +55,12 @@ are retained when prepending history or changing content. Text selection and Mar
 
 The Mac has no automatic bottom anchor: loading, content changes and a settled viewport request one explicit scroll to
 the bottom of that direct lazy child, outside the layout transaction. Resize requests wait for 250 ms without another
-viewport size change, and user interaction or reading older messages prevents automatic following. There are no priming
-or retry sequences. Scroll geometry callbacks record passive diagnostics and handle actual user scrolling; idle layout
-cannot request history or schedule another follow. iPhone and iPad keep separate lazy rows and their initial-position
+viewport size change, and user interaction or reading older messages prevents automatic following. After the first valid
+scroll command materializes the final child, its rounded, positive height can request one correction after 250 ms without
+a height change. This budget is consumed before following, cannot rearm during that appearance, and is canceled when
+loading older history or leaving the view. There are no priming or retry sequences. Scroll geometry callbacks record
+passive diagnostics and handle actual user scrolling; estimated list height and idle scroll geometry cannot request
+history or schedule another follow. iPhone and iPad keep separate lazy rows and their initial-position
 fallback. Catalyst 17 (macOS 14) also retains separate lazy rows and the default bottom anchor because its visibility
 fallback uses row appearance.
 

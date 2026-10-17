@@ -57,6 +57,9 @@ struct ConversationView: View {
                             conversationEnd
                         }
                         .id(ScrollTarget.tail)
+                        .onGeometryChange(for: CGFloat.self) { $0.size.height.rounded() } action: { height in
+                            scrollEvents.submitInitialTailHeight(height)
+                        }
                     } else {
                         // The iOS/Catalyst 17 visibility fallback requires the bottom to remain its own lazy row.
                         conversationEnd
@@ -121,6 +124,7 @@ struct ConversationView: View {
                 followTask?.cancel()
                 scrollEvents.cancelGeometry()
                 scrollEvents.cancelViewportChange()
+                scrollEvents.cancelInitialTailFollow(reset: true)
             }
         }
     }
@@ -204,8 +208,14 @@ struct ConversationView: View {
                 isUserInteracting: scrollEvents.isUserInteracting, isViewportChanging: scrollEvents.isViewportChanging,
                 itemCount: vm.store.items.count)
             #endif
-            if Self.measuresTail { proxy.scrollTo(ScrollTarget.tail, anchor: .bottom) }
-            else { proxy.scrollTo("bottom", anchor: .bottom) }
+            if Self.measuresTail {
+                proxy.scrollTo(ScrollTarget.tail, anchor: .bottom)
+                // The first command can materialize the tail before its text finishes measuring. Correct once,
+                // after that concrete child settles, rather than following the lazy stack's height estimates.
+                scrollEvents.armInitialTailFollow { follow(proxy) }
+            } else {
+                proxy.scrollTo("bottom", anchor: .bottom)
+            }
         }
     }
 
@@ -241,6 +251,7 @@ struct ConversationView: View {
         guard !vm.loadingOlder, vm.store.hasMoreBefore, let offset = vm.store.oldestOffset else { return }
         scrollState.requestHistory()
         scrollEvents.pendingContentFollow = false
+        scrollEvents.cancelInitialTailFollow()
         followTask?.cancel()
         let first = blocks.first?.id
         await vm.loadOlder()
@@ -467,6 +478,48 @@ private final class ConversationScrollEvents {
     private var viewportSize: CGSize?
     private var pendingViewportChange: (@MainActor () -> Void)?
     private var viewportTask: Task<Void, Never>?
+    private var initialTailHeight: CGFloat?
+    private var initialTailFollowBudget = 1
+    private var pendingInitialTailFollow: (@MainActor () -> Void)?
+    private var initialTailFollowTask: Task<Void, Never>?
+
+    /// Only the first materialization needs a correction. Offset and estimated content height never arm this budget.
+    func submitInitialTailHeight(_ height: CGFloat) {
+        guard initialTailFollowBudget > 0, height.isFinite, height > 0,
+              initialTailHeight != height else { return }
+        initialTailHeight = height
+        scheduleInitialTailFollow()
+    }
+
+    /// Called only after a valid scrollTo actually executes; early placeholder layout cannot spend the correction.
+    func armInitialTailFollow(_ action: @escaping @MainActor () -> Void) {
+        guard initialTailFollowBudget > 0, pendingInitialTailFollow == nil else { return }
+        pendingInitialTailFollow = action
+        scheduleInitialTailFollow()
+    }
+
+    private func scheduleInitialTailFollow() {
+        guard initialTailFollowBudget > 0, initialTailHeight != nil, pendingInitialTailFollow != nil else { return }
+        initialTailFollowTask?.cancel()
+        initialTailFollowTask = Task { @MainActor [weak self] in
+            do { try await Task.sleep(for: .milliseconds(250)) } catch { return }
+            guard let self, !Task.isCancelled else { return }
+            self.initialTailFollowTask = nil
+            self.initialTailFollowBudget = 0
+            let action = self.pendingInitialTailFollow
+            self.pendingInitialTailFollow = nil
+            // Spend the budget before entering follow(), which may itself arm or defer a normal content follow.
+            action?()
+        }
+    }
+
+    func cancelInitialTailFollow(reset: Bool = false) {
+        initialTailFollowTask?.cancel()
+        initialTailFollowTask = nil
+        pendingInitialTailFollow = nil
+        initialTailHeight = nil
+        initialTailFollowBudget = reset ? 1 : 0
+    }
 
     func submitGeometry(_ action: @escaping @MainActor () -> Void) {
         pendingGeometry = action
