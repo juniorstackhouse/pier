@@ -56,10 +56,11 @@ struct ConversationView: View {
                             }
                             conversationEnd
                         }
-                        .id(ScrollTarget.tail)
                         .onGeometryChange(for: CGFloat.self) { $0.size.height.rounded() } action: { height in
                             scrollEvents.submitInitialTailHeight(height)
                         }
+                        // The lazy stack must see the scroll target outside the geometry reader's wrapper.
+                        .id(ScrollTarget.tail)
                     } else {
                         // The iOS/Catalyst 17 visibility fallback requires the bottom to remain its own lazy row.
                         conversationEnd
