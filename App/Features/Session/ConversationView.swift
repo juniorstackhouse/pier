@@ -174,6 +174,8 @@ struct ConversationView: View {
 
     private func requestFollow(_ proxy: ScrollViewProxy) {
         scrollEvents.cancelGeometry()
+        // A deliberate return or new send can follow pagination, which canceled the opening correction.
+        scrollEvents.cancelInitialTailFollow(reset: true)
         scrollState.requestFollow()
         follow(proxy)
     }
@@ -484,7 +486,7 @@ private final class ConversationScrollEvents {
     private var pendingInitialTailFollow: (@MainActor () -> Void)?
     private var initialTailFollowTask: Task<Void, Never>?
 
-    /// Only the first materialization needs a correction. Offset and estimated content height never arm this budget.
+    /// Opening or an explicit return permits one correction. Geometry never creates another budget.
     func submitInitialTailHeight(_ height: CGFloat) {
         guard initialTailFollowBudget > 0, height.isFinite, height > 0,
               initialTailHeight != height else { return }
@@ -500,7 +502,9 @@ private final class ConversationScrollEvents {
     }
 
     private func scheduleInitialTailFollow() {
-        guard initialTailFollowBudget > 0, initialTailHeight != nil, pendingInitialTailFollow != nil else { return }
+        // A retained view may not emit an unchanged height on reappearance; an off-screen lazy child may not
+        // have measured yet. The executed command starts the timer; actual height changes only postpone it.
+        guard initialTailFollowBudget > 0, pendingInitialTailFollow != nil else { return }
         initialTailFollowTask?.cancel()
         initialTailFollowTask = Task { @MainActor [weak self] in
             do { try await Task.sleep(for: .milliseconds(250)) } catch { return }
