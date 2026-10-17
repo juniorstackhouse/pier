@@ -40,15 +40,14 @@ struct ConversationView: View {
         let tailStart = Self.measuresTail ? ConversationTail.startIndex(in: blocks) : rows.endIndex
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 14) {
+                ConversationStack {
                     top(proxy)
                     if !Self.measuresTail || tailStart > 0 { startingPrompt }
                     ForEach(rows[..<tailStart]) { row in
                         transcriptBlock(blocks[row.index])
                     }
                     if Self.measuresTail {
-                        // The latest replies and the end are one lazy child with one concrete height. Older rows
-                        // remain lazy, keeping large histories out of the accessibility tree until they are visible.
+                        // Keep the latest replies and the end in one measured group across the draft/record handoff.
                         VStack(alignment: .leading, spacing: 14) {
                             if tailStart == 0 { startingPrompt }
                             ForEach(rows[tailStart...]) { row in
@@ -59,7 +58,7 @@ struct ConversationView: View {
                         .onGeometryChange(for: CGFloat.self) { $0.size.height.rounded() } action: { height in
                             scrollEvents.submitInitialTailHeight(height)
                         }
-                        // The lazy stack must see the scroll target outside the geometry reader's wrapper.
+                        // Keep the scroll target outside the geometry reader's wrapper.
                         .id(ScrollTarget.tail)
                     } else {
                         // The iOS/Catalyst 17 visibility fallback requires the bottom to remain its own lazy row.
@@ -108,7 +107,7 @@ struct ConversationView: View {
             }
             // Observe streaming in a child, so each draft update does not fold/diff the entire history.
             // Follow content changes explicitly, outside the layout transaction. On modern Catalyst the end shares
-            // one measured row with the recent replies, so the command targets that direct lazy child.
+            // one measured group with the recent replies, so the command targets that group's lower edge.
             .background { DraftFollow(vm: vm) { follow(proxy) } }
             .background {
                 #if DEBUG
@@ -141,9 +140,9 @@ struct ConversationView: View {
     @ViewBuilder private func transcriptBlock(_ block: ConversationBlock) -> some View {
         switch block {
         case .item(let it):
-            TranscriptRow(vm: vm, item: it).id(it.id)
+            TranscriptRow(vm: vm, item: it).modifier(ConversationRowAccessibility()).id(it.id)
         case .fold(let id, let steps, let live):
-            WorkFoldRow(vm: vm, id: id, steps: steps, live: live).id(id)
+            WorkFoldRow(vm: vm, id: id, steps: steps, live: live).modifier(ConversationRowAccessibility()).id(id)
         }
     }
 
@@ -213,8 +212,7 @@ struct ConversationView: View {
             #endif
             if Self.measuresTail {
                 proxy.scrollTo(ScrollTarget.tail, anchor: .bottom)
-                // The first command can materialize the tail before its text finishes measuring. Correct once,
-                // after that concrete child settles, rather than following the lazy stack's height estimates.
+                // The first command can precede the text's final measurement. Correct once after it settles.
                 scrollEvents.armInitialTailFollow { follow(proxy) }
             } else {
                 proxy.scrollTo("bottom", anchor: .bottom)
@@ -437,6 +435,58 @@ struct ReviewCard: View {
         .padding(.horizontal, 12).padding(.vertical, 10)
         .background(Theme.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Theme.stroke))
+    }
+}
+
+/// Catalyst's lazy text estimates can enter a layout loop while older rows appear. Measure loaded history directly.
+private struct ConversationStack<Content: View>: View {
+    let content: Content
+
+    init(@ViewBuilder content: () -> Content) { self.content = content() }
+
+    var body: some View {
+        #if targetEnvironment(macCatalyst)
+        if #available(iOS 18, *) {
+            VStack(alignment: .leading, spacing: 14) { content }
+        } else {
+            // The older visibility fallback depends on lazy row appearance.
+            LazyVStack(alignment: .leading, spacing: 14) { content }
+        }
+        #else
+        LazyVStack(alignment: .leading, spacing: 14) { content }
+        #endif
+    }
+}
+
+/// Eager layout need not export every offscreen Markdown descendant to accessibility clients. Keep a screen of
+/// overscan on each side, and expose the entire history whenever an assistive navigation service is enabled.
+/// This state changes accessibility only; it never requests layout, scrolling or another history page.
+private struct ConversationRowAccessibility: ViewModifier {
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
+    @Environment(\.accessibilitySwitchControlEnabled) private var switchControlEnabled
+    @State private var isNearViewport = false
+
+    func body(content: Content) -> some View {
+        #if targetEnvironment(macCatalyst)
+        if #available(iOS 18, *) {
+            content
+                .onGeometryChange(for: Bool.self) { proxy in
+                    let frame = proxy.frame(in: .scrollView(axis: .vertical))
+                    guard let bounds = proxy.bounds(of: .scrollView(axis: .vertical)),
+                          bounds.width.isFinite, bounds.height.isFinite, bounds.width > 0, bounds.height > 0,
+                          frame.minX.isFinite, frame.minY.isFinite, frame.width.isFinite, frame.height.isFinite else {
+                        return true
+                    }
+                    let nearby = CGRect(origin: .zero, size: bounds.size).insetBy(dx: 0, dy: -bounds.height)
+                    return frame.intersects(nearby)
+                } action: { isNearViewport = $0 }
+                .accessibilityHidden(!isNearViewport && !voiceOverEnabled && !switchControlEnabled)
+        } else {
+            content
+        }
+        #else
+        content
+        #endif
     }
 }
 

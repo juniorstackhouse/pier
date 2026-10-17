@@ -15,6 +15,7 @@ enum ChatHistoryDiagnostics {
     static func didRequestHistory() {
         guard enabled else { return }
         let count = lock.withLock { beforeRequests += 1; return beforeRequests }
+        emit(["event": "history-request", "count": count])
         Task { @MainActor in
             // Requests can finish on different queues; an older update cannot move the counter backwards.
             ChatHistoryProbeModel.shared.count = max(ChatHistoryProbeModel.shared.count, count)

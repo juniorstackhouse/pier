@@ -47,14 +47,15 @@ experimental app. Follow the normal macOS prompts; do not disable Gatekeeper or 
 
 ## Scroll correction
 
-On Mac Catalyst 18 and later (macOS 15+), a `LazyVStack` keeps older history out of the view/accessibility tree until needed.
-Its final child is one `VStack` containing the two latest turns with a response, including their prompts and work folds,
+On Mac Catalyst 18 and later (macOS 15+), a `VStack` measures loaded history directly, avoiding the lazy stack's
+height-estimation loop when older Markdown rows enter the viewport. Its final child is one `VStack` containing the
+two latest turns with a response, including their prompts and work folds,
 plus newer items, outgoing messages, the live draft, cards and the end marker. Keeping the previous response in this child
 preserves its measured height when a draft becomes a recorded reply. The child has a stable identity; transcript row IDs
 are retained when prepending history or changing content. Text selection and Markdown remain available.
 
 The Mac has no automatic bottom anchor: loading, content changes and a settled viewport request one explicit scroll to
-the bottom of that direct lazy child, outside the layout transaction. Resize requests wait for 250 ms without another
+the bottom of that measured group, outside the layout transaction. Resize requests wait for 250 ms without another
 viewport size change, and user interaction or reading older messages prevents automatic following. After the first valid
 scroll command, one correction waits 250 ms; any rounded, positive child-height change restarts that same timer. A new
 height callback is not required, since a retained view may not repeat an unchanged measurement on reappearance. This
@@ -71,8 +72,11 @@ updated at the same server cursor. Metadata-only polls do not request a follow; 
 
 The server's initial window contains at most 300 transcript items; each request for older messages adds up to 120.
 Pagination preserves the previously visible block after a successful history load. Already loaded and cached items are
-not discarded, so memory use can grow with requested history; older rows remain lazy. The final two answered turns are
-measured together, so exceptionally large replies or expanded work folds there still have a rendering cost. This change
+not discarded, so memory and layout costs can grow with requested history. Offscreen transcript blocks beyond one
+viewport of overscan on each side are hidden only from the accessibility tree; their content, layout and scroll IDs
+remain intact. This pruning is disabled when VoiceOver or Switch Control is enabled, and unknown geometry leaves
+the block accessible. Per-block geometry updates only this accessibility state, never follow or pagination.
+Exceptionally large replies and expanded work folds still have a rendering cost. This change
 does not cap or remove access to older messages; test expanded histories as well as the initial window.
 
 ## Validation
